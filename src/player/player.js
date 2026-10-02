@@ -517,7 +517,9 @@ export class Player {
     this.#tickTimer();
     if (this.opts.syncHash) {
       const hash = formatHash(this.nav.state);
-      if (location.hash !== hash) history.replaceState(null, '', hash);
+      try {
+        if (location.hash !== hash) history.replaceState(null, '', hash);
+      } catch { /* sandboxed or embedded frames may not touch the URL; the deck still plays */ }
     }
     this.opts.onNavigate?.({ slide, step, total });
     for (const fn of [...this.subscribers]) fn({ slide, step, total, startedAt: this.slideStartedAt });

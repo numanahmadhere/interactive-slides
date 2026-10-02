@@ -24,7 +24,7 @@ export default registerBlock({
     const id = uniqueId('acc');
     const root = h('div', { class: 'sp-acc' });
     items.forEach((item, i) => {
-      const open = state.open.includes(i);
+      const open = ctx.mode === 'print' || state.open.includes(i);
       const head = h('button', {
         type: 'button', class: 'sp-acc__head', id: `${id}-h${i}`, 'aria-expanded': String(open), 'aria-controls': `${id}-p${i}`,
       }, h('span', { class: 'sp-acc__title', text: item.title || `Item ${i + 1}` }), svgIcon('M6 9l6 6 6-6', { size: 44 }));

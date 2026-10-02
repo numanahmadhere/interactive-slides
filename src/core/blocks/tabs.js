@@ -23,6 +23,7 @@ export default registerBlock({
     const id = uniqueId('tabs');
     const list = h('div', { class: 'sp-tabs__list', role: 'tablist' });
     const panels = h('div', { class: 'sp-tabs__panels' });
+    const printing = ctx.mode === 'print';
     tabs.forEach((tab, i) => {
       list.append(h('button', {
         type: 'button', role: 'tab', class: 'sp-tab', id: `${id}-t${i}`, 'aria-controls': `${id}-p${i}`,
@@ -30,8 +31,10 @@ export default registerBlock({
       }));
       const panel = h('div', {
         class: 'sp-tabs__panel', role: 'tabpanel', id: `${id}-p${i}`, 'aria-labelledby': `${id}-t${i}`,
-        'data-section': i, hidden: i !== active,
+        'data-section': i, hidden: !printing && i !== active,
       });
+      // On paper there is no clicking, so every tab is shown under its own name.
+      if (printing) panel.append(h('div', { class: 'sp-tabs__print-title', text: tab.title || `Tab ${i + 1}` }));
       ctx.renderBlocks(tab.blocks, panel, { reveal: false });
       panels.append(panel);
     });

@@ -249,3 +249,53 @@ export function listEditor({ items, fields, itemLabel, addLabel, min = 0, max = 
   }));
   return wrap;
 }
+
+// ---- dialogs ----------------------------------------------------------------
+
+// A modal dialog: focus is trapped inside, Escape and a click outside close it,
+// and focus goes back to whatever opened it. Returns { el, body, close }.
+export function openDialog({ title, content, onClose, wide = false }) {
+  const opener = document.activeElement;
+  const titleId = nextId();
+  const closeBtn = h('button', { type: 'button', class: 'ed-btn ed-btn--ghost ed-btn--icon', 'aria-label': 'Close' });
+  closeBtn.append(icon('close', 16));
+  const body = h('div', { class: 'ed-dialog__body' });
+  if (content) body.append(content);
+  const dialog = h('div', { class: `ed-dialog${wide ? ' ed-dialog--wide' : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': titleId },
+    h('div', { class: 'ed-dialog__head' }, h('h2', { class: 'ed-dialog__title', id: titleId, text: title }), closeBtn), body);
+  const backdrop = h('div', { class: 'ed-dialog-backdrop' }, dialog);
+  document.body.append(backdrop);
+
+  const focusable = () => [...dialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter((el) => !el.disabled && !el.hidden && el.offsetParent !== null);
+  const onKey = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+    } else if (e.key === 'Tab') {
+      const items = focusable();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items.at(-1);
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+  let closed = false;
+  function close() {
+    if (closed) return;
+    closed = true;
+    document.removeEventListener('keydown', onKey, true);
+    backdrop.remove();
+    if (opener instanceof Element && opener.isConnected) opener.focus({ preventScroll: true });
+    onClose?.();
+  }
+  closeBtn.addEventListener('click', close);
+  backdrop.addEventListener('pointerdown', (e) => {
+    if (e.target === backdrop) close();
+  });
+  document.addEventListener('keydown', onKey, true);
+  (focusable().find((el) => el !== closeBtn) ?? closeBtn).focus();
+  return { el: dialog, body, close };
+}

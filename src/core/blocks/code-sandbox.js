@@ -58,7 +58,7 @@ export default registerBlock({
         h('button', { type: 'button', class: 'sp-btn sp-btn--primary sp-btn--md sp-lab__run', text: 'Run' }),
         h('button', { type: 'button', class: 'sp-btn sp-btn--outline sp-btn--md sp-lab__reset', text: 'Reset' })) : null);
 
-    const preview = ctx.mode === 'thumb'
+    const preview = ctx.mode !== 'present' && ctx.mode !== 'edit'
       ? h('div', { class: 'sp-lab__thumb', text: 'Live code' })
       : h('iframe', {
         class: 'sp-lab__preview', title: title || 'Code preview', sandbox: 'allow-scripts', referrerpolicy: 'no-referrer',

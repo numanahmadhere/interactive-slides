@@ -27,6 +27,10 @@ export default registerBlock({
   }],
   render: (block, ctx) => {
     const { items } = block.props;
+    if (ctx.mode === 'print') {
+      return h('ol', { class: 'sp-tl__print' }, ...items.map((item) => h('li', null,
+        h('strong', { text: item.title }), item.text ? h('span', { text: ` ${item.text}` }) : null)));
+    }
     const state = stateOf(ctx, block, () => ({ active: 0 }));
     const active = clamp(state.active ?? 0, 0, items.length - 1);
     const track = h('div', { class: 'sp-tl__track', role: 'tablist', style: `--tl-progress:${items.length > 1 ? (active / (items.length - 1)) * 100 : 0}%` });

@@ -9,6 +9,7 @@ import { getLayout, listLayouts } from '../core/layouts.js';
 import { sampleDeck } from '../samples/sample-deck.js';
 import { interactiveDeck } from '../samples/interactive-deck.js';
 import { Session } from '../core/session.js';
+import { slugify } from '../core/util.js';
 import * as ops from './ops.js';
 import { Store } from './store.js';
 import { Persistence } from './persist.js';
@@ -18,6 +19,8 @@ import { SlideList } from './sidebar.js';
 import { Inspector } from './inspector.js';
 import { openPresenter } from './presenter.js';
 import { button, openMenu, toast } from './ui.js';
+import { openExportDialog } from './export-dialog.js';
+import { Exporter } from './exporter.js';
 
 const SAVE_DELAY_MS = 600;
 const SAVE_LABELS = { saved: 'Saved', saving: 'Saving...', error: 'Not saved' };
@@ -26,10 +29,6 @@ function starterDeck() {
   const deck = createDeck({ title: 'Untitled deck' });
   deck.slides = [createSlide('title'), createSlide('content')];
   return deck;
-}
-
-function slugify(text) {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'deck';
 }
 
 const isTyping = (el) => !!el?.closest?.('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]');
@@ -42,6 +41,7 @@ export class Editor {
     this.selection = { slideId: null, blockId: null, slotId: null };
     this.presenter = null;
     this.session = new Session(); // view state in the editor: open tabs, flipped cards
+    this.exporter = new Exporter(this);
     this.saveTimer = 0;
     this.saveState = 'saved';
     this.warnedImages = false;
@@ -390,14 +390,14 @@ export class Editor {
         { label: 'Open sample deck', value: 'sample' },
         { label: 'Open interactive demo', value: 'interactive' },
         { label: 'Import deck...', value: 'import', hint: 'JSON' },
-        { label: 'Export deck', value: 'export', hint: 'JSON' },
+        { label: 'Export...', value: 'export', hint: 'HTML, PDF, PNG, PPTX' },
       ],
       onPick: (value) => {
         if (value === 'new') this.#replaceDeck(starterDeck());
         else if (value === 'sample') this.#replaceDeck(normalizeDeck(structuredClone(sampleDeck)).deck);
         else if (value === 'interactive') this.#replaceDeck(normalizeDeck(structuredClone(interactiveDeck)).deck);
         else if (value === 'import') this.#pickImportFile();
-        else this.exportJson();
+        else openExportDialog(this);
       },
     });
   }

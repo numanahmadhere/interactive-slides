@@ -1,6 +1,7 @@
 // Turns a deck's data into DOM. One renderer serves the editor canvas, the
 // presenter, thumbnails and the standalone export; `mode` is the only thing
-// that changes ("present", "edit" or "thumb").
+// that changes ("present", "edit", "thumb", "print" for expanded handouts, and
+// "image" for pictures of the slide exactly as it looks on screen).
 //
 // Interactive blocks describe their behaviour in a mount() hook. Rendering is
 // pure DOM building; behaviour is attached afterwards by activateSlide(), once
@@ -50,7 +51,8 @@ export function renderBlock(block, ctx, { reveal = true } = {}) {
   }
   try {
     wrap.append(def.render(block, ctx));
-    if (def.mount && (ctx.mode === 'present' || (ctx.mode === 'edit' && def.mountInEdit))) {
+    const mounts = ctx.mode === 'present' || (ctx.mode === 'edit' && def.mountInEdit) || ((ctx.mode === 'print' || ctx.mode === 'image') && def.mountInPrint);
+    if (def.mount && mounts) {
       ctx.mounts.push(() => def.mount(wrap, block, ctx));
     }
   } catch (err) {

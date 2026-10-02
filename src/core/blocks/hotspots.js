@@ -13,6 +13,7 @@ export default registerBlock({
   label: 'Image hotspots',
   group: 'Interactive',
   mountInEdit: true,
+  mountInPrint: true,
   defaults: () => ({ src: '', alt: '', spots: [] }),
   normalize: (p) => ({
     src: str(p.src, '', 3_000_000),

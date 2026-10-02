@@ -1,28 +1,29 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveEmbed } from '../src/core/blocks/embed.js';
+import { embedCode } from '../src/export/embed.js';
 
-const id = 'aqz-KE-bpKQ';
-
-test('youtube urls resolve to the privacy-friendly embed endpoint', () => {
-  const want = { provider: 'youtube', src: `https://www.youtube-nocookie.com/embed/${id}` };
-  assert.deepEqual(resolveEmbed(`https://www.youtube.com/watch?v=${id}`), want);
-  assert.deepEqual(resolveEmbed(`https://youtu.be/${id}`), want);
-  assert.deepEqual(resolveEmbed(`https://www.youtube.com/embed/${id}`), want);
-  assert.deepEqual(resolveEmbed(`https://www.youtube.com/shorts/${id}`), want);
-  assert.equal(resolveEmbed('https://www.youtube.com/watch?v=short'), null);
+test('embed code for a hosted deck', () => {
+  const code = embedCode({ url: ' https://example.com/decks/my deck.html ', title: 'My "deck"', aspect: '16:9' });
+  assert.match(code, /^<iframe /);
+  assert.match(code, /src="https:\/\/example\.com\/decks\/my%20deck\.html"/);
+  assert.match(code, /title="My &quot;deck&quot;"/);
+  assert.match(code, /aspect-ratio:16 \/ 9/);
+  assert.match(code, /allowfullscreen/);
 });
 
-test('vimeo and loom', () => {
-  assert.deepEqual(resolveEmbed('https://vimeo.com/123456789'), { provider: 'vimeo', src: 'https://player.vimeo.com/video/123456789' });
-  const loom = 'a'.repeat(32);
-  assert.deepEqual(resolveEmbed(`https://www.loom.com/share/${loom}`), { provider: 'loom', src: `https://www.loom.com/embed/${loom}` });
+test('4:3 decks get a 4:3 frame', () => {
+  assert.match(embedCode({ url: 'https://a.co/x', aspect: '4:3' }), /aspect-ratio:4 \/ 3/);
 });
 
-test('other https pages are framed as-is; everything else is refused', () => {
-  assert.deepEqual(resolveEmbed('https://example.com/demo'), { provider: 'web', src: 'https://example.com/demo' });
-  assert.equal(resolveEmbed('http://example.com'), null);
-  assert.equal(resolveEmbed('javascript:alert(1)'), null);
-  assert.equal(resolveEmbed(''), null);
-  assert.equal(resolveEmbed('not a url'), null);
+test('only http and https addresses are accepted', () => {
+  for (const bad of ['', 'not a url', 'javascript:alert(1)', 'data:text/html,hi', 'file:///etc/passwd', 'ftp://x.co']) {
+    assert.equal(embedCode({ url: bad }), null, bad);
+  }
+  assert.ok(embedCode({ url: 'http://localhost:8080/deck.html' }));
+});
+
+test('attributes cannot be broken out of', () => {
+  const code = embedCode({ url: 'https://a.co/x?a=1&b="><script>', title: '"><img src=x>' });
+  assert.ok(!code.includes('"><script>'));
+  assert.ok(!code.includes('"><img'));
 });

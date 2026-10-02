@@ -838,3 +838,19 @@ span.sp-chart__swatch.sp-chart__s4 { background: var(--c4); } span.sp-chart__swa
 .sp-lab__preview { width: 100%; min-height: 520px; height: 100%; border: 3px solid var(--sp-border); border-radius: 20px; background: #fff; }
 .sp-lab--stack .sp-lab__preview { min-height: 300px; }
 .sp-lab__thumb { display: grid; place-items: center; min-height: 520px; border: 3px dashed var(--sp-border); border-radius: 20px; color: var(--sp-muted); font-size: 40px; }
+
+/* ======================================================================
+   Print and image export: everything is revealed and expanded
+   ====================================================================== */
+
+.sp-print .sp-slide [data-step],
+.sp-print .sp-slide [data-step]:not(.is-revealed),
+.sp-image .sp-slide [data-step],
+.sp-image .sp-slide [data-step]:not(.is-revealed) { opacity: 1; visibility: visible; transform: none; transition: none; }
+.sp-tabs__print-title { display: none; }
+.sp-print .sp-tabs__list { display: none; }
+.sp-print .sp-tabs__print-title { display: block; margin-bottom: 6px; color: var(--sp-accent-text); font-size: 34px; font-weight: 700; }
+.sp-print .sp-tabs__panel { gap: 18px; padding: 16px 0; border-top: 3px solid var(--sp-border); }
+.sp-tl__print { margin: 0; padding-inline-start: 1.4em; font-size: 38px; line-height: 1.5; }
+.sp-tl__print li + li { margin-top: 0.4em; }
+.sp-tl__print span { color: var(--sp-muted); }
