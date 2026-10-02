@@ -2,15 +2,22 @@
 // these: the link and QR code the presenter shows carry the settings they need.
 
 import { cleanConfig, encodeConfig } from './protocol.js';
+import { BUILT_IN_CONFIG, sameConfig } from '../cloud/defaults.js';
 
 const KEY = 'interactive-slides:live';
+
+// With a project built in, live sessions use it and nothing is configurable; the
+// presenter can still pick "try it here" for a solo test.
+export const defaultConfig = () => BUILT_IN_CONFIG ?? { kind: 'local' };
 
 export function loadSettings() {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null');
-    return { config: cleanConfig(raw?.config) ?? { kind: 'local' }, base: typeof raw?.base === 'string' ? raw.base : '' };
+    const stored = cleanConfig(raw?.config);
+    const config = BUILT_IN_CONFIG ? (stored?.kind === 'local' ? stored : BUILT_IN_CONFIG) : stored ?? { kind: 'local' };
+    return { config, base: typeof raw?.base === 'string' ? raw.base : '' };
   } catch {
-    return { config: { kind: 'local' }, base: '' };
+    return { config: defaultConfig(), base: '' };
   }
 }
 
@@ -39,7 +46,8 @@ export function isLocalAddress(url) {
 function link(base, name, value, config) {
   const url = new URL(base);
   url.searchParams.set(name, value);
-  if (config.kind !== 'local') url.searchParams.set('rt', encodeConfig(config));
+  // The link only needs to carry the settings when they differ from this build's own.
+  if (config.kind !== 'local' && !sameConfig(config, BUILT_IN_CONFIG)) url.searchParams.set('rt', encodeConfig(config));
   return url.toString();
 }
 

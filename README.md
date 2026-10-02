@@ -232,6 +232,21 @@ workshop, not for anything that must be tamper-proof. The client is
 `@supabase/realtime-js`, tested here against the relay and not against a hosted
 Supabase project.
 
+## Production setup in one place
+
+The Supabase project is compiled in at build time, so nobody types it. Set two
+environment variables where the site is built (Netlify: Site configuration >
+Environment variables), then redeploy:
+
+| Variable | Value |
+| --- | --- |
+| `SUPABASE_URL` | the project address, `https://xxxx.supabase.co` |
+| `SUPABASE_ANON_KEY` | the anon (public) key, or a publishable key |
+
+The build stops with an error if the key is a `service_role` or secret key. For
+local development put the same two lines in `.env.local` (git-ignored). Without
+them the app still works and falls back to typing the project in File > Cloud.
+
 ## Accounts, cloud decks and share links
 
 File > Cloud. Connect your own Supabase project (its address and public anon

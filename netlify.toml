@@ -6,6 +6,9 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # The anon key is public and is compiled into the page on purpose; do not let
+  # the secrets scanner fail the build over it.
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,SUPABASE_ANON_KEY"
 
 [[headers]]
   for = "/*"

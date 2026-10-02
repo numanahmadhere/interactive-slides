@@ -5,6 +5,7 @@ import { h } from '../core/dom.js';
 import { Cloud, browserStore } from '../cloud/client.js';
 import { getLink, loadProject, saveProject, setLink } from '../cloud/config.js';
 import { baseAddress, loadSettings } from '../live/config.js';
+import { BUILT_IN_PROJECT } from '../cloud/defaults.js';
 import { cleanConfig, encodeConfig } from '../live/protocol.js';
 import { button, field, openDialog, textInput, toast } from './ui.js';
 
@@ -85,10 +86,10 @@ export function openCloudDialog(editor) {
     passInput.autocomplete = 'current-password';
     const check = () => (email && password ? true : (say('Enter your email and password.', 'error'), false));
     return h('div', null,
-      h('p', { class: 'ed-hint', text: `Project: ${project.url}` }),
+      BUILT_IN_PROJECT ? null : h('p', { class: 'ed-hint', text: `Project: ${project.url}` }),
       field('Email', emailInput), field('Password', passInput),
       h('div', { class: 'ed-live__actions' },
-        button({ label: 'Change project', onClick: () => { project = null; cloud = null; saveProject(null); localStorage.removeItem('interactive-slides:cloud:session'); say(''); render(); } }),
+        BUILT_IN_PROJECT ? null : button({ label: 'Change project', onClick: () => { project = null; cloud = null; saveProject(null); localStorage.removeItem('interactive-slides:cloud:session'); say(''); render(); } }),
         button({ label: 'Create account', onClick: run('Creating your account...', async () => {
           if (!check()) return;
           const r = await cloud.signUp(email, password);

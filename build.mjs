@@ -6,6 +6,39 @@ import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import { serviceWorkerSource } from './src/sw-template.js';
+import { cleanConfig } from './src/live/protocol.js';
+
+// The project this build talks to. Real environment variables win over .env.local
+// (a file for local development that is never committed).
+async function readEnv() {
+  const env = { ...process.env };
+  try {
+    for (const line of (await readFile('.env.local', 'utf8')).split('\n')) {
+      const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(line);
+      if (m && !(m[1] in env)) env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    }
+  } catch { /* no .env.local */ }
+  return env;
+}
+
+function projectFromEnv(env) {
+  const url = env.SUPABASE_URL ?? '';
+  const key = env.SUPABASE_ANON_KEY ?? '';
+  if (!url && !key) return { url: '', key: '' };
+  const clean = cleanConfig({ kind: 'realtime', url, key });
+  if (!clean) throw new Error('SUPABASE_URL must be the project address (https://xxxx.supabase.co) and SUPABASE_ANON_KEY must be set.');
+  // A key that can bypass the access rules must never be compiled into a public page.
+  try {
+    const role = JSON.parse(Buffer.from(key.split('.')[1] ?? '', 'base64url').toString()).role;
+    if (role === 'service_role') throw new Error('SUPABASE_ANON_KEY is a service_role key. Use the anon (public) key, never the service_role key.');
+  } catch (err) {
+    if (err.message.includes('service_role')) throw err;
+  }
+  if (/^sb_secret_/.test(key)) throw new Error('SUPABASE_ANON_KEY is a secret key. Use the anon or publishable key.');
+  return { url: clean.url, key: clean.key };
+}
+
+const project = projectFromEnv(await readEnv());
 
 const serve = process.argv.includes('--serve');
 const PORT = 5177;
@@ -47,7 +80,7 @@ const options = {
   format: 'iife',
   target: 'es2022',
   loader: { '.woff2': 'dataurl' },
-  define: { __DEV__: String(serve) },
+  define: { __DEV__: String(serve), __SUPABASE_URL__: JSON.stringify(project.url), __SUPABASE_KEY__: JSON.stringify(project.key) },
   sourcemap: serve,
   minify: !serve,
   logLevel: 'info',

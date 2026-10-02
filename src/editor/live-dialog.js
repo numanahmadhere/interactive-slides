@@ -5,6 +5,7 @@ import { qrElement } from '../live/qr.js';
 import { baseAddress, isLocalAddress, joinLink, loadSettings, remoteLink, saveSettings } from '../live/config.js';
 import { cleanConfig } from '../live/protocol.js';
 import { loadProject } from '../cloud/config.js';
+import { BUILT_IN_CONFIG } from '../cloud/defaults.js';
 import { button, field, openDialog, select, textInput, toast } from './ui.js';
 
 const STATUS_TEXT = {
@@ -35,7 +36,7 @@ export function openLiveDialog(editor) {
     let url = useProject ? project.url : settings.config.url ?? '';
     let key = useProject ? project.key : settings.config.key ?? '';
     let base = settings.base;
-    const remoteBox = h('div', { class: 'ed-live__server', hidden: kind === 'local' });
+    const remoteBox = h('div', { class: 'ed-live__server', hidden: kind === 'local' || !!BUILT_IN_CONFIG });
     const problem = h('p', { class: 'ed-hint ed-hint--warn', hidden: true });
 
     const kindSelect = select({
@@ -44,7 +45,7 @@ export function openLiveDialog(editor) {
         { value: 'realtime', label: 'Realtime server (phones and other computers)' },
       ],
       value: kind,
-      onChange: (v) => { kind = v; remoteBox.hidden = v === 'local'; },
+      onChange: (v) => { kind = v; remoteBox.hidden = v === 'local' || !!BUILT_IN_CONFIG; },
     });
     kindSelect.setAttribute('aria-label', 'Where the session runs');
 

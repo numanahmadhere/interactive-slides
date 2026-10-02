@@ -16,13 +16,14 @@ import { decodeConfig, normalizeCode, normalizeKey } from './live/protocol.js';
 import { mountAudience } from './live/audience.js';
 import { mountRemote } from './live/remote.js';
 import { mountViewer } from './cloud/viewer.js';
+import { defaultConfig } from './live/config.js';
 
 const mount = document.getElementById('app');
 const params = new URLSearchParams(location.search);
 
 // Phone pages. The connection settings travel in the link (rt=...); with none, the
 // try-it-here mode between tabs of this browser is used.
-const liveConfig = params.has('rt') ? decodeConfig(params.get('rt')) : { kind: 'local' };
+const liveConfig = params.has('rt') ? decodeConfig(params.get('rt')) : defaultConfig();
 const audienceCode = normalizeCode(params.get('join'));
 const remoteKey = normalizeKey(params.get('remote'));
 
