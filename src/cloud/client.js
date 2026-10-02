@@ -167,7 +167,11 @@ export class Cloud {
   }
 
   async #call(path, { method = 'GET', body, auth = 'anon', prefer } = {}) {
-    const headers = { apikey: this.key, Authorization: `Bearer ${auth === 'anon' ? this.key : auth}` };
+    // The legacy anon key is a JWT and may be sent as the bearer. Newer "publishable" keys
+    // are not JWTs and go in apikey only; the project's gateway fills in the rest.
+    const bearer = auth === 'anon' ? (/^eyJ[\w-]+\.[\w-]+\.[\w-]*$/.test(this.key) ? this.key : null) : auth;
+    const headers = { apikey: this.key };
+    if (bearer) headers.Authorization = `Bearer ${bearer}`;
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     if (prefer) headers.Prefer = prefer;
     let res;

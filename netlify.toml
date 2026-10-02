@@ -1,0 +1,22 @@
+# Static site: `npm run build` writes everything to dist/. All pages are query
+# strings on index.html, so no rewrite rules are needed.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Share links carry a secret token in the address; never pass it on to other sites.
+    Referrer-Policy = "no-referrer"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+
+# The offline service worker must always be fetched fresh so updates reach people.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"

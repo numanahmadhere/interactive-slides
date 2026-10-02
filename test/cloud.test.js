@@ -155,3 +155,16 @@ test('oversized decks are refused before sending', async () => {
     assert.deepEqual(await c.list(), []);
   } finally { await srv.close(); }
 });
+
+test('a publishable (non-JWT) key goes in apikey only; a JWT anon key is also the bearer', async () => {
+  const seen = [];
+  const fake = (headersSeen) => async (url, init) => { headersSeen.push(init.headers); return { ok: true, status: 200, text: async () => 'null' }; };
+  const pub = new Cloud({ url: 'https://x.supabase.co', key: 'sb_publishable_abc123', fetch: fake(seen) });
+  await assert.rejects(pub.getShared('x'.repeat(22)), { code: 'not_found' });
+  assert.equal(seen[0].apikey, 'sb_publishable_abc123');
+  assert.equal('Authorization' in seen[0], false);
+  const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiYW5vbiJ9.c2ln';
+  const old = new Cloud({ url: 'https://x.supabase.co', key: jwt, fetch: fake(seen) });
+  await assert.rejects(old.getShared('x'.repeat(22)), { code: 'not_found' });
+  assert.equal(seen[1].Authorization, `Bearer ${jwt}`);
+});
