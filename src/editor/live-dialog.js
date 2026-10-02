@@ -4,6 +4,7 @@ import { h } from '../core/dom.js';
 import { qrElement } from '../live/qr.js';
 import { baseAddress, isLocalAddress, joinLink, loadSettings, remoteLink, saveSettings } from '../live/config.js';
 import { cleanConfig } from '../live/protocol.js';
+import { loadProject } from '../cloud/config.js';
 import { button, field, openDialog, select, textInput, toast } from './ui.js';
 
 const STATUS_TEXT = {
@@ -26,9 +27,13 @@ export function openLiveDialog(editor) {
 
   function setupView() {
     const settings = loadSettings();
-    let kind = settings.config.kind;
-    let url = settings.config.url ?? '';
-    let key = settings.config.key ?? '';
+    // If a Supabase project is already connected (File > Cloud), use it by default:
+    // "try it here" cannot reach phones, and picking it by accident is an easy mistake.
+    const project = loadProject();
+    const useProject = settings.config.kind === 'local' && !!project;
+    let kind = useProject ? 'realtime' : settings.config.kind;
+    let url = useProject ? project.url : settings.config.url ?? '';
+    let key = useProject ? project.key : settings.config.key ?? '';
     let base = settings.base;
     const remoteBox = h('div', { class: 'ed-live__server', hidden: kind === 'local' });
     const problem = h('p', { class: 'ed-hint ed-hint--warn', hidden: true });
