@@ -332,6 +332,67 @@ export const interactiveDeck = {
       ],
     },
     {
+      id: 's_design',
+      layout: 'content',
+      blocks: [
+        h('i_d1', 'Shapes and icons'),
+        {
+          id: 'i_d2', type: 'columns', slot: 'body',
+          props: {
+            cols: [
+              { blocks: [{ id: 'i_d3', type: 'icon', props: { name: 'rocket', size: 'lg', color: 'accent', label: 'Launch', align: 'center' } }] },
+              { blocks: [{ id: 'i_d4', type: 'icon', props: { name: 'shield', size: 'lg', color: 'good', label: 'Secure', align: 'center' } }] },
+              { blocks: [{ id: 'i_d5', type: 'icon', props: { name: 'lightbulb', size: 'lg', color: 'fg', label: 'Ideas', align: 'center' } }] },
+            ],
+          },
+        },
+        { id: 'i_d6', type: 'shape', slot: 'body', props: { kind: 'pill', fill: 'surface', text: 'Callout: icons and shapes follow the theme', size: 'sm', width: 'full', align: 'center' } },
+      ],
+    },
+    {
+      id: 's_flow',
+      layout: 'content',
+      blocks: [
+        h('i_d7', 'Diagrams: a row'),
+        {
+          id: 'i_d8', type: 'diagram', slot: 'body',
+          props: {
+            layout: 'row', style: 'filled',
+            nodes: [
+              { label: 'Assess', note: 'Where are we?' }, { label: 'Diagnose', note: 'What blocks us?' }, { label: 'Align', note: 'Who owns what?' },
+              { label: 'Pilot', note: 'Try it small' }, { label: 'Track', note: 'Measure' },
+            ],
+          },
+        },
+      ],
+    },
+    {
+      id: 's_cycle',
+      layout: 'content',
+      blocks: [
+        h('i_d9', 'Diagrams: a cycle'),
+        { id: 'i_da', type: 'diagram', slot: 'body', props: { layout: 'cycle', style: 'outline', nodes: [{ label: 'Plan', note: '' }, { label: 'Do', note: '' }, { label: 'Check', note: '' }, { label: 'Act', note: '' }] } },
+      ],
+    },
+    {
+      id: 's_bgcolor',
+      layout: 'title',
+      background: { color: '#14213D' },
+      blocks: [
+        { id: 'i_db', type: 'heading', slot: 'title', props: { text: 'A slide with its own colour', level: 1 } },
+        { id: 'i_dc', type: 'text', slot: 'subtitle', props: { text: 'Text colours adjust to stay readable', size: 'lg', muted: true } },
+      ],
+    },
+    {
+      id: 's_bgimage',
+      layout: 'title',
+      background: { image: editorMock, dim: 55 },
+      blocks: [
+        { id: 'i_dd', type: 'heading', slot: 'title', props: { text: 'Or a picture behind the text', level: 1 } },
+        { id: 'i_de', type: 'text', slot: 'subtitle', props: { text: 'Darkened so it stays legible', size: 'lg' } },
+      ],
+    },
+    {
       id: 's_end',
       layout: 'title',
       blocks: [

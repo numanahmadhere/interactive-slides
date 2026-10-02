@@ -69,7 +69,7 @@ export class SlideList {
       rec.num.textContent = String(i + 1);
       rec.el.setAttribute('aria-selected', String(slide.id === selected));
       rec.el.setAttribute('aria-label', `Slide ${i + 1}: ${slideTitle(slide, i)}`);
-      if (rec.slide !== slide || rec.theme !== deck.theme || rec.aspect !== deck.aspect || rec.assets !== assets || rec.width !== width) {
+      if (rec.slide !== slide || rec.theme !== deck.theme || rec.brand !== deck.brand || rec.aspect !== deck.aspect || rec.assets !== assets || rec.width !== width) {
         this.#renderThumb(rec, deck, slide, i, width);
       }
     });
@@ -101,7 +101,7 @@ export class SlideList {
       button({ icon: 'trash', label: 'Delete slide', iconOnly: true, variant: 'danger', onClick: (e) => { e.stopPropagation(); this.editor.deleteSlide(id); } }),
     );
     const el = h('div', { class: 'ed-thumb', role: 'option', id: `ed-slide-${id}`, 'data-id': id }, num, preview, actions);
-    return { id, el, num, preview, stageEl, slide: null, theme: null, aspect: null, assets: -1, width: 0 };
+    return { id, el, num, preview, stageEl, slide: null, theme: null, brand: null, aspect: null, assets: -1, width: 0 };
   }
 
   #renderThumb(rec, deck, slide, index, width) {
@@ -112,7 +112,7 @@ export class SlideList {
     rec.stageEl.style.transform = `scale(${width / w})`;
     applyTheme(rec.stageEl, deck.theme);
     rec.stageEl.replaceChildren(renderSlide(deck, slide, { mode: 'thumb', resolveAsset: this.editor.assets.resolve, index }));
-    Object.assign(rec, { slide, theme: deck.theme, aspect: deck.aspect, assets: this.editor.assets.version, width });
+    Object.assign(rec, { slide, theme: deck.theme, brand: deck.brand, aspect: deck.aspect, assets: this.editor.assets.version, width });
   }
 
   // ---- pointer: select, then drag to reorder -----------------------------

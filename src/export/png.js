@@ -35,7 +35,7 @@ export async function withRenderedSlide(deck, index, fn, { mutate, resolveAsset 
   const host = document.createElement('div');
   host.style.cssText = `position:fixed;left:-100000px;top:0;width:${width}px;height:${height}px;pointer-events:none;`;
   const stage = document.createElement('div');
-  stage.className = 'sp-image';
+  stage.className = 'sp-export'; // not sp-image: that is the image block's class
   stage.style.cssText = `position:relative;width:${width}px;height:${height}px;overflow:hidden;`;
   applyTheme(stage, deck.theme);
   const el = renderSlide(deck, deck.slides[index], { mode: 'image', resolveAsset, index });

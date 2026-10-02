@@ -26,5 +26,8 @@ import './reflection.js';
 import './chart.js';
 import './calculator.js';
 import './code-sandbox.js';
+import './shape.js';
+import './icon.js';
+import './diagram.js';
 
 export * from './registry.js';

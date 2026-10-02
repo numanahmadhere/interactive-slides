@@ -3,7 +3,9 @@
 //   node build.mjs --serve   watch and serve dist/ on http://localhost:5177
 import { build, context } from 'esbuild';
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
+import { serviceWorkerSource } from './src/sw-template.js';
 
 const serve = process.argv.includes('--serve');
 const PORT = 5177;
@@ -45,6 +47,7 @@ const options = {
   format: 'iife',
   target: 'es2022',
   loader: { '.woff2': 'dataurl' },
+  define: { __DEV__: String(serve) },
   sourcemap: serve,
   minify: !serve,
   logLevel: 'info',
@@ -70,10 +73,19 @@ async function inlineSingleFile() {
     readFile('dist/app.css', 'utf8'),
   ]);
   const out = html
+    .replace('<meta charset="utf-8">', '<meta charset="utf-8">\n  <meta name="no-service-worker" content="">')
     .replace('<link rel="stylesheet" href="app.css">', () => `<style>${css}</style>`)
     .replace('<script src="app.js"></script>', () => `<script>${js.replace(/<\/script/gi, '<\\/script')}</script>`);
   await mkdir('dist/single', { recursive: true });
   await writeFile('dist/single/index.html', out);
+}
+
+// The cache name carries a hash of everything the worker caches, so a changed
+// build is a changed worker and visitors get the update.
+async function writeServiceWorker() {
+  const hash = createHash('sha256');
+  for (const file of ['dist/index.html', 'dist/app.js', 'dist/app.css']) hash.update(await readFile(file));
+  await writeFile('dist/sw.js', serviceWorkerSource(hash.digest('hex').slice(0, 12)));
 }
 
 if (serve) {
@@ -84,4 +96,5 @@ if (serve) {
 } else {
   await build(options);
   await inlineSingleFile();
+  await writeServiceWorker();
 }

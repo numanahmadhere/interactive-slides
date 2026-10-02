@@ -9,17 +9,19 @@
 import { h } from '../core/dom.js';
 import { getBlock, listBlocks } from '../core/blocks/index.js';
 import { getLayout, listLayouts } from '../core/layouts.js';
-import { listThemes } from '../core/theme.js';
+import { listThemes, THEMES, buildThemeTokens } from '../core/theme.js';
+import { ICONS, ICON_NAMES } from '../core/icon-set.js';
+import { svgIcon } from '../core/dom.js';
 import { ASPECTS, TRANSITIONS, slideTitle } from '../core/schema.js';
 import { safeImageUrl } from '../core/sanitize.js';
 import * as ops from './ops.js';
-import { button, field, segmented, toggle, select, textInput, numberInput, listEditor } from './ui.js';
+import { button, field, segmented, toggle, select, textInput, numberInput, listEditor, colorInput } from './ui.js';
 
 const TRANSITION_LABELS = { fade: 'Fade', slide: 'Slide', zoom: 'Zoom', none: 'None' };
 const TABS = [['block', 'Block'], ['slide', 'Slide'], ['deck', 'Deck']];
 
 const section = (title, ...children) =>
-  h('div', { class: 'ed-section' }, title ? h('h3', { class: 'ed-section__title', text: title }) : null, ...children);
+  h('div', { class: 'ed-section' }, title ? h('h3', { class: 'ed-section__title', text: title }) : null, ...children.filter(Boolean));
 const empty = (text) => h('p', { class: 'ed-empty', text });
 
 export class Inspector {
@@ -27,6 +29,7 @@ export class Inspector {
     this.host = host;
     this.editor = editor;
     this.tab = 'slide';
+    this.bgMode = new Map(); // slide id -> 'theme' | 'color' | 'image' while choosing
 
     this.tabEls = new Map();
     const tabs = h('div', { class: 'ed-tabs', role: 'tablist', 'aria-label': 'Inspector' });
@@ -167,6 +170,19 @@ export class Inspector {
       case 'number': return field(f.label, numberInput({ value, min: f.min, max: f.max, onInput: typing }));
       case 'slide': return field(f.label, this.#slidePicker(value, choice));
       case 'hint': return h('p', { class: 'ed-hint', text: f.text });
+      case 'icon': {
+        const grid = h('div', { class: 'ed-icons', role: 'radiogroup', 'aria-label': f.label });
+        const buttons = ICON_NAMES.map((name) => {
+          const b = h('button', { type: 'button', class: 'ed-icons__btn', role: 'radio', title: name, 'aria-label': name, 'aria-checked': String(name === value) }, svgIcon(ICONS[name], { size: 22 }));
+          b.addEventListener('click', () => {
+            for (const other of buttons) other.setAttribute('aria-checked', String(other === b));
+            typing(name);
+          });
+          return b;
+        });
+        grid.append(...buttons);
+        return field(f.label, grid);
+      }
       case 'action':
         return button({
           label: f.label, variant: 'wide',
@@ -313,6 +329,7 @@ export class Inspector {
       }));
     }
 
+    const background = this.#backgroundSection(slide);
     const content = section('Add content');
     for (const slot of layout.slots) {
       const count = slide.blocks.filter((b) => b.slot === slot.id).length;
@@ -321,7 +338,117 @@ export class Inspector {
         button({ icon: 'plus', label: `Add to ${slot.label}`, iconOnly: true, onClick: (e, el) => this.editor.openBlockMenu(el, { slot: slot.id }) }));
       content.append(row);
     }
-    return [setup, content];
+    return [setup, background, content];
+  }
+
+
+  // ---- backgrounds, custom colours, logo ---------------------------------
+
+  #backgroundSection(slide) {
+    const { deck } = this.editor;
+    const id = slide.id;
+    const bg = slide.background;
+    // "Image" with no picture yet is only a draft choice, so it wins over a colour the slide still has.
+    const draft = this.bgMode.get(id);
+    const mode = bg?.image ? 'image' : draft === 'image' ? 'image' : bg?.color ? 'color' : draft ?? 'theme';
+    const set = (next) => this.#rebuilding(ops.setSlideBackground(this.editor.deck, id, next));
+    const themeBg = THEMES[deck.theme.id]?.tokens.bg ?? '#0F1117';
+
+    const box = section('Background');
+    box.append(field('Style', segmented({
+      options: [{ value: 'theme', label: 'Theme' }, { value: 'color', label: 'Colour' }, { value: 'image', label: 'Image' }],
+      value: mode,
+      onChange: (m) => {
+        this.bgMode.set(id, m);
+        if (m === 'theme') set(null);
+        else if (m === 'color') set({ color: bg?.color ?? deck.theme.overrides.bg ?? themeBg });
+        else this.#build(); // wait for a picture before changing the slide
+      },
+    })));
+    if (mode === 'color') {
+      box.append(field('Colour', colorInput({
+        value: bg?.color ?? themeBg, label: 'Slide background colour',
+        onInput: (v) => this.#live(ops.setSlideBackground(this.editor.deck, id, { color: v }), `insp:${id}:bgcolor`),
+      }), 'Text switches to light or dark to stay readable.'));
+    }
+    if (mode === 'image') {
+      const url = bg?.image ? safeImageUrl(this.editor.assets.resolve(bg.image)) : null;
+      const preview = h('div', { class: 'ed-image-preview' });
+      if (url) preview.append(h('img', { src: url, alt: '', style: 'max-width:100%;max-height:100%;object-fit:cover' }));
+      else preview.textContent = 'No image yet';
+      box.append(preview, h('div', { class: 'ed-image-actions' },
+        button({ icon: 'upload', label: url ? 'Replace' : 'Upload image', onClick: () => this.editor.chooseImage((ref) => set({ image: ref, dim: bg?.dim ?? 40 })) }),
+        url ? button({ icon: 'trash', label: 'Remove', onClick: () => { this.bgMode.set(id, 'theme'); set(null); } }) : null));
+      if (url) {
+        box.append(field('Darken image (%)', numberInput({
+          value: bg.dim ?? 40, min: 0, max: 80,
+          onInput: (n) => this.#live(ops.setSlideBackground(this.editor.deck, id, { ...this.editor.slide.background, dim: n }), `insp:${id}:dim`),
+        }), 'A darker picture keeps the white text readable.'));
+      }
+    }
+    return box;
+  }
+
+  #colorsSection() {
+    const { deck } = this.editor;
+    const base = THEMES[deck.theme.id].tokens;
+    const current = { ...base, ...deck.theme.overrides };
+    const fonts = { fontSans: deck.theme.overrides.fontSans, fontMono: deck.theme.overrides.fontMono };
+    const keepFonts = () => Object.fromEntries(Object.entries(this.editor.deck.theme.overrides).filter(([k]) => k.startsWith('font')));
+    const draft = { accent: current.accent, bg: current.bg };
+    const apply = () => {
+      const tokens = buildThemeTokens(draft);
+      if (!tokens) return;
+      this.#live(ops.setThemeOverrides(this.editor.deck, { ...keepFonts(), ...tokens }), 'deck:colors');
+      resetBtn.hidden = false;
+    };
+    const custom = Object.keys(deck.theme.overrides).some((k) => !k.startsWith('font'));
+    // Shown as soon as a colour is customised, without rebuilding the panel under an open colour picker.
+    const resetBtn = button({ label: 'Back to theme colours', variant: 'wide', onClick: () => {
+      const { fontSans, fontMono } = this.editor.deck.theme.overrides;
+      this.#rebuilding(ops.setThemeOverrides(this.editor.deck, Object.fromEntries(Object.entries({ fontSans, fontMono }).filter(([, v]) => v))));
+    } });
+    resetBtn.hidden = !custom;
+
+    const FONTS = [
+      { value: '', label: 'Theme font (Inter)' },
+      { value: "Georgia, 'Times New Roman', serif", label: 'Serif (Georgia)' },
+      { value: "system-ui, -apple-system, 'Segoe UI', sans-serif", label: 'System font' },
+      { value: "ui-monospace, 'SF Mono', Menlo, Consolas, monospace", label: 'Monospace' },
+    ];
+    return section('Custom colours and font',
+      h('div', { class: 'ed-colors' },
+        field('Background', colorInput({ value: draft.bg, label: 'Background colour', onInput: (v) => { draft.bg = v; apply(); } })),
+        field('Accent', colorInput({ value: draft.accent, label: 'Accent colour', onInput: (v) => { draft.accent = v; apply(); } }))),
+      h('p', { class: 'ed-hint', text: 'Text, panels and borders are worked out from these two so everything stays readable.' }),
+      field('Font', select({
+        options: FONTS, value: fonts.fontSans ?? '',
+        onChange: (v) => {
+          const { fontSans, ...rest } = this.editor.deck.theme.overrides;
+          this.#rebuilding(ops.setThemeOverrides(this.editor.deck, v ? { ...rest, fontSans: v } : rest));
+        },
+      })),
+      resetBtn);
+  }
+
+  #logoSection() {
+    const { deck } = this.editor;
+    const { logo, position, size } = deck.brand;
+    const url = logo ? safeImageUrl(this.editor.assets.resolve(logo)) : null;
+    const preview = h('div', { class: 'ed-logo-preview' });
+    if (url) preview.append(h('img', { src: url, alt: '' }));
+    else preview.textContent = 'No logo';
+    const set = (patch) => this.#rebuilding(ops.setBrand(this.editor.deck, patch));
+    return section('Logo',
+      preview,
+      h('div', { class: 'ed-image-actions' },
+        button({ icon: 'upload', label: url ? 'Replace' : 'Upload logo', onClick: () => this.editor.chooseImage((ref) => set({ logo: ref })) }),
+        url ? button({ icon: 'trash', label: 'Remove', onClick: () => set({ logo: '' }) }) : null),
+      url ? field('Corner', select({
+        options: [{ value: 'bottom-right', label: 'Bottom right' }, { value: 'bottom-left', label: 'Bottom left' }, { value: 'top-right', label: 'Top right' }, { value: 'top-left', label: 'Top left' }],
+        value: position, onChange: (v) => set({ position: v }),
+      })) : null,
+      url ? field('Size', segmented({ options: [{ value: 'sm', label: 'Small' }, { value: 'md', label: 'Medium' }, { value: 'lg', label: 'Large' }], value: size, onChange: (v) => this.#live(ops.setBrand(this.editor.deck, { size: v }), 'deck:logosize') })) : null);
   }
 
   // ---- deck tab ----------------------------------------------------------
@@ -353,6 +480,8 @@ export class Inspector {
         })),
         h('p', { class: 'ed-hint', text: `${deck.slides.length} ${deck.slides.length === 1 ? 'slide' : 'slides'}` }),
       ),
+      this.#colorsSection(),
+      this.#logoSection(),
       section('Auto-play',
         field('Move on every (seconds)', numberInput({
           value: deck.autoplay.seconds, min: 0, max: 3600,

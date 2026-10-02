@@ -342,3 +342,29 @@ select.ed-input { appearance: none; padding-right: 28px; background-image: linea
 .ed-dialog-status { min-height: 1.5em; margin-top: 12px; color: #a9a9ff; font-size: 12px; }
 .ed-dialog-status[data-kind='error'] { color: #f0605d; }
 .ed-dialog .ed-btn { font-size: 12px; }
+
+.ed-color { width: 100%; height: 36px; padding: 2px; border: 1px solid var(--ed-border-strong); border-radius: 8px; background: var(--ed-field); cursor: pointer; }
+.ed-color::-webkit-color-swatch-wrapper { padding: 2px; }
+.ed-color::-webkit-color-swatch { border: 0; border-radius: 5px; }
+.ed-colors { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ed-logo-preview { display: grid; place-items: center; height: 80px; margin-bottom: 8px; padding: 10px; border: 1px solid var(--ed-border-strong); border-radius: 8px; background: repeating-conic-gradient(#1b2030 0 25%, #151a27 0 50%) 0 0 / 16px 16px; color: var(--ed-muted); }
+.ed-logo-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+.ed-icons { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; max-height: 190px; overflow-y: auto; padding: 4px; border: 1px solid var(--ed-border-strong); border-radius: 8px; background: var(--ed-field); }
+.ed-icons__btn { display: grid; place-items: center; aspect-ratio: 1; padding: 0; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--ed-text); cursor: pointer; }
+.ed-icons__btn:hover { background: var(--ed-panel-2); }
+.ed-icons__btn[aria-checked='true'] { border-color: var(--ed-focus); background: #1b1f33; color: #fff; }
+
+/* Find and replace */
+.ed-find { display: grid; gap: 8px; }
+.ed-find__fields { display: grid; gap: 8px; }
+.ed-find__summary { min-height: 1.5em; margin-top: 4px; color: #a9a9ff; font-size: 12px; }
+.ed-find__list { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow: auto; border-top: 1px solid #232838; }
+.ed-find__list:empty { display: none; }
+.ed-find__row { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 4px 10px; padding: 6px 0; border-bottom: 1px solid #232838; }
+.ed-find__count { min-width: 22px; padding: 1px 7px; border-radius: 999px; background: #232838; color: #c9cee0; font-size: 11px; text-align: center; }
+.ed-find__snip { overflow: hidden; color: #8f97ad; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.ed-find__snip mark { background: #3a3a8a; color: #fff; border-radius: 3px; padding: 0 2px; }
+.ed-find__actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+
+.ed-btn[hidden] { display: none; }

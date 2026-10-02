@@ -89,7 +89,7 @@ export class CanvasView {
       this.#scheduleOverflowCheck();
       return;
     }
-    const stale = !r || r.slide !== slide || r.theme !== deck.theme || r.aspect !== deck.aspect || r.assets !== assets;
+    const stale = !r || r.slide !== slide || r.theme !== deck.theme || r.brand !== deck.brand || r.aspect !== deck.aspect || r.assets !== assets;
     if (stale) {
       if (this.editing) this.#endEditing({ render: false });
       this.#render(deck, slide, slideIndex);
@@ -116,7 +116,7 @@ export class CanvasView {
     this.disposeSlide = activateSlide(el); // visual behaviours (tabs, flip cards, marker dragging)
     this.hovered = null;
     this.#scheduleOverflowCheck();
-    this.rendered = { slide, deck, theme: deck.theme, aspect: deck.aspect, assets: this.editor.assets.version };
+    this.rendered = { slide, deck, theme: deck.theme, brand: deck.brand, aspect: deck.aspect, assets: this.editor.assets.version };
     this.#fit();
   }
 

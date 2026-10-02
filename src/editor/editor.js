@@ -20,6 +20,7 @@ import { Inspector } from './inspector.js';
 import { openPresenter } from './presenter.js';
 import { button, openMenu, toast } from './ui.js';
 import { openExportDialog } from './export-dialog.js';
+import { openFindDialog } from './find-dialog.js';
 import { Exporter } from './exporter.js';
 
 const SAVE_DELAY_MS = 600;
@@ -341,6 +342,26 @@ export class Editor {
 
   // ---- images ------------------------------------------------------------
 
+  // Pick one image file, store it, and hand its reference to apply() (the deck
+  // logo, a slide background).
+  chooseImage(apply) {
+    const input = h('input', { type: 'file', accept: 'image/*' });
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (!this.persist.keepsImages && !this.warnedImages) {
+        this.warnedImages = true;
+        toast('Images are kept for this session only because browser storage is limited.', { kind: 'error', timeout: 6000 });
+      }
+      try {
+        apply(await this.assets.add(file));
+      } catch (err) {
+        toast(err.message || 'Could not add that image.', { kind: 'error' });
+      }
+    });
+    input.click();
+  }
+
   // key: which image of the block (before/after blocks hold two).
   pickImage(blockId, key) {
     const input = h('input', { type: 'file', accept: 'image/*', multiple: blockId ? undefined : true });
@@ -390,6 +411,7 @@ export class Editor {
         { label: 'Open sample deck', value: 'sample' },
         { label: 'Open interactive demo', value: 'interactive' },
         { label: 'Import deck...', value: 'import', hint: 'JSON' },
+        { label: 'Find and replace...', value: 'find', hint: 'Ctrl+H' },
         { label: 'Export...', value: 'export', hint: 'HTML, PDF, PNG, PPTX' },
       ],
       onPick: (value) => {
@@ -397,6 +419,7 @@ export class Editor {
         else if (value === 'sample') this.#replaceDeck(normalizeDeck(structuredClone(sampleDeck)).deck);
         else if (value === 'interactive') this.#replaceDeck(normalizeDeck(structuredClone(interactiveDeck)).deck);
         else if (value === 'import') this.#pickImportFile();
+        else if (value === 'find') openFindDialog(this);
         else openExportDialog(this);
       },
     });
@@ -502,6 +525,11 @@ export class Editor {
     if (mod && e.key === 'Enter') {
       e.preventDefault();
       this.present({ presenterView: e.shiftKey });
+      return;
+    }
+    if (mod && key === 'h' && !e.altKey && !e.shiftKey) {
+      e.preventDefault();
+      if (!document.querySelector('.ed-dialog-backdrop')) openFindDialog(this);
       return;
     }
     if (isTyping(e.target)) return; // native editing owns these keys

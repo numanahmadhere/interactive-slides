@@ -127,6 +127,16 @@ export function setTheme(deck, id) {
     : { ...deck, theme: { id, overrides: {} } };
 }
 
+// Replace the colour/font overrides on the current theme (the theme builder).
+export function setThemeOverrides(deck, overrides) {
+  return same(deck.theme.overrides, overrides) ? deck : { ...deck, theme: { ...deck.theme, overrides } };
+}
+
+export function setBrand(deck, patch) {
+  const next = { ...deck.brand, ...patch };
+  return same(next, deck.brand) ? deck : { ...deck, brand: next };
+}
+
 export function setAspect(deck, aspect) {
   return deck.aspect === aspect ? deck : { ...deck, aspect };
 }
@@ -177,6 +187,15 @@ export function setSlideLayout(deck, slideId, layoutId) {
     const fallback = defaultSlot(layout);
     const blocks = slide.blocks.map((b) => (slots.has(b.slot) ? b : { ...b, slot: fallback }));
     return { ...slide, layout: layout.id, blocks };
+  });
+}
+
+// A slide's own background: { color?, image?, dim? } or null for the theme's.
+export function setSlideBackground(deck, slideId, background) {
+  return replaceSlide(deck, slideId, (slide) => {
+    if (same(slide.background ?? null, background ?? null)) return slide;
+    const { background: _old, ...rest } = slide;
+    return background ? { ...rest, background } : rest;
   });
 }
 

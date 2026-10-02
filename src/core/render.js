@@ -11,6 +11,8 @@ import { h } from './dom.js';
 import { getLayout } from './layouts.js';
 import { getBlock } from './blocks/index.js';
 import { slideTitle } from './schema.js';
+import { backgroundVars, IMAGE_BACKGROUND_VARS } from './theme.js';
+import { safeImageUrl } from './sanitize.js';
 
 const V_ALIGN = { start: 'flex-start', center: 'center', end: 'flex-end' };
 const mounts = new WeakMap(); // slide element -> [() => dispose?]
@@ -90,6 +92,8 @@ export function renderSlide(deck, slide, { mode = 'present', resolveAsset, index
     ctx.renderBlocks(slide.blocks.filter((b) => b.slot === slot.id), slotEl);
     el.append(slotEl);
   }
+  addBackground(el, deck, slide, ctx);
+  addLogo(el, deck, ctx);
   mounts.set(el, ctx.mounts);
   return el;
 }
@@ -115,4 +119,33 @@ export function activateSlide(el) {
       }
     }
   };
+}
+
+// The slide's own background sits behind the slots; text colours switch to
+// stay readable on it.
+function addBackground(el, deck, slide, ctx) {
+  const bg = slide.background;
+  if (!bg) return;
+  const layer = h('div', { class: 'sp-slide__bg', 'aria-hidden': 'true' });
+  const vars = {};
+  if (bg.color) {
+    layer.style.background = bg.color;
+    Object.assign(vars, backgroundVars(bg.color));
+  }
+  const url = bg.image ? safeImageUrl(ctx.resolveAsset(bg.image)) : null;
+  if (url) {
+    layer.append(h('img', { src: url, alt: '', draggable: 'false' }));
+    if (bg.dim) layer.append(h('div', { class: 'sp-slide__dim', style: `opacity:${bg.dim / 100}` }));
+    Object.assign(vars, IMAGE_BACKGROUND_VARS);
+  }
+  for (const [k, v] of Object.entries(vars)) el.style.setProperty(k, v);
+  el.dataset.bg = url ? 'image' : 'color';
+  el.prepend(layer);
+}
+
+function addLogo(el, deck, ctx) {
+  const { logo, position, size } = deck.brand ?? {};
+  const url = logo ? safeImageUrl(ctx.resolveAsset(logo)) : null;
+  if (!url) return;
+  el.append(h('img', { class: 'sp-logo', src: url, alt: '', 'data-pos': position, 'data-size': size, draggable: 'false' }));
 }

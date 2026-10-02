@@ -8,7 +8,7 @@
 import { uid, isObject, str, oneOf, stripTags, clamp } from './util.js';
 import { getLayout } from './layouts.js';
 import { normalizeBlocks, createBlock, blockSteps } from './blocks/index.js';
-import { normalizeThemeRef, DEFAULT_THEME } from './theme.js';
+import { normalizeThemeRef, DEFAULT_THEME, isColor } from './theme.js';
 
 export const DECK_VERSION = 1;
 export const MAX_SLIDES = 500;
@@ -17,6 +17,7 @@ export const ASPECTS = {
   '4:3': { width: 1440, height: 1080 },
 };
 export const TRANSITIONS = ['fade', 'slide', 'zoom', 'none'];
+export const LOGO_POSITIONS = ['bottom-right', 'bottom-left', 'top-right', 'top-left'];
 
 export class DeckError extends Error {}
 
@@ -40,6 +41,7 @@ export function createDeck({ title = 'Untitled deck', theme = DEFAULT_THEME, asp
     aspect,
     transition: 'fade',
     autoplay: { seconds: 0, loop: true },
+    brand: { logo: '', position: 'bottom-right', size: 'md' },
     slides: [createSlide('title')],
   };
 }
@@ -72,6 +74,8 @@ function normalizeSlide(raw, index, state) {
 
   const slide = { id, layout: layout.id, blocks, notes: str(raw.notes, '', 20000) };
   if (TRANSITIONS.includes(raw.transition)) slide.transition = raw.transition;
+  const background = normalizeBackground(raw.background);
+  if (background) slide.background = background;
   // Countdown for the speaker (and optionally shown on screen), in seconds.
   const timer = Number.isFinite(Number(raw.timer)) ? clamp(Math.round(Number(raw.timer)), 0, 86400) : 0;
   if (timer > 0) {
@@ -79,6 +83,30 @@ function normalizeSlide(raw, index, state) {
     if (raw.showTimer === true) slide.showTimer = true;
   }
   return slide;
+}
+
+// A slide's own background: a colour, a picture (dimmed so text stays readable), or both.
+function normalizeBackground(raw) {
+  if (!isObject(raw)) return null;
+  const color = isColor(raw.color) ? String(raw.color) : '';
+  const image = str(raw.image, '', 3_000_000);
+  if (!color && !image) return null;
+  const bg = {};
+  if (color) bg.color = color;
+  if (image) {
+    bg.image = image;
+    bg.dim = Number.isFinite(Number(raw.dim)) ? clamp(Math.round(Number(raw.dim)), 0, 80) : 40;
+  }
+  return bg;
+}
+
+function normalizeBrand(raw) {
+  const b = isObject(raw) ? raw : {};
+  return {
+    logo: str(b.logo, '', 3_000_000),
+    position: oneOf(b.position, LOGO_POSITIONS, 'bottom-right'),
+    size: oneOf(b.size, ['sm', 'md', 'lg'], 'md'),
+  };
 }
 
 // Kiosk mode: advance every `seconds` (0 turns it off); `loop` restarts at the end.
@@ -126,6 +154,7 @@ export function normalizeDeck(raw) {
     aspect: oneOf(raw.aspect, Object.keys(ASPECTS), '16:9'),
     transition: oneOf(raw.transition, TRANSITIONS, 'fade'),
     autoplay: normalizeAutoplay(raw.autoplay),
+    brand: normalizeBrand(raw.brand),
     slides,
   };
   return { deck, warnings };

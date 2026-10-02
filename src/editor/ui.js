@@ -299,3 +299,11 @@ export function openDialog({ title, content, onClose, wide = false }) {
   (focusable().find((el) => el !== closeBtn) ?? closeBtn).focus();
   return { el: dialog, body, close };
 }
+
+// A native colour picker with a label for assistive tech. onInput gets "#rrggbb".
+export function colorInput({ value = '#000000', onInput, label }) {
+  const el = h('input', { class: 'ed-color', type: 'color', 'aria-label': label });
+  el.value = /^#[0-9a-f]{6}$/i.test(value) ? value : '#000000';
+  el.addEventListener('input', () => onInput(el.value.toUpperCase()));
+  return el;
+}

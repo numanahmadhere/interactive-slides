@@ -10,6 +10,7 @@ import { PresenterView } from './player/presenter-view.js';
 import { sampleDeck } from './samples/sample-deck.js';
 import { interactiveDeck } from './samples/interactive-deck.js';
 import { Editor } from './editor/editor.js';
+import { setupOffline } from './offline.js';
 
 const mount = document.getElementById('app');
 const params = new URLSearchParams(location.search);
@@ -33,3 +34,5 @@ if (params.has('play')) {
     mount.textContent = 'The editor failed to start. See the console for details.';
   });
 }
+
+setupOffline();
