@@ -91,6 +91,19 @@ Slide settings add a countdown (shown to the speaker, optionally on screen).
 Deck settings add auto-play: advance every N seconds, looping or not, for kiosks.
 Remote control from a phone needs a server and arrives with the live features.
 
+## Exporting
+
+File > Export... offers:
+
+| Format | What you get |
+| --- | --- |
+| Web page (HTML) | one file with the player and deck inlined; every interaction works; speaker notes left out unless you ask |
+| PDF | one slide per page with tabs and accordions expanded, through the browser's print dialog |
+| Images (PNG) | every slide (zip) or the current one, drawn as it looks on screen |
+| PowerPoint (PPTX) | each slide as a picture with its text removed, plus real editable text boxes for headings, text, lists and quotes; interactions become still pictures |
+| Deck file (JSON) | reopen and keep editing, images included |
+| Embed code | an iframe snippet for a page you host yourself |
+
 ## Blocks
 
 Content: heading, text, list, image, code, quote, divider, columns, embed.
@@ -170,8 +183,8 @@ defaults, normalize, render, steps? })`.
 
 ## Status
 
-Phases 1 to 4 are done (foundation, editor, interactive blocks and exercises,
-presenting). Next: standalone export (phase 5), then polish (phase 6).
+Phases 1 to 5 are done (foundation, editor, interactive blocks and exercises,
+presenting, export). Next: polish (phase 6).
 
 Known limits: Inter is bundled as the Latin subset only, so other scripts
 fall back to system fonts. Code blocks are not syntax-highlighted yet.
