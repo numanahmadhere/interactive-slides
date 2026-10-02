@@ -6,6 +6,7 @@ import { registerBlock } from './registry.js';
 export default registerBlock({
   type: 'image',
   label: 'Image',
+  group: 'Content',
   defaults: () => ({ src: '', alt: '', fit: 'contain', rounded: false, caption: '' }),
   normalize: (p) => ({
     src: str(p.src, '', 3_000_000),

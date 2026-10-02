@@ -42,6 +42,7 @@ export function resolveEmbed(raw) {
 export default registerBlock({
   type: 'embed',
   label: 'Embed',
+  group: 'Content',
   defaults: () => ({ url: '', title: 'Embedded content', ratio: '16:9' }),
   normalize: (p) => ({
     url: str(p.url, '', 2000),

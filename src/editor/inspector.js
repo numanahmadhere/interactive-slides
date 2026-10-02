@@ -7,13 +7,13 @@
 // text field never loses focus while you type.
 
 import { h } from '../core/dom.js';
-import { getBlock } from '../core/blocks/index.js';
+import { getBlock, listBlocks } from '../core/blocks/index.js';
 import { getLayout, listLayouts } from '../core/layouts.js';
 import { listThemes } from '../core/theme.js';
-import { ASPECTS, TRANSITIONS } from '../core/schema.js';
+import { ASPECTS, TRANSITIONS, slideTitle } from '../core/schema.js';
 import { safeImageUrl } from '../core/sanitize.js';
 import * as ops from './ops.js';
-import { button, field, segmented, toggle, select, textInput, numberInput } from './ui.js';
+import { button, field, segmented, toggle, select, textInput, numberInput, listEditor } from './ui.js';
 
 const TRANSITION_LABELS = { fade: 'Fade', slide: 'Slide', zoom: 'Zoom', none: 'None' };
 const TABS = [['block', 'Block'], ['slide', 'Slide'], ['deck', 'Deck']];
@@ -108,17 +108,25 @@ export class Inspector {
     );
 
     const settings = section(def?.label ?? block.type, actions);
+    const problem = def?.check?.(block.props, deck);
+    if (problem) settings.append(h('p', { class: 'ed-hint ed-hint--warn', role: 'alert', text: problem }));
     if (def?.edit?.length) {
       settings.append(h('p', { class: 'ed-hint', text: 'Click the text on the slide to edit it. Press Enter to start typing.' }));
     }
-    for (const f of def?.fields ?? []) settings.append(this.#fieldControl(block, f));
+    for (const f of def?.fields ?? []) {
+      if (f.when && !f.when.in.includes(block.props[f.when.key])) continue;
+      settings.append(this.#fieldControl(block, f, def));
+    }
 
     const placement = section('Placement');
-    placement.append(field(
-      'Appears at step',
-      numberInput({ value: block.reveal || 0, onInput: (n) => this.#live(ops.setBlockReveal(this.editor.deck, id, n), `insp:${id}:reveal`) }),
-      '0 shows it with the slide. 1 reveals it on the first click, 2 on the second, and so on.',
-    ));
+    const parentSpec = hit.parent && getBlock(hit.parent.block.type)?.container;
+    if (!hit.parent || parentSpec?.revealChildren) {
+      placement.append(field(
+        'Appears at step',
+        numberInput({ value: block.reveal || 0, onInput: (n) => this.#live(ops.setBlockReveal(this.editor.deck, id, n), `insp:${id}:reveal`) }),
+        '0 shows it with the slide. 1 reveals it on the first click, 2 on the second, and so on.',
+      ));
+    }
     if (hit.parent === null) {
       const layout = getLayout(hit.slide.layout);
       if (layout.slots.length > 1) {
@@ -131,72 +139,119 @@ export class Inspector {
     }
     placement.append(button({
       icon: 'plus', label: 'Add block below', variant: 'wide',
-      onClick: (e, el) => this.editor.openBlockMenu(el, { afterBlockId: id }),
+      onClick: (e, el) => this.editor.openBlockMenu(el, { afterBlockId: id }, { exclude: this.editor.excludedInside(hit.parent?.block) }),
     }));
     return [settings, placement];
   }
 
-  #fieldControl(block, f) {
+  #fieldControl(block, f, def) {
     const id = block.id;
-    const key = `insp:${id}:${f.key}`;
-    const set = (value) => this.#live(ops.patchBlockProps(this.editor.deck, id, { [f.key]: value }), key);
+    const key = `insp:${id}:${f.key ?? f.type}`;
+    // Fields that other fields depend on (button action -> slide picker) rebuild the panel.
+    const dependent = (def?.fields ?? []).some((x) => x.when);
+    const patch = (value) => ops.patchBlockProps(this.editor.deck, id, { [f.key]: value });
+    const typing = (value) => this.#live(patch(value), key);
+    const choice = (value) => (dependent ? this.#rebuilding(patch(value)) : this.#live(patch(value), key));
     const value = block.props[f.key];
 
     switch (f.type) {
-      case 'segmented': return field(f.label, segmented({ options: f.options, value, onChange: set }));
-      case 'select': return field(f.label, select({ options: f.options, value, onChange: set }));
-      case 'toggle': return toggle({ label: f.label, value, onChange: set });
-      case 'text': return field(f.label, textInput({ value, placeholder: f.placeholder, onInput: set }));
-      case 'image': return field(f.label, this.#imageControl(block));
-      case 'columns': return this.#columnsControl(block);
+      case 'segmented': return field(f.label, segmented({ options: f.options, value, onChange: choice }));
+      case 'select': return field(f.label, select({ options: f.options, value, onChange: choice }));
+      case 'toggle': return toggle({ label: f.label, value, onChange: choice });
+      case 'text': return field(f.label, textInput({ value, placeholder: f.placeholder, onInput: typing }));
+      case 'textarea': return field(f.label, textInput({ value, multiline: true, rows: f.rows ?? 3, placeholder: f.placeholder, onInput: typing }));
+      case 'number': return field(f.label, numberInput({ value, min: f.min, max: f.max, onInput: typing }));
+      case 'slide': return field(f.label, this.#slidePicker(value, choice));
+      case 'hint': return h('p', { class: 'ed-hint', text: f.text });
+      case 'action':
+        return button({
+          label: f.label, variant: 'wide',
+          onClick: () => this.#rebuilding(ops.patchBlockProps(this.editor.deck, id, f.run(block.props))),
+        });
+      case 'list':
+        return field(f.label, listEditor({
+          items: value, fields: f.fields, itemLabel: f.itemLabel, addLabel: f.add, min: f.min, max: f.max, makeItem: f.item,
+          onText: (items) => this.#live(patch(items), key),
+          onStructure: (items) => this.#rebuilding(patch(items)),
+        }));
+      case 'image': return field(f.label, this.#imageControl(block, f.key));
+      case 'sections': return this.#sectionsControl(block, f);
       default: return h('div');
     }
   }
 
-  #imageControl(block) {
+  #slidePicker(value, onChange) {
+    const { slides } = this.editor.deck;
+    const options = [{ value: '', label: 'Choose a slide...' }, ...slides.map((s, i) => ({ value: s.id, label: `${i + 1}. ${slideTitle(s, i)}` }))];
+    if (value && !slides.some((s) => s.id === value)) options.push({ value, label: '(deleted slide)' });
+    return select({ options, value, onChange });
+  }
+
+  #imageControl(block, key) {
     const id = block.id;
-    const src = block.props.src;
+    const src = block.props[key] ?? '';
     const url = safeImageUrl(this.editor.assets.resolve(src));
     const preview = h('div', { class: 'ed-image-preview' });
     if (url) preview.append(h('img', { src: url, alt: '', style: 'max-width:100%;max-height:100%;object-fit:contain' }));
     else preview.textContent = 'No image';
 
     const actions = h('div', { class: 'ed-image-actions' },
-      button({ icon: 'upload', label: url ? 'Replace' : 'Upload image', onClick: () => this.editor.pickImage(id) }),
-      src ? button({ icon: 'trash', label: 'Remove', onClick: () => this.#rebuilding(ops.patchBlockProps(this.editor.deck, id, { src: '' })) }) : null,
+      button({ icon: 'upload', label: url ? 'Replace' : 'Upload image', onClick: () => this.editor.pickImage(id, key) }),
+      src ? button({ icon: 'trash', label: 'Remove', onClick: () => this.#rebuilding(ops.patchBlockProps(this.editor.deck, id, { [key]: '' })) }) : null,
     );
     const link = textInput({
-      value: src.startsWith('asset:') ? '' : src,
-      placeholder: 'Or paste an image link',
+      value: src.startsWith('asset:') || src.startsWith('data:') ? '' : src,
+      placeholder: src.startsWith('data:') ? 'Embedded image. Paste a link to replace it' : 'Or paste an image link',
       spellcheck: false,
-      onInput: (v) => this.#live(ops.patchBlockProps(this.editor.deck, id, { src: v.trim() }), `insp:${id}:src`),
+      onInput: (v) => this.#live(ops.patchBlockProps(this.editor.deck, id, { [key]: v.trim() }), `insp:${id}:${key}`),
     });
     return h('div', null, preview, actions, link);
   }
 
-  #columnsControl(block) {
+  // Columns, tabs and accordion items: cards with an optional title, the
+  // blocks each holds, and an "add block" menu per section.
+  #sectionsControl(block, f) {
     const id = block.id;
-    const cols = block.props.cols;
+    const spec = getBlock(block.type).container;
+    const sections = block.props[spec.key];
+    const noun = f.noun ?? 'Section';
+    const exclude = this.editor.excludedInside(block);
     const wrap = h('div');
-    cols.forEach((col, i) => {
-      const addBtn = button({
-        icon: 'plus', label: 'Add block', variant: 'wide',
-        onClick: (e, el) => this.editor.openBlockMenu(el, { columnOf: id, col: i }, { exclude: ['columns'] }),
-      });
-      wrap.append(h('div', { class: 'ed-col-card' },
-        h('div', { class: 'ed-col-card__head' },
-          h('span', { text: `Column ${i + 1}` }),
-          button({
-            icon: 'trash', label: `Remove column ${i + 1}`, iconOnly: true, variant: 'ghost',
-            disabled: cols.length <= ops.MIN_COLUMNS,
-            onClick: () => this.#rebuilding(ops.removeColumn(this.editor.deck, id, i)),
-          })),
-        h('p', { class: 'ed-hint', text: col.blocks.length === 1 ? '1 block' : `${col.blocks.length} blocks` }),
-        addBtn));
+
+    sections.forEach((sec, i) => {
+      const tools = h('div', { class: 'ed-list__tools' });
+      if (spec.titled) {
+        tools.append(
+          button({ icon: 'up', label: `Move ${noun.toLowerCase()} up`, iconOnly: true, variant: 'ghost', disabled: i === 0, onClick: () => this.#rebuilding(ops.moveSection(this.editor.deck, id, i, -1)) }),
+          button({ icon: 'down', label: `Move ${noun.toLowerCase()} down`, iconOnly: true, variant: 'ghost', disabled: i === sections.length - 1, onClick: () => this.#rebuilding(ops.moveSection(this.editor.deck, id, i, 1)) }),
+        );
+      }
+      tools.append(button({
+        icon: 'trash', label: `Remove ${noun.toLowerCase()} ${i + 1}`, iconOnly: true, variant: 'ghost',
+        disabled: sections.length <= spec.min,
+        onClick: () => this.#rebuilding(ops.removeSection(this.editor.deck, id, i)),
+      }));
+
+      const card = h('div', { class: 'ed-col-card' },
+        h('div', { class: 'ed-col-card__head' }, h('span', { text: `${noun} ${i + 1}` }), tools));
+      if (spec.titled) {
+        card.append(field(f.titleLabel ?? 'Title', textInput({
+          value: sec.title,
+          onInput: (v) => this.#live(ops.patchSection(this.editor.deck, id, i, { title: v }), `insp:${id}:title${i}`),
+        })));
+      }
+      card.append(
+        h('p', { class: 'ed-hint', text: sec.blocks.length === 1 ? '1 block' : `${sec.blocks.length} blocks` }),
+        button({
+          icon: 'plus', label: 'Add block', variant: 'wide',
+          onClick: (e, el) => this.editor.openBlockMenu(el, { containerOf: id, index: i }, { exclude }),
+        }));
+      wrap.append(card);
     });
+
     wrap.append(button({
-      icon: 'plus', label: 'Add column', variant: 'wide', disabled: cols.length >= ops.MAX_COLUMNS,
-      onClick: () => this.#rebuilding(ops.addColumn(this.editor.deck, id)),
+      icon: 'plus', label: `Add ${noun.toLowerCase()}`, variant: 'wide', disabled: sections.length >= spec.max,
+      onClick: () => this.#rebuilding(ops.addSection(this.editor.deck, id)),
     }));
     return wrap;
   }

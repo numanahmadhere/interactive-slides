@@ -5,6 +5,7 @@ import { registerBlock } from './registry.js';
 export default registerBlock({
   type: 'quote',
   label: 'Quote',
+  group: 'Content',
   defaults: () => ({ text: 'Quote', cite: '' }),
   normalize: (p) => ({ text: str(p.text, '', 2000), cite: str(p.cite, '', 200) }),
   fields: [],

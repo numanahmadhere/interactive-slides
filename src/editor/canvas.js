@@ -7,7 +7,7 @@
 // re-renders once when editing ends.
 
 import { h } from '../core/dom.js';
-import { renderSlide } from '../core/render.js';
+import { renderSlide, activateSlide } from '../core/render.js';
 import { applyTheme } from '../core/theme.js';
 import { ASPECTS } from '../core/schema.js';
 import { getBlock } from '../core/blocks/index.js';
@@ -56,6 +56,8 @@ export class CanvasView {
     host.append(this.stage, this.fmt.el, this.dropzone);
 
     this.rendered = null;
+    this.disposeSlide = null;
+    this.overflowTimer = 0;
     this.editing = null;
     this.hovered = null;
     this.scale = 1;
@@ -84,6 +86,7 @@ export class CanvasView {
 
     if (source === 'canvas-edit' && r && r.slide.id === slide.id) {
       this.rendered = { ...r, slide, deck, assets };
+      this.#scheduleOverflowCheck();
       return;
     }
     const stale = !r || r.slide !== slide || r.theme !== deck.theme || r.aspect !== deck.aspect || r.assets !== assets;
@@ -100,10 +103,19 @@ export class CanvasView {
     this.stage.style.height = `${height}px`;
     applyTheme(this.stage, deck.theme);
 
-    const el = renderSlide(deck, slide, { mode: 'edit', resolveAsset: this.editor.assets.resolve, index });
+    this.disposeSlide?.();
+    const el = renderSlide(deck, slide, {
+      mode: 'edit',
+      resolveAsset: this.editor.assets.resolve,
+      index,
+      session: this.editor.session,
+      edit: { patch: (blockId, props, opts) => this.#patchFromBlock(blockId, props, opts?.final) },
+    });
     this.#decorate(el, deck, slide);
     this.stage.replaceChildren(el);
+    this.disposeSlide = activateSlide(el); // visual behaviours (tabs, flip cards, marker dragging)
     this.hovered = null;
+    this.#scheduleOverflowCheck();
     this.rendered = { slide, deck, theme: deck.theme, aspect: deck.aspect, assets: this.editor.assets.version };
     this.#fit();
   }
@@ -116,6 +128,16 @@ export class CanvasView {
       const slot = layout.slots.find((s) => s.id === slotEl.dataset.slot);
       slotEl.append(h('div', { class: 'ed-slot-empty', text: `Add ${slot.label.toLowerCase()}` }));
     }
+    // Empty sections of columns, tabs and accordions get a click target too.
+    for (const sectionEl of slideEl.querySelectorAll('[data-section]')) {
+      if (sectionEl.querySelector(':scope > .sp-block')) continue;
+      sectionEl.append(h('div', {
+        class: 'ed-slot-empty ed-section-empty',
+        text: 'Click to add a block',
+        'data-container': sectionEl.closest('.sp-block').dataset.block,
+        'data-index': sectionEl.dataset.section,
+      }));
+    }
     for (const blockEl of slideEl.querySelectorAll('.sp-block')) {
       const hit = ops.findBlock(deck, blockEl.dataset.block);
       for (const field of (hit && getBlock(hit.block.type)?.edit) ?? []) {
@@ -124,6 +146,28 @@ export class CanvasView {
         target.dataset.placeholder = field.placeholder;
         target.dataset.field = field.prop;
       }
+    }
+  }
+
+  // Content that runs past its slot or off the slide is clipped when presenting,
+  // so mark it here where it can still be fixed.
+  #scheduleOverflowCheck() {
+    clearTimeout(this.overflowTimer);
+    this.overflowTimer = setTimeout(() => this.#flagOverflow(), 150);
+  }
+
+  #flagOverflow() {
+    const slide = this.stage.querySelector('.sp-slide');
+    if (!slide) return;
+    const edge = slide.getBoundingClientRect();
+    // Text metrics can push a box a few pixels past its slot; only real spill counts.
+    const slack = 24;
+    for (const slot of slide.querySelectorAll(':scope > .sp-slot')) {
+      const box = slot.getBoundingClientRect();
+      const over = slot.scrollHeight - slot.clientHeight > slack
+        || box.bottom > edge.bottom + slack * this.scale
+        || box.right > edge.right + slack * this.scale;
+      slot.classList.toggle('ed-overflow', over);
     }
   }
 
@@ -185,6 +229,17 @@ export class CanvasView {
       if (this.editing.el.contains(target)) return; // caret placement inside the text
       this.finishEdit();
     }
+    const emptySection = target.closest('.ed-section-empty');
+    if (emptySection) {
+      const container = ops.findBlock(this.editor.deck, emptySection.dataset.container)?.block;
+      this.editor.select({ blockId: emptySection.dataset.container });
+      this.editor.openBlockMenu(
+        { x: e.clientX, y: e.clientY },
+        { containerOf: emptySection.dataset.container, index: Number(emptySection.dataset.index) },
+        { exclude: this.editor.excludedInside(container) },
+      );
+      return;
+    }
     const blockEl = target.closest('.sp-block');
     if (blockEl) {
       const id = blockEl.dataset.block;
@@ -209,7 +264,21 @@ export class CanvasView {
     const blockEl = e.target.closest('.sp-block');
     if (!blockEl) return;
     const hit = ops.findBlock(this.editor.deck, blockEl.dataset.block);
-    if (hit?.block.type === 'image') this.editor.pickImage(hit.block.id);
+    const keys = hit ? ops.imageKeys(hit.block) : [];
+    if (keys.length === 1) this.editor.pickImage(hit.block.id, keys[0]);
+  }
+
+  // Adjustments made on the slide itself (dragging a hotspot marker). Updates
+  // are coalesced into one undo step and do not re-render while dragging.
+  #patchFromBlock(blockId, props, final) {
+    const next = ops.patchBlockProps(this.editor.deck, blockId, props);
+    this.editor.commit(next, { source: final ? 'canvas-final' : 'canvas-edit', coalesce: `drag:${blockId}` });
+    if (!final) return;
+    this.editor.store.endCoalesce();
+    // The last move already stored the final values, so the commit above may
+    // have been a no-op; refresh the panel and the slide regardless.
+    this.rendered = null;
+    this.editor.refresh();
   }
 
   #setHover(blockEl) {
@@ -229,7 +298,7 @@ export class CanvasView {
     const slotEl = under?.closest('.sp-slot');
     const hit = blockEl && ops.findBlock(this.editor.deck, blockEl.dataset.block);
     this.editor.addImageFiles(files, {
-      blockId: hit?.block.type === 'image' ? hit.block.id : undefined,
+      blockId: hit && ops.imageKeys(hit.block).length ? hit.block.id : undefined,
       slot: slotEl?.dataset.slot,
     });
   }

@@ -6,6 +6,7 @@ import { ALIGN_OPTIONS, SIZE_OPTIONS } from './fields.js';
 export default registerBlock({
   type: 'text',
   label: 'Text',
+  group: 'Content',
   defaults: () => ({ text: 'Text', size: 'md', align: 'start', muted: false }),
   normalize: (p) => ({
     text: str(p.text, '', 5000),

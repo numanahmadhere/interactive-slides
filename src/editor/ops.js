@@ -6,9 +6,7 @@
 import { uid } from '../core/util.js';
 import { getLayout } from '../core/layouts.js';
 import { MAX_SLIDES } from '../core/schema.js';
-
-export const MAX_COLUMNS = 4;
-export const MIN_COLUMNS = 2;
+import { getBlock, sectionKey } from '../core/blocks/index.js';
 
 const same = (a, b) =>
   Object.is(a, b) || (a && b && typeof a === 'object' && JSON.stringify(a) === JSON.stringify(b));
@@ -24,9 +22,10 @@ function search(blocks, id, parent) {
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
     if (block.id === id) return { block, siblings: blocks, index: i, parent };
-    if (block.type === 'columns') {
-      for (let col = 0; col < block.props.cols.length; col++) {
-        const hit = search(block.props.cols[col].blocks, id, { block, col });
+    const key = sectionKey(block);
+    if (key) {
+      for (let section = 0; section < block.props[key].length; section++) {
+        const hit = search(block.props[key][section].blocks, id, { block, index: section });
         if (hit) return hit;
       }
     }
@@ -47,22 +46,23 @@ export function findBlock(deck, blockId) {
 // ---- tree helpers ---------------------------------------------------------
 
 // Runs fn on whichever sibling array holds blockId (a slide's blocks or one
-// column's blocks) and rebuilds only the path above it.
+// section of a container) and rebuilds only the path above it.
 function editSiblings(blocks, blockId, fn) {
   if (blocks.some((b) => b.id === blockId)) return fn(blocks);
   let changed = false;
   const out = blocks.map((b) => {
-    if (b.type !== 'columns') return b;
-    let colChanged = false;
-    const cols = b.props.cols.map((c) => {
-      const next = editSiblings(c.blocks, blockId, fn);
-      if (next === c.blocks) return c;
-      colChanged = true;
-      return { ...c, blocks: next };
+    const key = sectionKey(b);
+    if (!key) return b;
+    let sectionChanged = false;
+    const sections = b.props[key].map((section) => {
+      const next = editSiblings(section.blocks, blockId, fn);
+      if (next === section.blocks) return section;
+      sectionChanged = true;
+      return { ...section, blocks: next };
     });
-    if (!colChanged) return b;
+    if (!sectionChanged) return b;
     changed = true;
-    return { ...b, props: { ...b.props, cols } };
+    return { ...b, props: { ...b.props, [key]: sections } };
   });
   return changed ? out : blocks;
 }
@@ -88,8 +88,9 @@ function editBlockSiblings(deck, blockId, fn) {
 
 function reid(block) {
   block.id = uid('b_');
-  if (block.type === 'columns') {
-    for (const col of block.props.cols) col.blocks.forEach(reid);
+  const key = sectionKey(block);
+  if (key) {
+    for (const section of block.props[key]) section.blocks.forEach(reid);
   }
   return block;
 }
@@ -103,6 +104,11 @@ export function cloneSlide(slide) {
   copy.id = uid('s_');
   copy.blocks.forEach(reid);
   return copy;
+}
+
+// Props of this block that hold an image (hotspots: one; before/after: two).
+export function imageKeys(block) {
+  return (getBlock(block.type)?.fields ?? []).filter((f) => f.type === 'image').map((f) => f.key);
 }
 
 export function defaultSlot(layout) {
@@ -185,7 +191,7 @@ export function patchSlide(deck, slideId, patch) {
 
 // target: { slot }                    end of that slot on the slide
 //         { afterBlockId }            right after another block, in its container
-//         { columnOf, col }           end of a column inside a columns block
+//         { containerOf, index }      end of one section (column, tab, ...) of a container block
 export function insertBlock(deck, slideId, target, block) {
   if (target.afterBlockId) {
     const hit = findBlock(deck, target.afterBlockId);
@@ -198,12 +204,13 @@ export function insertBlock(deck, slideId, target, block) {
       return out;
     });
   }
-  if (target.columnOf) {
+  if (target.containerOf) {
     const placed = withoutSlot(block);
-    return updateBlock(deck, target.columnOf, (columns) => {
-      if (columns.type !== 'columns' || !columns.props.cols[target.col]) return columns;
-      const cols = columns.props.cols.map((c, i) => (i === target.col ? { ...c, blocks: [...c.blocks, placed] } : c));
-      return { ...columns, props: { ...columns.props, cols } };
+    return updateBlock(deck, target.containerOf, (container) => {
+      const key = sectionKey(container);
+      if (!key || !container.props[key][target.index]) return container;
+      const sections = container.props[key].map((s, i) => (i === target.index ? { ...s, blocks: [...s.blocks, placed] } : s));
+      return { ...container, props: { ...container.props, [key]: sections } };
     });
   }
   return replaceSlide(deck, slideId, (slide) => {
@@ -302,18 +309,44 @@ export function moveBlockToSlot(deck, blockId, slotId) {
   });
 }
 
-// ---- columns --------------------------------------------------------------
+// ---- container sections (columns, tabs, accordion items) ---------------------
 
-export function addColumn(deck, blockId) {
+export function addSection(deck, blockId) {
   return updateBlock(deck, blockId, (block) => {
-    if (block.type !== 'columns' || block.props.cols.length >= MAX_COLUMNS) return block;
-    return { ...block, props: { ...block.props, cols: [...block.props.cols, { blocks: [] }] } };
+    const spec = getBlock(block.type)?.container;
+    if (!spec || block.props[spec.key].length >= spec.max) return block;
+    return { ...block, props: { ...block.props, [spec.key]: [...block.props[spec.key], spec.item()] } };
   });
 }
 
-export function removeColumn(deck, blockId, col) {
+export function removeSection(deck, blockId, index) {
   return updateBlock(deck, blockId, (block) => {
-    if (block.type !== 'columns' || block.props.cols.length <= MIN_COLUMNS || !block.props.cols[col]) return block;
-    return { ...block, props: { ...block.props, cols: block.props.cols.filter((_, i) => i !== col) } };
+    const spec = getBlock(block.type)?.container;
+    const sections = spec && block.props[spec.key];
+    if (!spec || sections.length <= spec.min || !sections[index]) return block;
+    return { ...block, props: { ...block.props, [spec.key]: sections.filter((_, i) => i !== index) } };
+  });
+}
+
+export function moveSection(deck, blockId, index, dir) {
+  return updateBlock(deck, blockId, (block) => {
+    const spec = getBlock(block.type)?.container;
+    const sections = spec && block.props[spec.key];
+    const j = index + dir;
+    if (!spec || !sections[index] || j < 0 || j >= sections.length) return block;
+    const next = sections.slice();
+    [next[index], next[j]] = [next[j], next[index]];
+    return { ...block, props: { ...block.props, [spec.key]: next } };
+  });
+}
+
+// Set one field of one section (a tab's title, for instance).
+export function patchSection(deck, blockId, index, patch) {
+  return updateBlock(deck, blockId, (block) => {
+    const key = sectionKey(block);
+    const section = key && block.props[key][index];
+    if (!section || Object.keys(patch).every((k) => same(section[k], patch[k]))) return block;
+    const next = block.props[key].map((s, i) => (i === index ? { ...s, ...patch } : s));
+    return { ...block, props: { ...block.props, [key]: next } };
   });
 }

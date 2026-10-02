@@ -20,7 +20,7 @@ test('findBlock locates top-level and nested blocks', () => {
   const deck = sample();
   assert.equal(ops.findBlock(deck, 'b_r2').block.type, 'list');
   const nested = ops.findBlock(deck, 'b_n5');
-  assert.equal(nested.parent.col, 1);
+  assert.equal(nested.parent.index, 1);
   assert.equal(nested.parent.block.id, 'b_n2');
   assert.equal(ops.findBlock(deck, 'nope'), null);
 });
@@ -93,9 +93,9 @@ test('insertBlock appends to a slot, after a block, and into a column', () => {
   deck = ops.insertBlock(deck, slideId, { afterBlockId: 'b_c3' }, { ...createBlock('text'), id: 'new2' });
   assert.equal(ops.findBlock(deck, 'new2').block.slot, 'right');
 
-  deck = ops.insertBlock(deck, 's_cols', { columnOf: 'b_n2', col: 2 }, { ...createBlock('text'), id: 'new3', slot: 'body' });
+  deck = ops.insertBlock(deck, 's_cols', { containerOf: 'b_n2', index: 2 }, { ...createBlock('text'), id: 'new3', slot: 'body' });
   const hit = ops.findBlock(deck, 'new3');
-  assert.equal(hit.parent.col, 2);
+  assert.equal(hit.parent.index, 2);
   assert.equal('slot' in hit.block, false);
 });
 
@@ -165,13 +165,62 @@ test('patchSlide sets notes and clears the transition override', () => {
   assert.equal('transition' in ops.findSlide(deck, 's_bleed').slide, false);
 });
 
-test('columns: add up to four, remove down to two', () => {
+test('container sections: add up to the maximum, remove down to the minimum', () => {
   let deck = sample();
-  deck = ops.addColumn(deck, 'b_n2');
+  deck = ops.addSection(deck, 'b_n2');
   assert.equal(ops.findBlock(deck, 'b_n2').block.props.cols.length, 4);
-  assert.equal(ops.addColumn(deck, 'b_n2'), deck);
-  deck = ops.removeColumn(deck, 'b_n2', 3);
-  deck = ops.removeColumn(deck, 'b_n2', 2);
+  assert.equal(ops.addSection(deck, 'b_n2'), deck);
+  deck = ops.removeSection(deck, 'b_n2', 3);
+  deck = ops.removeSection(deck, 'b_n2', 2);
   assert.equal(ops.findBlock(deck, 'b_n2').block.props.cols.length, 2);
-  assert.equal(ops.removeColumn(deck, 'b_n2', 0), deck);
+  assert.equal(ops.removeSection(deck, 'b_n2', 0), deck);
+});
+
+test('tabs: sections can be added to, moved, retitled and removed', () => {
+  const tabs = { ...createBlock('tabs'), id: 'tabs1', slot: 'body' };
+  let deck = normalizeDeck({ slides: [{ id: 's1', layout: 'content', blocks: [tabs] }] }).deck;
+  const titles = () => ops.findBlock(deck, 'tabs1').block.props.tabs.map((t) => t.title);
+  assert.deepEqual(titles(), ['Overview', 'Details']);
+
+  deck = ops.addSection(deck, 'tabs1');
+  assert.equal(titles().length, 3);
+  deck = ops.patchSection(deck, 'tabs1', 2, { title: 'Third' });
+  assert.deepEqual(titles(), ['Overview', 'Details', 'Third']);
+  deck = ops.moveSection(deck, 'tabs1', 2, -1);
+  assert.deepEqual(titles(), ['Overview', 'Third', 'Details']);
+  assert.equal(ops.moveSection(deck, 'tabs1', 0, -1), deck, 'cannot move past the start');
+  deck = ops.removeSection(deck, 'tabs1', 0);
+  deck = ops.removeSection(deck, 'tabs1', 0);
+  assert.equal(titles().length, 2, 'cannot go below the minimum');
+  assert.equal(ops.patchSection(deck, 'tabs1', 0, { title: titles()[0] }), deck, 'no-op patch keeps the deck');
+});
+
+test('blocks can be inserted into, found in and moved within a tab', () => {
+  const tabs = { ...createBlock('tabs'), id: 'tabs1', slot: 'body' };
+  let deck = normalizeDeck({ slides: [{ id: 's1', layout: 'content', blocks: [tabs] }] }).deck;
+  deck = ops.insertBlock(deck, 's1', { containerOf: 'tabs1', index: 1 }, { ...createBlock('quote'), id: 'q1' });
+  const hit = ops.findBlock(deck, 'q1');
+  assert.equal(hit.parent.block.id, 'tabs1');
+  assert.equal(hit.parent.index, 1);
+  assert.equal(hit.siblings.length, 2);
+  deck = ops.moveBlock(deck, 'q1', -1);
+  assert.equal(ops.findBlock(deck, 'q1').index, 0);
+  deck = ops.removeBlock(deck, 'q1');
+  assert.equal(ops.findBlock(deck, 'q1'), null);
+});
+
+test('duplicating a tabs block re-ids everything nested inside', () => {
+  const tabs = { ...createBlock('tabs'), id: 'tabs1', slot: 'body' };
+  let deck = normalizeDeck({ slides: [{ id: 's1', layout: 'content', blocks: [tabs] }] }).deck;
+  deck = ops.duplicateBlock(deck, 'tabs1');
+  const ids = idsOf(deck);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.equal(deck.slides[0].blocks.length, 2);
+});
+
+test('imageKeys reports which props hold images', () => {
+  assert.deepEqual(ops.imageKeys(createBlock('image')), ['src']);
+  assert.deepEqual(ops.imageKeys(createBlock('compare')), ['before', 'after']);
+  assert.deepEqual(ops.imageKeys(createBlock('hotspots')), ['src']);
+  assert.deepEqual(ops.imageKeys(createBlock('heading')), []);
 });

@@ -11,6 +11,7 @@ const firstStep = (block) => block.reveal || 1;
 export default registerBlock({
   type: 'list',
   label: 'List',
+  group: 'Content',
   defaults: () => ({ items: ['Item'], ordered: false, revealItems: false, size: 'md' }),
   normalize: (p) => ({
     items: (Array.isArray(p.items) ? p.items : []).slice(0, MAX_ITEMS).map((s) => str(s, '', 1000)),

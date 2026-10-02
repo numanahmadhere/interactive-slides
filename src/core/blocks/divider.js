@@ -5,6 +5,7 @@ import { registerBlock } from './registry.js';
 export default registerBlock({
   type: 'divider',
   label: 'Divider',
+  group: 'Content',
   defaults: () => ({ style: 'line' }),
   normalize: (p) => ({ style: oneOf(p.style, ['line', 'accent'], 'line') }),
   fields: [

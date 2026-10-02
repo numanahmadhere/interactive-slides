@@ -6,6 +6,7 @@ import { ALIGN_OPTIONS } from './fields.js';
 export default registerBlock({
   type: 'heading',
   label: 'Heading',
+  group: 'Content',
   defaults: () => ({ text: 'Heading', level: 2, align: 'start' }),
   normalize: (p) => ({
     text: str(p.text, '', 500),

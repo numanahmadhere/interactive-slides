@@ -6,6 +6,7 @@ import { SIZE_OPTIONS } from './fields.js';
 export default registerBlock({
   type: 'code',
   label: 'Code',
+  group: 'Content',
   defaults: () => ({ code: '', language: '', filename: '', size: 'md' }),
   normalize: (p) => ({
     code: str(p.code, '', 20000),

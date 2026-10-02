@@ -119,11 +119,16 @@ export function numberInput({ value = 0, min = 0, max = 99, onInput }) {
 
 let openMenuHandle = null;
 
-// items: [{ label, value, hint? }]. Anchor is an element or { x, y }.
+// items: [{ label, value, hint? } | { heading }]. Anchor is an element or { x, y }.
 export function openMenu({ anchor, items, onPick, label = 'Menu' }) {
   openMenuHandle?.close();
   const menu = h('div', { class: 'ed-menu', role: 'menu', 'aria-label': label });
-  const buttons = items.map((item) => {
+  const buttons = [];
+  for (const item of items) {
+    if (item.heading) {
+      menu.append(h('div', { class: 'ed-menu__heading', role: 'presentation', text: item.heading }));
+      continue;
+    }
     const b = h('button', { type: 'button', role: 'menuitem', class: 'ed-menu__item' },
       h('span', { text: item.label }),
       item.hint ? h('span', { class: 'ed-menu__hint', text: item.hint }) : null);
@@ -132,8 +137,8 @@ export function openMenu({ anchor, items, onPick, label = 'Menu' }) {
       onPick(item.value, item);
     });
     menu.append(b);
-    return b;
-  });
+    buttons.push(b);
+  }
   document.body.append(menu);
 
   const rect = anchor instanceof Element
@@ -197,4 +202,49 @@ export function toast(message, { kind = 'info', timeout = 3500 } = {}) {
   const el = h('div', { class: `ed-toast ed-toast--${kind}`, text: message });
   toastHost.append(el);
   setTimeout(() => el.remove(), timeout);
+}
+
+// ---- editable lists (quiz choices, hotspots, flip cards, ...) ---------------
+
+// fields: [{ key, label, type: 'text' | 'textarea' | 'number' | 'toggle', min?, max? }]
+// onText(items) fires while typing and must not rebuild the panel;
+// onStructure(items) fires on add, remove and reorder, which should.
+export function listEditor({ items, fields, itemLabel, addLabel, min = 0, max = 99, makeItem, onText, onStructure }) {
+  const wrap = h('div', { class: 'ed-list' });
+  const current = items.map((item) => ({ ...item }));
+  const snapshot = () => current.map((item) => ({ ...item }));
+
+  const tool = (iconName, label, disabled, run) => button({ icon: iconName, label, iconOnly: true, variant: 'ghost', disabled, onClick: run });
+
+  current.forEach((item, i) => {
+    const swap = (j) => {
+      const next = snapshot();
+      [next[i], next[j]] = [next[j], next[i]];
+      onStructure(next);
+    };
+    const head = h('div', { class: 'ed-col-card__head' },
+      h('span', { text: `${itemLabel} ${i + 1}` }),
+      h('div', { class: 'ed-list__tools' },
+        tool('up', `Move ${itemLabel.toLowerCase()} up`, i === 0, () => swap(i - 1)),
+        tool('down', `Move ${itemLabel.toLowerCase()} down`, i === current.length - 1, () => swap(i + 1)),
+        tool('trash', `Remove ${itemLabel.toLowerCase()}`, current.length <= min, () => onStructure(snapshot().filter((_, n) => n !== i)))));
+
+    const card = h('div', { class: 'ed-col-card' }, head);
+    for (const f of fields) {
+      const set = (value) => {
+        current[i][f.key] = value;
+        onText(snapshot());
+      };
+      if (f.type === 'toggle') card.append(toggle({ label: f.label, value: !!item[f.key], onChange: set }));
+      else if (f.type === 'number') card.append(field(f.label, numberInput({ value: item[f.key] ?? 0, min: f.min ?? 0, max: f.max ?? 100, onInput: set })));
+      else card.append(field(f.label, textInput({ value: item[f.key] ?? '', multiline: f.type === 'textarea', rows: 3, onInput: set })));
+    }
+    wrap.append(card);
+  });
+
+  wrap.append(button({
+    icon: 'plus', label: addLabel, variant: 'wide', disabled: current.length >= max,
+    onClick: () => onStructure([...snapshot(), makeItem()]),
+  }));
+  return wrap;
 }

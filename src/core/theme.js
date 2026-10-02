@@ -14,7 +14,7 @@ export const THEMES = {
     tokens: {
       bg: '#0F1117', surface: '#181B25', fg: '#FFFFFF', muted: '#A3A9BD',
       accent: '#2020E8', accentFg: '#FFFFFF', accentText: '#8F8FFF',
-      border: '#272B38', codeBg: '#151824', codeFg: '#E6E8F0', ...DARK_FONTS,
+      border: '#272B38', codeBg: '#151824', codeFg: '#E6E8F0', good: '#4ADE80', bad: '#F87171', ...DARK_FONTS,
     },
   },
   'densight-light': {
@@ -23,7 +23,7 @@ export const THEMES = {
     tokens: {
       bg: '#FFFFFF', surface: '#F8F9FB', fg: '#0F1117', muted: '#5B6173',
       accent: '#2020E8', accentFg: '#FFFFFF', accentText: '#2020E8',
-      border: '#E3E6EE', codeBg: '#F3F4F8', codeFg: '#1B1E2B', ...DARK_FONTS,
+      border: '#E3E6EE', codeBg: '#F3F4F8', codeFg: '#1B1E2B', good: '#15803D', bad: '#B91C1C', ...DARK_FONTS,
     },
   },
   paper: {
@@ -32,7 +32,7 @@ export const THEMES = {
     tokens: {
       bg: '#FAF8F4', surface: '#F1EDE4', fg: '#1C1B1A', muted: '#6B6760',
       accent: '#B4441F', accentFg: '#FFFFFF', accentText: '#B4441F',
-      border: '#E2DCCF', codeBg: '#F1EDE4', codeFg: '#2A2826', ...DARK_FONTS,
+      border: '#E2DCCF', codeBg: '#F1EDE4', codeFg: '#2A2826', good: '#2F7D4F', bad: '#B42318', ...DARK_FONTS,
     },
   },
   midnight: {
@@ -41,14 +41,14 @@ export const THEMES = {
     tokens: {
       bg: '#0B1220', surface: '#121B2E', fg: '#F1F5F9', muted: '#94A3B8',
       accent: '#38BDF8', accentFg: '#0B1220', accentText: '#38BDF8',
-      border: '#22304A', codeBg: '#0F1829', codeFg: '#E2E8F0', ...DARK_FONTS,
+      border: '#22304A', codeBg: '#0F1829', codeFg: '#E2E8F0', good: '#4ADE80', bad: '#FB7185', ...DARK_FONTS,
     },
   },
 };
 
 export const DEFAULT_THEME = 'densight-dark';
 
-const COLOR_KEYS = ['bg', 'surface', 'fg', 'muted', 'accent', 'accentFg', 'accentText', 'border', 'codeBg', 'codeFg'];
+const COLOR_KEYS = ['bg', 'surface', 'fg', 'muted', 'accent', 'accentFg', 'accentText', 'border', 'codeBg', 'codeFg', 'good', 'bad'];
 const FONT_KEYS = ['fontSans', 'fontMono'];
 
 const COLOR_RE = /^(?:#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})|(?:rgb|hsl)a?\(\s*[\d.%\s,/-]+\))$/i;

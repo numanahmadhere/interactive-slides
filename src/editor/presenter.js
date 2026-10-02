@@ -29,10 +29,11 @@ export function openPresenter({ deck, startIndex, resolveAsset, onClose }) {
     clearTimeout(uiTimer);
     uiTimer = setTimeout(() => overlay.classList.remove('show-ui'), UI_IDLE_MS);
   };
+  // Bubble phase on purpose: a block that handles Escape itself (closing a
+  // hotspot note) calls preventDefault first, and then the presentation stays.
   const onKey = (e) => {
-    if (e.key !== 'Escape') return;
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
     e.preventDefault();
-    e.stopPropagation();
     close();
   };
   // Leaving browser fullscreen (Esc) should leave the presentation too.
@@ -44,7 +45,7 @@ export function openPresenter({ deck, startIndex, resolveAsset, onClose }) {
     if (closed) return;
     closed = true;
     clearTimeout(uiTimer);
-    document.removeEventListener('keydown', onKey, true);
+    document.removeEventListener('keydown', onKey);
     document.removeEventListener('fullscreenchange', onFullscreen);
     overlay.removeEventListener('pointermove', showUi);
     const index = player.state.slide;
@@ -54,7 +55,7 @@ export function openPresenter({ deck, startIndex, resolveAsset, onClose }) {
     onClose?.(index);
   }
 
-  document.addEventListener('keydown', onKey, true);
+  document.addEventListener('keydown', onKey);
   document.addEventListener('fullscreenchange', onFullscreen);
   overlay.addEventListener('pointermove', showUi);
   overlay.requestFullscreen?.().catch(() => {}); // best effort; the overlay works without it

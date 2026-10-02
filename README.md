@@ -13,7 +13,9 @@ npm run build   # dist/ plus dist/single/index.html, a self-contained file
 npm test        # unit tests (node:test)
 ```
 
-`/` opens the editor. `/?play` plays the sample deck in the bare player, with
+`/` opens the editor (File > Open interactive demo loads a deck that uses every
+block). `/?play` plays the sample deck in the bare player, `/?play&deck=interactive`
+the interactive one, with
 `&theme=densight-light|paper|midnight`, `&aspect=4:3` and
 `&transition=none|fade|slide|zoom` to try themes and layouts. In the player,
 deep links work: `#3` is slide 3, `#3.2` is slide 3 after two reveal steps.
@@ -62,6 +64,46 @@ Use File > Export to get a portable JSON file with images embedded; Import
 reads it back. Images dropped on the canvas or pasted are downscaled to WebP
 when large.
 
+## Blocks
+
+Content: heading, text, list, image, code, quote, divider, columns, embed.
+
+Interactive (the presenter clicks, the audience sees the result):
+
+| Block | What it does |
+| --- | --- |
+| Button | next, previous, first, back, jump to any slide, or open a link, so a deck can branch |
+| Quiz question | one or several correct answers, instant feedback, optional explanation |
+| Quiz score | the audience's score across every quiz question in the deck, with "try again" |
+| Tabs, Accordion | sections that each hold other blocks |
+| Image hotspots | numbered markers on a picture that open a note; drag them into place in the editor |
+| Flip cards | click to turn a card over |
+| Click to reveal | a question with an answer behind a button |
+| Before / after | two images with a draggable divider |
+
+Anything the audience does lives in a per-presentation session, so leaving a
+slide and coming back restores it, and a score slide can read every quiz. It is
+never saved with the deck.
+
+### Adding a block type
+
+One file that calls `registerBlock`, plus an import in `src/core/blocks/index.js`:
+
+```js
+registerBlock({
+  type: 'my-block', label: 'My block', group: 'Interactive',
+  defaults: () => ({ ... }),
+  normalize: (props, ctx) => ({ ... }),   // clamp and validate everything
+  render: (block, ctx) => element,       // pure DOM; ctx.mode is present | edit | thumb
+  fields: [...],                         // what the inspector shows (segmented, toggle, text,
+                                         // list, image, slide, sections, ...)
+  edit: [...],                           // text you can type into directly on the slide
+  mount: (el, block, ctx) => dispose?,   // behaviour for the live presentation
+  mountInEdit: true,                     // also run it in the editor (visual toggles only)
+  container: { key, min, max, item },    // if it holds other blocks in sections
+});
+```
+
 ## Deck format
 
 ```json
@@ -91,9 +133,10 @@ defaults, normalize, render, steps? })`.
 
 ## Status
 
-Phase 1 (foundation) and phase 2 (editor) are done. Next: interactive blocks
-(phase 3), presenter view with notes and overview (phase 4), standalone export
-(phase 5).
+Phases 1 (foundation), 2 (editor) and 3 (interactive blocks) are done. Next:
+presenter view with notes and overview (phase 4), standalone export (phase 5).
+Still to come from the interactive list: matching and ordering exercises,
+timelines, a live code sandbox, calculators and charts.
 
 Known limits: Inter is bundled as the Latin subset only, so other scripts
 fall back to system fonts. Code blocks are not syntax-highlighted yet.

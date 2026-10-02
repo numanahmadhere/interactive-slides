@@ -1,4 +1,5 @@
-// Importing this module registers every built-in block type.
+// Importing this module registers every built-in block type. The order is the
+// order of the editor's "add block" menu.
 import './heading.js';
 import './text.js';
 import './list.js';
@@ -8,5 +9,14 @@ import './quote.js';
 import './divider.js';
 import './columns.js';
 import './embed.js';
+import './button.js';
+import './quiz.js';
+import './quiz-results.js';
+import './tabs.js';
+import './accordion.js';
+import './hotspots.js';
+import './flip-cards.js';
+import './reveal-answer.js';
+import './compare.js';
 
 export * from './registry.js';

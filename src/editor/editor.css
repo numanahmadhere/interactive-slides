@@ -295,3 +295,25 @@ select.ed-input { appearance: none; padding-right: 28px; background-image: linea
 
 .ed-present__close { position: absolute; top: 14px; right: 14px; z-index: 5; opacity: 0; transition: opacity 0.2s; background: rgb(20 24 34 / 0.85); color: #e8eaf2; border: 1px solid #31384d; }
 .ed-present.show-ui .ed-present__close, .ed-present__close:focus-visible { opacity: 1; }
+
+.ed-menu__heading { padding: 10px 10px 4px; color: #8f97ad; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.ed-menu__heading:not(:first-child) { margin-top: 6px; border-top: 1px solid #232838; padding-top: 12px; }
+.ed-list__tools { display: flex; gap: 2px; }
+.ed-list__tools .ed-btn { width: 28px; height: 28px; }
+.ed-hint--warn { padding: 8px 10px; border: 1px solid #7a4a1f; border-radius: 8px; background: #2a1f14; color: #f0b47a; }
+.ed-stage .ed-section-empty { min-height: 120px; font-size: 30px; }
+
+.ed-stage .sp-slot.ed-overflow { position: relative; outline: 4px dashed #f0605d; outline-offset: -4px; }
+.ed-stage .sp-slot.ed-overflow::after {
+  content: 'Content does not fit';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 9;
+  padding: 6px 18px;
+  border-radius: 999px;
+  background: #f0605d;
+  color: #fff;
+  font: 600 26px/1.3 var(--sp-font-sans);
+  pointer-events: none;
+}

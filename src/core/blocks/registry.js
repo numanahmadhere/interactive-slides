@@ -1,7 +1,14 @@
 // Block types register themselves here. A definition looks like:
-//   type, label, defaults(), normalize(props, ctx), render(block, ctx)
-// and optionally steps(block) when a block reveals in more than one step.
-// Adding an interactive block later means adding one module that registers.
+//   type, label, group, defaults(), normalize(props, ctx), render(block, ctx)
+// plus optional:
+//   steps(block)      raw reveal steps beyond block.reveal
+//   fields            settings the editor's inspector shows for the block
+//   edit              text fields that can be typed into directly on the slide
+//   container         { key, min, max, titled?, revealChildren?, item() } for blocks
+//                     that hold other blocks in sections (columns, tabs, accordion)
+//   mount(el, block, ctx)  behaviour for the live presentation; may return a
+//                     function that cleans up. mountInEdit also runs it in the
+//                     editor (for purely visual toggles like switching tabs).
 
 import { uid, isObject, str, clamp } from '../util.js';
 
@@ -30,6 +37,46 @@ export function createBlock(type, { props, reveal } = {}) {
   if (reveal > 0) block.reveal = reveal;
   return block;
 }
+
+// ---- containers -------------------------------------------------------------
+
+export function sectionKey(block) {
+  return defs.get(block.type)?.container?.key;
+}
+
+// The block's sections ([{ blocks, title? }, ...]) or null if it holds none.
+export function sectionsOf(block) {
+  const key = sectionKey(block);
+  return key ? block.props[key] : null;
+}
+
+export function normalizeSections(rawList, spec, { state, path, depth }) {
+  const raw = Array.isArray(rawList) ? rawList.slice(0, spec.max) : [];
+  const out = raw.map((s, i) => {
+    const section = isObject(s) ? s : {};
+    const clean = {};
+    if (spec.titled) clean.title = str(section.title, '', 120);
+    clean.blocks = normalizeBlocks(section.blocks, state, `${path}.${spec.key}[${i}]`, depth + 1);
+    return clean;
+  });
+  while (out.length < spec.min) out.push(spec.item());
+  return out;
+}
+
+// Visits every block, including those nested in containers.
+export function walkBlocks(blocks, fn) {
+  for (const block of blocks) {
+    fn(block);
+    for (const section of sectionsOf(block) ?? []) walkBlocks(section.blocks, fn);
+  }
+}
+
+// fn(block, slide) for every block in the deck.
+export function walkDeck(deck, fn) {
+  for (const slide of deck.slides) walkBlocks(slide.blocks, (block) => fn(block, slide));
+}
+
+// ---- normalisation ----------------------------------------------------------
 
 // state: { warn(msg), seen: Set<string> } shared across one normalizeDeck run.
 export function normalizeBlock(raw, state, path, depth = 0) {

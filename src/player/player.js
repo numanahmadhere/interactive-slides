@@ -4,7 +4,8 @@
 // this file is the DOM around it.
 
 import { h, svgIcon } from '../core/dom.js';
-import { renderSlide } from '../core/render.js';
+import { renderSlide, activateSlide } from '../core/render.js';
+import { Session } from '../core/session.js';
 import { applyTheme } from '../core/theme.js';
 import { ASPECTS, slideStepValues, slideTitle } from '../core/schema.js';
 import { Navigator, parseHash, formatHash } from './navigator.js';
@@ -58,6 +59,25 @@ export class Player {
     this.pointer = null;
     this.uiTimer = 0;
     this.lastSlideIndex = -1;
+    this.disposeSlide = null;
+    this.session = new Session(); // what the audience has done: answers, open tabs, ...
+    this.trail = []; // slides left through a jump, for the "go back" button
+    this.actions = {
+      next: () => this.next(),
+      prev: () => this.prev(),
+      first: () => this.first(),
+      goToSlide: (id) => {
+        const i = this.deck.slides.findIndex((s) => s.id === id);
+        if (i < 0) return;
+        this.trail.push(this.nav.state.slide);
+        this.goTo(i, 0);
+      },
+      back: () => {
+        const i = this.trail.pop();
+        if (i === undefined) this.prev();
+        else this.goTo(i, 'end');
+      },
+    };
 
     this.#build();
     this.setDeck(deck);
@@ -98,6 +118,7 @@ export class Player {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.#deactivate();
     this.#finishTransition();
     clearTimeout(this.uiTimer);
     this.resizeObserver.disconnect();
@@ -232,7 +253,21 @@ export class Player {
       mode: this.opts.mode,
       resolveAsset: this.opts.resolveAsset,
       index,
+      session: this.session,
+      actions: this.actions,
     });
+  }
+
+  // Block behaviour (quiz answers, tabs, ...) is attached once the slide is in
+  // the page and detached when it leaves.
+  #activate(el) {
+    this.#deactivate();
+    this.disposeSlide = activateSlide(el);
+  }
+
+  #deactivate() {
+    this.disposeSlide?.();
+    this.disposeSlide = null;
   }
 
   // Reveal state is applied before a slide is attached so that returning to a
@@ -251,6 +286,7 @@ export class Player {
     this.#applyReveals(el, slide, step);
     this.stage.replaceChildren(el);
     this.current = el;
+    this.#activate(el);
     this.#sync();
   }
 
@@ -267,12 +303,14 @@ export class Player {
 
   #transition(from, to) {
     this.#finishTransition();
+    this.#deactivate();
     const dir = to.slide > from.slide ? 1 : -1;
     const outgoing = this.current;
     const incoming = this.#slideEl(to.slide);
     this.#applyReveals(incoming, to.slide, to.step);
     this.stage.append(incoming);
     this.current = incoming;
+    this.#activate(incoming);
 
     // Forward uses the arriving slide's transition; backward replays the one
     // that brought us here.

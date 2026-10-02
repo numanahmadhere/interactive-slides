@@ -7,6 +7,8 @@ import { createDeck, createSlide, normalizeDeck } from '../core/schema.js';
 import { createBlock, listBlocks, getBlock } from '../core/blocks/index.js';
 import { getLayout, listLayouts } from '../core/layouts.js';
 import { sampleDeck } from '../samples/sample-deck.js';
+import { interactiveDeck } from '../samples/interactive-deck.js';
+import { Session } from '../core/session.js';
 import * as ops from './ops.js';
 import { Store } from './store.js';
 import { Persistence } from './persist.js';
@@ -39,6 +41,7 @@ export class Editor {
     this.assets = new AssetStore(this.persist);
     this.selection = { slideId: null, blockId: null, slotId: null };
     this.presenter = null;
+    this.session = new Session(); // view state in the editor: open tabs, flipped cards
     this.saveTimer = 0;
     this.saveState = 'saved';
     this.warnedImages = false;
@@ -189,6 +192,12 @@ export class Editor {
     this.#scheduleSave();
   }
 
+  // Re-draw every view from the current state (after an edit that may not have
+  // changed the deck itself).
+  refresh() {
+    this.#syncAll({});
+  }
+
   #syncAll({ source, selectionChanged = false, rebuildInspector = true } = {}) {
     this.canvas.sync({ source });
     this.sidebar.sync();
@@ -274,10 +283,16 @@ export class Editor {
 
   // ---- block actions -----------------------------------------------------
 
-  // target: { slot } | { afterBlockId } | { columnOf, col }
+  // target: { slot } | { afterBlockId } | { containerOf, index }
   addBlock(type, target) {
     const block = createBlock(type);
     if (!this.commit(ops.insertBlock(this.deck, this.selection.slideId, target, block))) return;
+    if (target.containerOf) {
+      // Show the section the block went into, or it would look like nothing happened.
+      const view = this.session.get(target.containerOf);
+      view.active = target.index;
+      view.open = [...new Set([...(view.open ?? []), target.index])];
+    }
     this.select({ blockId: block.id });
     if (type === 'image') this.pickImage(block.id);
     else if (getBlock(type)?.edit?.length) this.canvas.startEdit(block.id, { selectAll: true });
@@ -298,26 +313,42 @@ export class Editor {
     this.commit(ops.moveBlock(this.deck, id, dir));
   }
 
+  // Block types that cannot go inside a container: itself, and (for tabs and
+  // accordions) the other titled containers, which would nest confusingly.
+  excludedInside(container) {
+    const spec = container && getBlock(container.type)?.container;
+    if (!spec) return [];
+    return listBlocks()
+      .filter((d) => d.container && (d.type === container.type || (spec.titled && d.container.titled)))
+      .map((d) => d.type);
+  }
+
   openBlockMenu(anchor, target, { exclude = [] } = {}) {
-    openMenu({
-      anchor,
-      label: 'Add block',
-      items: listBlocks().filter((d) => !exclude.includes(d.type)).map((d) => ({ label: d.label, value: d.type })),
-      onPick: (type) => this.addBlock(type, target),
-    });
+    const items = [];
+    let group = null;
+    for (const def of listBlocks()) {
+      if (exclude.includes(def.type)) continue;
+      if (def.group !== group) {
+        group = def.group;
+        items.push({ heading: group });
+      }
+      items.push({ label: def.label, value: def.type });
+    }
+    openMenu({ anchor, label: 'Add block', items, onPick: (type) => this.addBlock(type, target) });
   }
 
   // ---- images ------------------------------------------------------------
 
-  pickImage(blockId) {
+  // key: which image of the block (before/after blocks hold two).
+  pickImage(blockId, key) {
     const input = h('input', { type: 'file', accept: 'image/*', multiple: blockId ? undefined : true });
     input.addEventListener('change', () => {
-      if (input.files?.length) this.addImageFiles([...input.files], { blockId });
+      if (input.files?.length) this.addImageFiles([...input.files], { blockId, key });
     });
     input.click();
   }
 
-  async addImageFiles(files, { blockId, slot } = {}) {
+  async addImageFiles(files, { blockId, key, slot } = {}) {
     if (!this.persist.keepsImages && !this.warnedImages) {
       this.warnedImages = true;
       toast('Images are kept for this session only because browser storage is limited.', { kind: 'error', timeout: 6000 });
@@ -326,10 +357,12 @@ export class Editor {
     for (const file of files) {
       try {
         const src = await this.assets.add(file);
-        const target = first && blockId && ops.findBlock(this.deck, blockId)?.block.type === 'image' ? blockId : null;
-        if (target) {
-          this.commit(ops.patchBlockProps(this.deck, target, { src }));
-          this.select({ blockId: target });
+        const hit = first && blockId ? ops.findBlock(this.deck, blockId) : null;
+        const keys = hit ? ops.imageKeys(hit.block) : [];
+        if (hit && keys.length) {
+          const prop = keys.includes(key) ? key : keys.find((k) => !hit.block.props[k]) ?? keys[0];
+          this.commit(ops.patchBlockProps(this.deck, hit.block.id, { [prop]: src }));
+          this.select({ blockId: hit.block.id });
         } else {
           const layout = getLayout(this.slide.layout);
           const slotId = layout.slots.some((s) => s.id === slot) ? slot : ops.defaultSlot(layout);
@@ -353,12 +386,14 @@ export class Editor {
       items: [
         { label: 'New deck', value: 'new' },
         { label: 'Open sample deck', value: 'sample' },
+        { label: 'Open interactive demo', value: 'interactive' },
         { label: 'Import deck...', value: 'import', hint: 'JSON' },
         { label: 'Export deck', value: 'export', hint: 'JSON' },
       ],
       onPick: (value) => {
         if (value === 'new') this.#replaceDeck(starterDeck());
         else if (value === 'sample') this.#replaceDeck(normalizeDeck(structuredClone(sampleDeck)).deck);
+        else if (value === 'interactive') this.#replaceDeck(normalizeDeck(structuredClone(interactiveDeck)).deck);
         else if (value === 'import') this.#pickImportFile();
         else this.exportJson();
       },
