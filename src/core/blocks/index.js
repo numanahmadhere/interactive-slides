@@ -18,5 +18,13 @@ import './hotspots.js';
 import './flip-cards.js';
 import './reveal-answer.js';
 import './compare.js';
+import './matching.js';
+import './ordering.js';
+import './timeline.js';
+import './fill-blank.js';
+import './reflection.js';
+import './chart.js';
+import './calculator.js';
+import './code-sandbox.js';
 
 export * from './registry.js';

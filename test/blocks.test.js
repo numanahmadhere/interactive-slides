@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import { normalizeDeck, createSlide } from '../src/core/schema.js';
 import { listBlocks, createBlock, walkDeck, sectionKey } from '../src/core/blocks/index.js';
 import { isCorrect } from '../src/core/blocks/quiz.js';
+import { parseBlanks, matchesAnswer } from '../src/core/blocks/fill-blank.js';
+import { buildSrcdoc } from '../src/core/blocks/code-sandbox.js';
+import { formatValue } from '../src/core/blocks/calculator.js';
+import { shuffled } from '../src/core/blocks/shared.js';
+import { getBlock } from '../src/core/blocks/index.js';
 import { Session } from '../src/core/session.js';
 import { interactiveDeck } from '../src/samples/interactive-deck.js';
 
@@ -99,4 +104,84 @@ test('createSlide starter content still works for every layout', () => {
   for (const layout of ['title', 'content', 'two-column', 'image-text', 'full-bleed', 'blank', 'section']) {
     assert.ok(createSlide(layout).id);
   }
+});
+
+test('parseBlanks splits text and answers, with alternatives', () => {
+  assert.deepEqual(parseBlanks('A [b] c [d|e, f] g'), [
+    { text: 'A ' }, { answers: ['b'] }, { text: ' c ' }, { answers: ['d', 'e, f'] }, { text: ' g' },
+  ]);
+  assert.deepEqual(parseBlanks('no blanks'), [{ text: 'no blanks' }]);
+  assert.deepEqual(parseBlanks('[]'), [{ text: '[]' }], 'empty brackets are text');
+});
+
+test('matchesAnswer ignores case and spacing', () => {
+  assert.equal(matchesAnswer(['Paris', 'paree'], '  PARIS '), true);
+  assert.equal(matchesAnswer(['new  york'], 'New York'), true);
+  assert.equal(matchesAnswer(['1920'], '1,920'), false);
+  assert.equal(matchesAnswer(['a'], ''), false);
+});
+
+test('which blocks count toward the score', () => {
+  const scored = listBlocks().filter((d) => d.scored).map((d) => d.type).sort();
+  assert.deepEqual(scored, ['fill-blank', 'matching', 'ordering', 'quiz']);
+});
+
+test('shuffled is a permutation and never the identity', () => {
+  for (let n = 2; n <= 8; n++) {
+    for (let r = 0; r < 25; r++) {
+      const s = shuffled(n);
+      assert.deepEqual([...s].sort((a, b) => a - b), Array.from({ length: n }, (_, i) => i));
+      assert.ok(s.some((v, i) => v !== i));
+    }
+  }
+  assert.deepEqual(shuffled(1), [0]);
+});
+
+test('code sandbox document is locked down and cannot be closed early', () => {
+  const doc = buildSrcdoc({ html: '<b>x</b>', css: 'a{}</style><p>escaped?</p>', js: 'var s = "</script><img src=x>";' });
+  assert.match(doc, /Content-Security-Policy/);
+  assert.match(doc, /default-src 'none'/);
+  assert.equal((doc.match(/<\/style>/g) ?? []).length, 1, 'only the builder closes the style element');
+  assert.equal((doc.match(/<\/script>/g) ?? []).length, 2, 'only the builder closes its two script elements');
+  assert.ok(doc.includes('<\\/style><p>escaped?'), 'user </style is neutralised');
+  assert.ok(doc.includes('<\\/script><img src=x>'), 'user </script is neutralised');
+});
+
+test('calculator: formatting and normalisation', () => {
+  assert.equal(formatValue(1234.5, { decimals: 1 }), '1,234.5');
+  assert.equal(formatValue(0.256, { format: 'percent', decimals: 1 }), '25.6%');
+  assert.equal(formatValue(12, { prefix: '$', suffix: ' k' }), '$12 k');
+  assert.equal(formatValue(NaN), '\u2013');
+  assert.equal(formatValue(Infinity), '\u2013');
+
+  const { deck } = normalizeDeck({ slides: [{ layout: 'blank', blocks: [{ type: 'calculator', slot: 'main', props: {
+    inputs: [{ label: 'Total People' }, { label: 'Total People' }, { key: '9bad', label: 'x', value: 500, min: 0, max: 10 }],
+  } }] }] });
+  const { inputs } = deck.slides[0].blocks[0].props;
+  assert.equal(new Set(inputs.map((i) => i.key)).size, 3, 'keys are made unique');
+  assert.ok(inputs.every((i) => /^[a-z_][a-z0-9_]*$/.test(i.key)));
+  assert.equal(inputs[2].value, 10, 'value is clamped to the range');
+});
+
+test('calculator check() flags unknown names and bad formulas', () => {
+  const def = getBlock('calculator');
+  const base = def.defaults();
+  assert.equal(def.check(base), null);
+  assert.match(def.check({ ...base, outputs: [{ ...base.outputs[0], formula: 'people * nope' }] }), /nope/);
+  assert.match(def.check({ ...base, outputs: [{ ...base.outputs[0], formula: '1 +' }] }), /ends unexpectedly|Unexpected|Expected/);
+});
+
+test('chart check() asks for data; ordering and matching validate their text', () => {
+  assert.match(getBlock('chart').check({ data: 'nothing here' }), /No numbers/);
+  assert.equal(getBlock('chart').check(getBlock('chart').defaults()), null);
+  assert.match(getBlock('ordering').check({ items: ['a', ' '] }), /Fill in/);
+  assert.match(getBlock('matching').check({ pairs: [{ left: 'a', right: '' }, { left: 'b', right: 'c' }] }), /both sides/);
+  assert.match(getBlock('fill-blank').check({ text: 'no brackets' }), /square brackets/);
+});
+
+test('ordering items normalise to plain strings within bounds', () => {
+  const norm = (items) => normalizeDeck({ slides: [{ layout: 'blank', blocks: [{ type: 'ordering', slot: 'main', props: { items } }] }] }).deck.slides[0].blocks[0].props.items;
+  assert.equal(norm(['a']).length, 2);
+  assert.equal(norm(Array.from({ length: 20 }, (_, i) => String(i))).length, 8);
+  assert.deepEqual(norm(['x', 5, null, 'y']), ['x', '', '', 'y']);
 });

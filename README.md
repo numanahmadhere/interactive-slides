@@ -68,18 +68,28 @@ when large.
 
 Content: heading, text, list, image, code, quote, divider, columns, embed.
 
+Quiz, matching, ordering and fill-in-the-blank are "scored": the Score summary block totals all of them.
+
 Interactive (the presenter clicks, the audience sees the result):
 
 | Block | What it does |
 | --- | --- |
 | Button | next, previous, first, back, jump to any slide, or open a link, so a deck can branch |
 | Quiz question | one or several correct answers, instant feedback, optional explanation |
-| Quiz score | the audience's score across every quiz question in the deck, with "try again" |
+| Score summary | the score across every scored question in the deck, with "try again" |
 | Tabs, Accordion | sections that each hold other blocks |
 | Image hotspots | numbered markers on a picture that open a note; drag them into place in the editor |
 | Flip cards | click to turn a card over |
 | Click to reveal | a question with an answer behind a button |
 | Before / after | two images with a draggable divider |
+| Matching | pair items by clicking or dragging; checked at the end |
+| Put in order | drag or use arrows to sequence items; checked at the end |
+| Timeline | step through stages with a track, dots and next/previous |
+| Fill in the blank | `[answer]` blanks in a sentence, with accepted alternatives `[a\|b]` |
+| Reflection prompt | a private text box that stays on the device |
+| Chart | bar, line, pie or donut from pasted spreadsheet data, with a table for screen readers |
+| Calculator | sliders feeding formulas (`people * hours * 48`), evaluated without `eval` |
+| Live code | HTML, CSS and JS the audience can edit, run in an isolated frame with no network |
 
 Anything the audience does lives in a per-presentation session, so leaving a
 slide and coming back restores it, and a score slide can read every quiz. It is

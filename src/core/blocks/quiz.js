@@ -20,6 +20,7 @@ export default registerBlock({
   type: 'quiz',
   label: 'Quiz question',
   group: 'Interactive',
+  scored: true,
   defaults: () => ({
     question: 'Which option is correct?',
     mode: 'single',

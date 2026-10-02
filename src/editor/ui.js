@@ -236,6 +236,7 @@ export function listEditor({ items, fields, itemLabel, addLabel, min = 0, max = 
         onText(snapshot());
       };
       if (f.type === 'toggle') card.append(toggle({ label: f.label, value: !!item[f.key], onChange: set }));
+      else if (f.type === 'select') card.append(field(f.label, select({ options: f.options, value: item[f.key], onChange: set })));
       else if (f.type === 'number') card.append(field(f.label, numberInput({ value: item[f.key] ?? 0, min: f.min ?? 0, max: f.max ?? 100, onInput: set })));
       else card.append(field(f.label, textInput({ value: item[f.key] ?? '', multiline: f.type === 'textarea', rows: 3, onInput: set })));
     }

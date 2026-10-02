@@ -135,6 +135,41 @@ export const interactiveDeck = {
       ],
     },
     {
+      id: 's_match',
+      layout: 'content',
+      blocks: [
+        h('i_x1', 'Exercise: matching'),
+        {
+          id: 'i_x2', type: 'matching', slot: 'body',
+          props: {
+            prompt: 'Match each block with what it does',
+            pairs: [
+              { left: 'Quiz', right: 'Checks understanding' },
+              { left: 'Hotspots', right: 'Explains an image' },
+              { left: 'Timeline', right: 'Walks through stages' },
+              { left: 'Calculator', right: 'Shows a live estimate' },
+            ],
+          },
+        },
+      ],
+    },
+    {
+      id: 's_order',
+      layout: 'content',
+      blocks: [
+        h('i_x3', 'Exercise: ordering'),
+        { id: 'i_x4', type: 'ordering', slot: 'body', props: { prompt: 'Put the ADAPT phases in order', items: ['Assess', 'Diagnose', 'Align', 'Pilot', 'Track'] } },
+      ],
+    },
+    {
+      id: 's_fill',
+      layout: 'content',
+      blocks: [
+        h('i_x5', 'Exercise: fill in the blank'),
+        { id: 'i_x6', type: 'fill-blank', slot: 'body', props: { text: 'Slides are drawn on a fixed [1920] by [1080|1,080] canvas, then scaled to fit any screen.' } },
+      ],
+    },
+    {
       id: 's_score',
       layout: 'content',
       blocks: [
@@ -235,6 +270,65 @@ export const interactiveDeck = {
       blocks: [
         h('i_c1', 'Drag to compare'),
         { id: 'i_c2', type: 'compare', slot: 'body', props: { before: plainSlide, after: themedSlide, beforeLabel: 'Plain', afterLabel: 'Themed', start: 50 } },
+      ],
+    },
+    {
+      id: 's_timeline',
+      layout: 'content',
+      blocks: [
+        h('i_t5', 'Timelines step through a process'),
+        {
+          id: 'i_t6', type: 'timeline', slot: 'body',
+          props: {
+            items: [
+              { title: 'Assess', text: 'Understand where the team is today.' },
+              { title: 'Diagnose', text: 'Find what is holding progress back.' },
+              { title: 'Align', text: 'Agree the goals and who owns what.' },
+              { title: 'Pilot', text: 'Try the approach on a small scale.' },
+              { title: 'Track', text: 'Measure results and keep improving.' },
+            ],
+          },
+        },
+      ],
+    },
+    {
+      id: 's_chart',
+      layout: 'content',
+      blocks: [
+        h('i_t7', 'Charts from pasted data'),
+        { id: 'i_t8', type: 'chart', slot: 'body', props: { type: 'bar', title: 'Example: workshop attendance', data: 'Week,Online,In person\nWeek 1,42,30\nWeek 2,55,38\nWeek 3,61,44\nWeek 4,70,52', unit: '', showValues: true } },
+      ],
+    },
+    {
+      id: 's_donut',
+      layout: 'content',
+      blocks: [
+        h('i_t9', 'Pie and donut charts'),
+        { id: 'i_ta', type: 'chart', slot: 'body', props: { type: 'donut', title: 'Example: where project time goes', data: 'Phase,Share\nPlanning,20\nBuilding,45\nTesting,20\nShipping,15', unit: '%', showValues: true } },
+      ],
+    },
+    {
+      id: 's_calc',
+      layout: 'content',
+      blocks: [
+        h('i_tb', 'A calculator for the audience'),
+        { id: 'i_tc', type: 'calculator', slot: 'body', props: {} },
+      ],
+    },
+    {
+      id: 's_lab',
+      layout: 'content',
+      blocks: [
+        h('i_td', 'Live code runs right in the slide'),
+        { id: 'i_te', type: 'code-sandbox', slot: 'body', props: { title: '', layout: 'split' } },
+      ],
+    },
+    {
+      id: 's_reflect',
+      layout: 'content',
+      blocks: [
+        h('i_tf', 'Time to reflect'),
+        { id: 'i_tg', type: 'reflection', slot: 'body', props: { prompt: 'Which block would you use first, and for what?', placeholder: 'Write your thoughts here', rows: 4 } },
       ],
     },
     {

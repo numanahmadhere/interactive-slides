@@ -44,3 +44,15 @@ export function svgIcon(pathD, { size = 24, label } = {}) {
   svg.append(p);
   return svg;
 }
+
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+// Builds an SVG element: svgEl('rect', { x: 0, class: 'bar' }, child, ...).
+export function svgEl(tag, attrs, ...children) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs ?? {})) {
+    if (v !== undefined && v !== null && v !== false) el.setAttribute(k, String(v));
+  }
+  for (const c of children) if (c !== undefined && c !== null && c !== false) el.append(c);
+  return el;
+}

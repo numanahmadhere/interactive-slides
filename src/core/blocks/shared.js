@@ -31,3 +31,17 @@ export function pad(list, min, make) {
 }
 
 export const round1 = (n) => Math.round(n * 10) / 10;
+
+// A random permutation of 0..n-1 that is never the identity (when n > 1), so a
+// "put these in order" exercise does not start out solved.
+export function shuffled(n) {
+  const order = Array.from({ length: n }, (_, i) => i);
+  if (n < 2) return order;
+  do {
+    for (let i = n - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+  } while (order.every((v, i) => v === i));
+  return order;
+}

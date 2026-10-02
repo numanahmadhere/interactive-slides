@@ -159,7 +159,11 @@ export class Inspector {
       case 'select': return field(f.label, select({ options: f.options, value, onChange: choice }));
       case 'toggle': return toggle({ label: f.label, value, onChange: choice });
       case 'text': return field(f.label, textInput({ value, placeholder: f.placeholder, onInput: typing }));
-      case 'textarea': return field(f.label, textInput({ value, multiline: true, rows: f.rows ?? 3, placeholder: f.placeholder, onInput: typing }));
+      case 'textarea': {
+        const input = textInput({ value, multiline: true, rows: f.rows ?? 3, placeholder: f.placeholder, onInput: typing, spellcheck: !f.mono });
+        if (f.mono) input.classList.add('ed-input--mono');
+        return field(f.label, input);
+      }
       case 'number': return field(f.label, numberInput({ value, min: f.min, max: f.max, onInput: typing }));
       case 'slide': return field(f.label, this.#slidePicker(value, choice));
       case 'hint': return h('p', { class: 'ed-hint', text: f.text });
@@ -173,6 +177,13 @@ export class Inspector {
           items: value, fields: f.fields, itemLabel: f.itemLabel, addLabel: f.add, min: f.min, max: f.max, makeItem: f.item,
           onText: (items) => this.#live(patch(items), key),
           onStructure: (items) => this.#rebuilding(patch(items)),
+        }));
+      case 'strings': // a list of plain strings, edited one per card
+        return field(f.label, listEditor({
+          items: value.map((t) => ({ t })), fields: [{ key: 't', label: f.itemLabel, type: 'text' }], itemLabel: f.itemLabel, addLabel: f.add,
+          min: f.min, max: f.max, makeItem: () => ({ t: f.item() }),
+          onText: (items) => this.#live(patch(items.map((i) => i.t)), key),
+          onStructure: (items) => this.#rebuilding(patch(items.map((i) => i.t))),
         }));
       case 'image': return field(f.label, this.#imageControl(block, f.key));
       case 'sections': return this.#sectionsControl(block, f);

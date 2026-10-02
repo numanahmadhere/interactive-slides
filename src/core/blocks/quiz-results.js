@@ -1,18 +1,19 @@
 import { h } from '../dom.js';
 import { str } from '../util.js';
-import { registerBlock, walkDeck } from './registry.js';
+import { registerBlock, walkDeck, getBlock } from './registry.js';
 
+// Every question-like block (quiz, matching, ordering, fill in the blank) counts.
 function collectQuizzes(deck) {
   const quizzes = [];
   walkDeck(deck, (block, slide) => {
-    if (block.type === 'quiz') quizzes.push({ id: block.id, slideId: slide.id });
+    if (getBlock(block.type)?.scored) quizzes.push({ id: block.id, slideId: slide.id });
   });
   return quizzes;
 }
 
 export default registerBlock({
   type: 'quiz-results',
-  label: 'Quiz score',
+  label: 'Score summary',
   group: 'Interactive',
   defaults: () => ({ title: 'Your score', restart: true, restartLabel: 'Try again' }),
   normalize: (p) => ({ title: str(p.title, '', 200), restart: p.restart !== false, restartLabel: str(p.restartLabel, 'Try again', 60) }),
@@ -32,8 +33,8 @@ export default registerBlock({
     const percent = total ? Math.round((correct / total) * 100) : 0;
 
     const note = !present
-      ? `Shows each person's result across the ${total} quiz question${total === 1 ? '' : 's'} in this deck`
-      : !total ? 'There are no quiz questions in this deck'
+      ? `Shows each person's result across the ${total} scored question${total === 1 ? '' : 's'} in this deck`
+      : !total ? 'There are no scored questions in this deck'
       : answered < total ? `${total - answered} of ${total} not answered yet`
       : `${percent}% correct`;
 
