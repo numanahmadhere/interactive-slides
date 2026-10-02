@@ -22,6 +22,8 @@ import { button, openMenu, toast } from './ui.js';
 import { openExportDialog } from './export-dialog.js';
 import { openFindDialog } from './find-dialog.js';
 import { openLiveDialog } from './live-dialog.js';
+import { openCloudDialog } from './cloud-dialog.js';
+import { setLink } from '../cloud/config.js';
 import { LiveHost } from '../live/host.js';
 import { createTransport } from '../live/transport.js';
 import { newRoom } from '../live/protocol.js';
@@ -416,6 +418,7 @@ export class Editor {
         { label: 'Open sample deck', value: 'sample' },
         { label: 'Open interactive demo', value: 'interactive' },
         { label: 'Import deck...', value: 'import', hint: 'JSON' },
+        { label: 'Cloud: save, open, share...', value: 'cloud', hint: 'Account' },
         { label: 'Find and replace...', value: 'find', hint: 'Ctrl+H' },
         { label: 'Export...', value: 'export', hint: 'HTML, PDF, PNG, PPTX' },
       ],
@@ -425,14 +428,16 @@ export class Editor {
         else if (value === 'interactive') this.#replaceDeck(normalizeDeck(structuredClone(interactiveDeck)).deck);
         else if (value === 'import') this.#pickImportFile();
         else if (value === 'find') openFindDialog(this);
+        else if (value === 'cloud') openCloudDialog(this);
         else openExportDialog(this);
       },
     });
   }
 
-  #replaceDeck(deck) {
+  #replaceDeck(deck, { cloudId = null } = {}) {
     this.canvas.finishEdit();
     this.commit(deck);
+    setLink(cloudId, deck); // a different deck is no longer the one saved in the cloud
     this.select({ slideId: deck.slides[0].id });
   }
 
@@ -444,13 +449,18 @@ export class Editor {
     input.click();
   }
 
+  // Deck JSON from anywhere (a file, the cloud) goes through the same gate.
+  async importDeck(raw, { cloudId = null } = {}) {
+    const { deck, warnings } = normalizeDeck(raw);
+    const adopted = await this.assets.adoptDataUrls(deck);
+    this.#replaceDeck(adopted, { cloudId });
+    if (warnings.length) console.warn('Imported deck was repaired:', warnings);
+    return warnings;
+  }
+
   async importFile(file) {
     try {
-      const raw = JSON.parse(await file.text());
-      const { deck, warnings } = normalizeDeck(raw);
-      const adopted = await this.assets.adoptDataUrls(deck);
-      this.#replaceDeck(adopted);
-      if (warnings.length) console.warn('Imported deck was repaired:', warnings);
+      const warnings = await this.importDeck(JSON.parse(await file.text()));
       toast(warnings.length ? `Imported with ${warnings.length} repair${warnings.length === 1 ? '' : 's'}. Details are in the console.` : 'Deck imported.');
     } catch (err) {
       toast(err instanceof SyntaxError ? 'That file is not valid JSON.' : err.message || 'Could not import that file.', { kind: 'error' });

@@ -15,6 +15,7 @@ import { setupOffline } from './offline.js';
 import { decodeConfig, normalizeCode, normalizeKey } from './live/protocol.js';
 import { mountAudience } from './live/audience.js';
 import { mountRemote } from './live/remote.js';
+import { mountViewer } from './cloud/viewer.js';
 
 const mount = document.getElementById('app');
 const params = new URLSearchParams(location.search);
@@ -25,7 +26,12 @@ const liveConfig = params.has('rt') ? decodeConfig(params.get('rt')) : { kind: '
 const audienceCode = normalizeCode(params.get('join'));
 const remoteKey = normalizeKey(params.get('remote'));
 
-if (params.has('join') || params.has('remote')) {
+if (params.has('view')) {
+  // A share link: ?view=TOKEN&rt=... (the project's address and public key)
+  const token = normalizeKey(params.get('view'));
+  if (!token || liveConfig?.kind !== 'realtime') mount.textContent = 'This link is not valid. Ask the person who shared it for a new one.';
+  else mountViewer(mount, { token, config: liveConfig });
+} else if (params.has('join') || params.has('remote')) {
   const ok = liveConfig && (params.has('join') ? audienceCode : remoteKey);
   if (!ok) mount.textContent = 'This link is not valid. Ask the presenter for a new one.';
   else if (params.has('join')) mountAudience(mount, { code: audienceCode, config: liveConfig });

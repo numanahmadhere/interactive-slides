@@ -33,6 +33,9 @@ export function newRoom(rand) {
   return { code: randomString(CODE_ALPHABET, 6, rand), key: randomString(KEY_ALPHABET, 22, rand) };
 }
 
+// A long unguessable token, for share links.
+export const newToken = (rand) => randomString(KEY_ALPHABET, 22, rand);
+
 export const audienceChannel = (code) => `is-a-${code}`;
 export const remoteChannel = (key) => `is-r-${key}`;
 

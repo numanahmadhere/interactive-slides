@@ -46,6 +46,8 @@ src/editor/inspector.js  settings panel generated from each block's `fields`
 src/editor/persist.js    IndexedDB (decks + images), localStorage and memory fallbacks
 src/editor/assets.js     uploaded images, referenced from decks as asset:<id>
 src/editor/search.js     find and replace over a deck (pure; the dialog is find-dialog.js)
+src/cloud/              Supabase accounts, cloud decks, share-link viewer (client.js, no extra library)
+supabase/schema.sql      tables, row level security and the share function; run once in your project
 src/live/               live sessions: protocol (pure), host, transport, phone pages, QR
 tools/relay.mjs          a tiny local realtime server for testing on your own network
 src/sw-template.js       the offline service worker; build.mjs stamps a version in and writes dist/sw.js
@@ -230,6 +232,33 @@ workshop, not for anything that must be tamper-proof. The client is
 `@supabase/realtime-js`, tested here against the relay and not against a hosted
 Supabase project.
 
+## Accounts, cloud decks and share links
+
+File > Cloud. Connect your own Supabase project (its address and public anon
+key), create an account or sign in, then save the open deck, reopen or delete
+saved decks, and turn a share link on or off. Setup, once per project:
+
+1. SQL Editor: paste and run `supabase/schema.sql`. It creates a `decks` table
+   where each person can read and change only their own rows (row level
+   security), and a `get_shared_deck` function that returns one deck for an exact
+   unguessable token. Anonymous visitors cannot read or list the table.
+2. Authentication > Providers: leave Email on. If "Confirm email" is on, new
+   accounts must click the link in an email before signing in.
+
+A share link looks like `?view=TOKEN&rt=...`. It opens a read-only player for
+anyone, with no account. Stopping sharing deletes the token, so the old link
+stops working; sharing again makes a new one. Images are stored inside the deck
+(25 MB limit in all). Save is manual, and Save never overwrites a cloud deck
+with a different deck (after Open then Undo it offers "Save this deck" as a
+new one). Passwords go straight to your project and are never stored here; the
+signed-in session is kept in this browser until you sign out.
+
+Tested against a local stand-in for the Supabase endpoints (sign-up, token
+refresh, per-owner rows, the share function), which checks the client's
+behaviour. It does not run `schema.sql`, so the access rules themselves have
+not been exercised against real Postgres: try signing in as two accounts and
+confirm each sees only its own decks before relying on it.
+
 ## Offline
 
 `npm run build` writes `dist/sw.js`. Served from any http(s) address, the app
@@ -249,7 +278,7 @@ Phases 1 to 6 are done, with phase 6 limited to what was asked for: offline
 support, shapes, icons and diagrams, a theme builder and logo, per-slide
 backgrounds, and find and replace. Not built: an accessibility checker,
 right-to-left languages and their fonts, a template library, Markdown import.
-Phase 7 so far: phone remote and live polls and quizzes. Accounts, cloud storage and share links are not built.
+Phase 7: phone remote, live polls and quizzes, accounts, cloud decks and share links. Not built: real-time co-editing, team workspaces, image storage outside the deck.
 
 Known limits: Inter is bundled as the Latin subset only, so other scripts
 fall back to system fonts. Code blocks are not syntax-highlighted yet.
