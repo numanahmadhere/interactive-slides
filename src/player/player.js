@@ -9,6 +9,11 @@ import { Session } from '../core/session.js';
 import { applyTheme } from '../core/theme.js';
 import { ASPECTS, slideStepValues, slideTitle } from '../core/schema.js';
 import { Navigator, parseHash, formatHash } from './navigator.js';
+import { Tools } from './tools.js';
+import { Overview } from './overview.js';
+import { Help } from './help.js';
+import { Autoplay } from './autoplay.js';
+import { formatClock } from './clock.js';
 
 const TRANSITION_MS = 380;
 const UI_IDLE_MS = 2500;
@@ -24,6 +29,9 @@ const DEFAULTS = {
   resolveAsset: undefined,
   startAt: undefined,
   onNavigate: undefined,
+  onPresenterView: undefined, // (player) => void; shows the button and the P key
+  fullscreenTarget: undefined, // element to fullscreen instead of the player itself
+  autoplay: undefined, // undefined follows the deck's setting, false turns it off
 };
 
 function keyframes(kind, dir) {
@@ -60,6 +68,11 @@ export class Player {
     this.uiTimer = 0;
     this.lastSlideIndex = -1;
     this.disposeSlide = null;
+    this.subscribers = new Set();
+    this.destroyers = new Set();
+    this.slideStartedAt = Date.now();
+    this.fullscreenToggledAt = 0;
+    this.timerInterval = 0;
     this.session = new Session(); // what the audience has done: answers, open tabs, ...
     this.trail = []; // slides left through a jump, for the "go back" button
     this.actions = {
@@ -80,8 +93,18 @@ export class Player {
     };
 
     this.#build();
+    this.tools = new Tools(this);
+    this.overview = new Overview(this);
+    this.help = new Help(this);
+    this.autoplay = new Autoplay({
+      delayFor: () => this.#autoplayDelay(),
+      onTick: () => this.#autoplayTick(),
+    });
     this.setDeck(deck);
     this.#bind();
+    this.timerInterval = setInterval(() => this.#tickTimer(), 250);
+    if (this.opts.autoplay !== false && this.deck.autoplay?.seconds > 0) this.autoplay.start();
+    this.#paintAutoplay();
   }
 
   get state() {
@@ -93,6 +116,29 @@ export class Player {
   first() { this.#go(this.nav.first()); }
   last() { this.#go(this.nav.last()); }
   goTo(slide, step = 0) { this.#go(this.nav.goTo(slide, step)); }
+
+  // Called with { slide, step, total, startedAt } after every move.
+  subscribe(fn) {
+    this.subscribers.add(fn);
+    return () => this.subscribers.delete(fn);
+  }
+
+  onDestroy(fn) {
+    this.destroyers.add(fn);
+    return () => this.destroyers.delete(fn);
+  }
+
+  announce(message) {
+    this.live.textContent = '';
+    this.live.textContent = message;
+  }
+
+  toggleFullscreen() {
+    this.fullscreenToggledAt = Date.now();
+    const doc = this.root.ownerDocument;
+    if (doc.fullscreenElement) doc.exitFullscreen?.().catch(() => {});
+    else (this.opts.fullscreenTarget ?? this.root).requestFullscreen?.().catch(() => {});
+  }
 
   // Swap in an edited deck (the editor calls this on every change) and stay put.
   setDeck(deck) {
@@ -118,6 +164,10 @@ export class Player {
   destroy() {
     if (this.destroyed) return;
     this.destroyed = true;
+    for (const fn of [...this.destroyers]) fn();
+    this.autoplay.stop();
+    clearInterval(this.timerInterval);
+    this.tools.destroy();
     this.#deactivate();
     this.#finishTransition();
     clearTimeout(this.uiTimer);
@@ -143,12 +193,26 @@ export class Player {
       this.counter = h('div', { class: 'sp-counter', 'aria-hidden': 'true' });
       this.prevBtn = h('button', { class: 'sp-nav', type: 'button', 'aria-label': 'Previous' }, svgIcon('M15 18l-6-6 6-6'));
       this.nextBtn = h('button', { class: 'sp-nav', type: 'button', 'aria-label': 'Next' }, svgIcon('M9 18l6-6-6-6'));
+      const tool = (label, path, fn) => {
+        const b = h('button', { class: 'sp-nav', type: 'button', 'aria-label': label, title: label }, svgIcon(path, { size: 20 }));
+        b.addEventListener('click', fn);
+        return b;
+      };
       this.root.append(
         h('div', { class: 'sp-progress', 'aria-hidden': 'true' }, this.progressBar),
         this.counter,
-        h('div', { class: 'sp-nav-group' }, this.prevBtn, this.nextBtn),
+        h('div', { class: 'sp-nav-group' },
+          this.prevBtn, this.nextBtn,
+          tool('All slides (O)', 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z', () => this.overview.open()),
+          tool('Fullscreen (F)', 'M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5', () => this.toggleFullscreen()),
+          this.opts.onPresenterView ? tool('Presenter view (P)', 'M3 4h18v12H3zM8 20h8M12 16v4', () => this.opts.onPresenterView(this)) : null,
+          tool('Keyboard shortcuts (?)', 'M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z', () => this.help.open())),
       );
     }
+    this.timerEl = h('div', { class: 'sp-timer', hidden: true, 'aria-hidden': 'true' });
+    this.autoplayEl = h('button', { class: 'sp-autoplay', type: 'button', hidden: true, title: 'Pause or resume auto-play (A)' });
+    this.autoplayEl.addEventListener('click', () => this.#toggleAutoplay());
+    this.root.append(this.timerEl, this.autoplayEl);
     this.container.append(this.root);
   }
 
@@ -176,11 +240,48 @@ export class Player {
 
   // ---- input -------------------------------------------------------------
 
+  // Tool and view shortcuts. Returns true if the key was one of them.
+  #onToolKey(e) {
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    const drawing = this.tools.drawing;
+    const handled = () => { e.preventDefault(); return true; };
+    switch (k) {
+      case 'Escape': return this.tools.dismiss() ? handled() : false;
+      case 'f': this.toggleFullscreen(); return handled();
+      case 'o': case 'g': this.overview.open(); return handled();
+      case 'b': case '.': this.tools.toggleBlank('black'); return handled();
+      case 'w': this.tools.toggleBlank('board'); return handled();
+      case 'l': this.tools.toggle('laser'); return handled();
+      case 'd': this.tools.toggle('draw'); return handled();
+      case 's': this.tools.toggle('spotlight'); return handled();
+      case 'c': if (!drawing) return false; this.tools.clearStrokes(); return handled();
+      case 'u': if (!drawing) return false; this.tools.undoStroke(); return handled();
+      case '1': case '2': case '3': case '4': case '5':
+        if (!drawing) return false;
+        this.tools.setColor(Number(k) - 1);
+        return handled();
+      case 'p': if (!this.opts.onPresenterView) return false; this.opts.onPresenterView(this); return handled();
+      case 'a': if (!this.autoplay.running) return false; this.#toggleAutoplay(); return handled();
+      case '?': this.help.open(); return handled();
+      default: return false;
+    }
+  }
+
   #onKey(e) {
     if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
     const t = e.target instanceof Element ? e.target : null;
     if (t?.closest(TEXT_ENTRY)) return;
+    if (this.#overlayOpen()) return; // they handle their own keys
+    this.autoplay.reset();
     const onControl = !!t?.closest('button, a, summary');
+
+    // A black screen: any key but its own toggle brings the slide back.
+    if (this.tools.blank === 'black' && !['b', '.', 'Escape'].includes(e.key.toLowerCase())) {
+      this.tools.wake();
+      e.preventDefault();
+      return;
+    }
+    if (this.#onToolKey(e)) return;
 
     let move;
     switch (e.key) {
@@ -207,7 +308,13 @@ export class Player {
     this.#showUi();
   }
 
+  #overlayOpen() {
+    return this.overview.isOpen || this.help.isOpen;
+  }
+
   #onPointerDown(e) {
+    this.autoplay.reset(); // someone is interacting, so hold off advancing
+    if (this.tools.capturesPointer || this.#overlayOpen()) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     const interactive = !!(e.target instanceof Element && e.target.closest(INTERACTIVE));
     if (!interactive) this.root.focus({ preventScroll: true });
@@ -217,7 +324,7 @@ export class Player {
   #onPointerUp(e) {
     const p = this.pointer;
     this.pointer = null;
-    if (!p || p.interactive) return;
+    if (!p || p.interactive || this.tools.capturesPointer || this.#overlayOpen()) return;
     const dx = e.clientX - p.x;
     const dy = e.clientY - p.y;
 
@@ -343,6 +450,44 @@ export class Player {
     outgoing?.remove();
   }
 
+  // ---- auto-play and slide timer ------------------------------------------
+
+  #autoplayDelay() {
+    const slide = this.deck.slides[this.nav.state.slide];
+    return slide.timer > 0 ? slide.timer : this.deck.autoplay.seconds;
+  }
+
+  #autoplayTick() {
+    const { slide, step } = this.nav.state;
+    const atEnd = slide === this.nav.slideCount - 1 && step === this.nav.stepCounts[slide];
+    if (!atEnd) this.next();
+    else if (this.deck.autoplay.loop) this.first();
+    else this.autoplay.stop();
+    this.#paintAutoplay();
+  }
+
+  #toggleAutoplay() {
+    this.autoplay.toggle();
+    this.#paintAutoplay();
+    this.announce(this.autoplay.paused ? 'Auto-play paused' : 'Auto-play resumed');
+  }
+
+  #paintAutoplay() {
+    this.autoplayEl.hidden = !this.autoplay.running;
+    this.autoplayEl.textContent = this.autoplay.paused ? 'Auto-play paused' : 'Auto-play';
+    this.autoplayEl.dataset.state = this.autoplay.paused ? 'paused' : 'playing';
+  }
+
+  #tickTimer() {
+    const slide = this.deck?.slides[this.nav?.state.slide];
+    const show = !!(slide?.timer && slide.showTimer);
+    this.timerEl.hidden = !show;
+    if (!show) return;
+    const left = slide.timer - (Date.now() - this.slideStartedAt) / 1000;
+    this.timerEl.textContent = left >= 0 ? formatClock(left) : `-${formatClock(-left)}`;
+    this.timerEl.dataset.state = left <= 0 ? 'over' : left <= 10 ? 'low' : 'ok';
+  }
+
   #fit() {
     if (!this.deck) return;
     const { width, height } = ASPECTS[this.deck.aspect];
@@ -365,11 +510,16 @@ export class Player {
     if (slide !== this.lastSlideIndex) {
       this.live.textContent = `Slide ${slide + 1} of ${total}: ${slideTitle(this.deck.slides[slide], slide)}`;
       this.lastSlideIndex = slide;
+      this.slideStartedAt = Date.now();
+      this.tools?.onSlideChange();
     }
+    this.autoplay?.reset();
+    this.#tickTimer();
     if (this.opts.syncHash) {
       const hash = formatHash(this.nav.state);
       if (location.hash !== hash) history.replaceState(null, '', hash);
     }
     this.opts.onNavigate?.({ slide, step, total });
+    for (const fn of [...this.subscribers]) fn({ slide, step, total, startedAt: this.slideStartedAt });
   }
 }

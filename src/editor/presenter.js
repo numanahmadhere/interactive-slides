@@ -4,11 +4,12 @@
 
 import { h } from '../core/dom.js';
 import { Player } from '../player/player.js';
+import { openPresenterView } from '../player/presenter-view.js';
 import { button } from './ui.js';
 
 const UI_IDLE_MS = 2500;
 
-export function openPresenter({ deck, startIndex, resolveAsset, onClose }) {
+export function openPresenter({ deck, startIndex, resolveAsset, onClose, presenterView = false, onPopupBlocked }) {
   const overlay = h('div', { class: 'ed-present', role: 'dialog', 'aria-label': 'Presentation', 'aria-modal': 'true' });
   const closeBtn = button({ icon: 'close', label: 'Exit presentation', iconOnly: true, onClick: () => close() });
   closeBtn.classList.add('ed-present__close');
@@ -19,8 +20,20 @@ export function openPresenter({ deck, startIndex, resolveAsset, onClose }) {
     syncHash: false,
     startAt: { slide: startIndex, step: 0 },
     resolveAsset,
+    fullscreenTarget: overlay,
+    onPresenterView: (p) => showPresenterView(p),
   });
   overlay.append(closeBtn);
+
+  let view = null;
+  function showPresenterView(p) {
+    if (view && !view.closed) {
+      view.win.focus();
+      return;
+    }
+    view = openPresenterView(p);
+    if (!view) onPopupBlocked?.();
+  }
 
   let closed = false;
   let uiTimer = 0;
@@ -36,9 +49,10 @@ export function openPresenter({ deck, startIndex, resolveAsset, onClose }) {
     e.preventDefault();
     close();
   };
-  // Leaving browser fullscreen (Esc) should leave the presentation too.
+  // Leaving browser fullscreen with Esc leaves the presentation too; toggling it
+  // with the F key does not.
   const onFullscreen = () => {
-    if (!document.fullscreenElement) close();
+    if (!document.fullscreenElement && Date.now() - player.fullscreenToggledAt > 600) close();
   };
 
   function close() {
@@ -61,5 +75,6 @@ export function openPresenter({ deck, startIndex, resolveAsset, onClose }) {
   overlay.requestFullscreen?.().catch(() => {}); // best effort; the overlay works without it
   player.root.focus({ preventScroll: true });
   showUi();
+  if (presenterView) showPresenterView(player);
   return { close, player };
 }

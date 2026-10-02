@@ -131,6 +131,11 @@ export function setAspect(deck, aspect) {
   return deck.aspect === aspect ? deck : { ...deck, aspect };
 }
 
+export function setAutoplay(deck, patch) {
+  const next = { ...deck.autoplay, ...patch };
+  return same(next, deck.autoplay) ? deck : { ...deck, autoplay: next };
+}
+
 export function setDeckTransition(deck, transition) {
   return deck.transition === transition ? deck : { ...deck, transition };
 }
@@ -180,8 +185,13 @@ export function patchSlide(deck, slideId, patch) {
   return replaceSlide(deck, slideId, (slide) => {
     const next = { ...slide };
     for (const [key, value] of Object.entries(patch)) {
-      if (key === 'transition' && !value) delete next.transition;
-      else next[key] = value;
+      const clearing = !value && (key === 'transition' || key === 'timer' || key === 'showTimer');
+      if (clearing) {
+        delete next[key];
+        if (key === 'timer') delete next.showTimer; // nothing left to show
+      } else {
+        next[key] = value;
+      }
     }
     return same(next, slide) ? slide : next;
   });

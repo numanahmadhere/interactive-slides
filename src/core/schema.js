@@ -5,7 +5,7 @@
 // editor itself (imports, localStorage, sample data): it repairs what it can,
 // reports what it repaired, and never returns a deck the renderer cannot draw.
 
-import { uid, isObject, str, oneOf, stripTags } from './util.js';
+import { uid, isObject, str, oneOf, stripTags, clamp } from './util.js';
 import { getLayout } from './layouts.js';
 import { normalizeBlocks, createBlock, blockSteps } from './blocks/index.js';
 import { normalizeThemeRef, DEFAULT_THEME } from './theme.js';
@@ -39,6 +39,7 @@ export function createDeck({ title = 'Untitled deck', theme = DEFAULT_THEME, asp
     theme: { id: theme, overrides: {} },
     aspect,
     transition: 'fade',
+    autoplay: { seconds: 0, loop: true },
     slides: [createSlide('title')],
   };
 }
@@ -71,7 +72,20 @@ function normalizeSlide(raw, index, state) {
 
   const slide = { id, layout: layout.id, blocks, notes: str(raw.notes, '', 20000) };
   if (TRANSITIONS.includes(raw.transition)) slide.transition = raw.transition;
+  // Countdown for the speaker (and optionally shown on screen), in seconds.
+  const timer = Number.isFinite(Number(raw.timer)) ? clamp(Math.round(Number(raw.timer)), 0, 86400) : 0;
+  if (timer > 0) {
+    slide.timer = timer;
+    if (raw.showTimer === true) slide.showTimer = true;
+  }
   return slide;
+}
+
+// Kiosk mode: advance every `seconds` (0 turns it off); `loop` restarts at the end.
+function normalizeAutoplay(raw) {
+  const a = isObject(raw) ? raw : {};
+  const seconds = Number.isFinite(Number(a.seconds)) ? clamp(Math.round(Number(a.seconds)), 0, 3600) : 0;
+  return { seconds, loop: a.loop !== false };
 }
 
 export function normalizeDeck(raw) {
@@ -111,6 +125,7 @@ export function normalizeDeck(raw) {
     theme: normalizeThemeRef(raw.theme, (m) => warnings.push(m)),
     aspect: oneOf(raw.aspect, Object.keys(ASPECTS), '16:9'),
     transition: oneOf(raw.transition, TRANSITIONS, 'fade'),
+    autoplay: normalizeAutoplay(raw.autoplay),
     slides,
   };
   return { deck, warnings };

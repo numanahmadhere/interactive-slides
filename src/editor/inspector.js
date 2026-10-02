@@ -293,6 +293,10 @@ export class Inspector {
         value: slide.transition ?? '',
         onChange: (value) => this.#live(ops.patchSlide(this.editor.deck, id, { transition: value }), `insp:${id}:transition`),
       })),
+      field('Countdown timer (seconds)', numberInput({
+        value: slide.timer || 0, min: 0, max: 86400,
+        onInput: (n) => this.#live(ops.patchSlide(this.editor.deck, id, { timer: n }), `insp:${id}:timer`),
+      }), '0 turns it off. The speaker sees it in the presenter view and it sets the pace for auto-play.'),
       field('Speaker notes', textInput({
         value: slide.notes,
         multiline: true,
@@ -301,6 +305,13 @@ export class Inspector {
         onInput: (value) => this.#live(ops.patchSlide(this.editor.deck, id, { notes: value }), `insp:${id}:notes`),
       })),
     );
+
+    if (slide.timer) {
+      setup.append(toggle({
+        label: 'Show the countdown on screen', value: !!slide.showTimer,
+        onChange: (v) => this.#live(ops.patchSlide(this.editor.deck, id, { showTimer: v }), `insp:${id}:showTimer`),
+      }));
+    }
 
     const content = section('Add content');
     for (const slot of layout.slots) {
@@ -341,6 +352,13 @@ export class Inspector {
           onChange: (t) => this.#rebuilding(ops.setDeckTransition(this.editor.deck, t)),
         })),
         h('p', { class: 'ed-hint', text: `${deck.slides.length} ${deck.slides.length === 1 ? 'slide' : 'slides'}` }),
+      ),
+      section('Auto-play',
+        field('Move on every (seconds)', numberInput({
+          value: deck.autoplay.seconds, min: 0, max: 3600,
+          onInput: (n) => this.#live(ops.setAutoplay(this.editor.deck, { seconds: n }), 'deck:autoplay'),
+        }), '0 turns it off. For kiosks and looping displays. A slide with its own countdown uses that instead. Press A to pause.'),
+        toggle({ label: 'Start over at the end', value: deck.autoplay.loop, onChange: (v) => this.#live(ops.setAutoplay(this.editor.deck, { loop: v }), 'deck:autoplay-loop') }),
       ),
     ];
   }

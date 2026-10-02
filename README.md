@@ -30,7 +30,11 @@ src/core/sanitize.js     whitelist sanitizer for inline rich text and URLs
 src/core/render.js       deck data -> DOM (modes: present, edit, thumb)
 src/core/blocks/         one module per block type, registered in registry.js
 src/player/navigator.js  pure slide/step state machine
-src/player/player.js     stage scaling, input, transitions
+src/player/player.js     stage scaling, input, transitions, tool and view shortcuts
+src/player/tools.js      laser, drawing, spotlight, black and whiteboard screens
+src/player/overview.js   the all-slides grid
+src/player/presenter-view.js  the speaker's second window
+src/player/autoplay.js   kiosk timer
 src/editor/ops.js        pure deck edits (insert, move, patch...), structurally shared
 src/editor/store.js      current deck + undo/redo with coalescing
 src/editor/editor.js     controller: selection, actions, shortcuts, autosave, import/export
@@ -56,13 +60,36 @@ Pasted text is always plain. Settings for the selection are in the right panel.
 | Ctrl/Cmd+D | duplicate the selected block, or the slide |
 | PageUp / PageDown | previous / next slide |
 | Alt+Up / Down (in the slide list) | move the slide |
-| Ctrl/Cmd+Enter | present |
+| Ctrl/Cmd+Enter | present (add Shift for the presenter view) |
 | Ctrl/Cmd+S | save now (autosave runs after every change) |
 
 The working deck and uploaded images are stored in the browser (IndexedDB).
 Use File > Export to get a portable JSON file with images embedded; Import
 reads it back. Images dropped on the canvas or pasted are downscaled to WebP
 when large.
+
+## Presenting
+
+Present from the editor (Ctrl/Cmd+Enter, or the arrow beside the button for "from
+the beginning" and "with presenter view"). Keys while presenting; `?` shows them:
+
+| Key | Action |
+| --- | --- |
+| Arrows, Space, Page keys, Home, End | move through slides and reveal steps |
+| O or G | overview grid of every slide |
+| F | fullscreen |
+| P | presenter view: a second window with notes, next slide, a timer and clock |
+| B or . | black screen (any key brings the slide back) |
+| W | whiteboard you can draw on |
+| L | laser pointer |
+| D | draw on the slide (1 to 5 pick a colour, U undo, C clear); drawings stay with their slide |
+| S | spotlight (scroll to resize) |
+| A | pause or resume auto-play |
+| Esc | turn off the current tool |
+
+Slide settings add a countdown (shown to the speaker, optionally on screen).
+Deck settings add auto-play: advance every N seconds, looping or not, for kiosks.
+Remote control from a phone needs a server and arrives with the live features.
 
 ## Blocks
 
@@ -143,10 +170,8 @@ defaults, normalize, render, steps? })`.
 
 ## Status
 
-Phases 1 (foundation), 2 (editor) and 3 (interactive blocks) are done. Next:
-presenter view with notes and overview (phase 4), standalone export (phase 5).
-Still to come from the interactive list: matching and ordering exercises,
-timelines, a live code sandbox, calculators and charts.
+Phases 1 to 4 are done (foundation, editor, interactive blocks and exercises,
+presenting). Next: standalone export (phase 5), then polish (phase 6).
 
 Known limits: Inter is bundled as the Latin subset only, so other scripts
 fall back to system fonts. Code blocks are not syntax-highlighted yet.

@@ -116,14 +116,16 @@ export class Editor {
     this.redoBtn = button({ icon: 'redo', label: 'Redo (Ctrl+Shift+Z)', iconOnly: true, variant: 'ghost', onClick: () => this.redo() });
     this.statusEl = h('div', { class: 'ed-status', role: 'status', 'aria-live': 'polite' });
     this.fileBtn = button({ label: 'File', onClick: (e, el) => this.openFileMenu(el) });
-    this.presentBtn = button({ icon: 'play', label: 'Present', variant: 'primary', title: 'Present (Ctrl+Enter)', onClick: () => this.present() });
+    this.presentBtn = button({ icon: 'play', label: 'Present', variant: 'primary', title: 'Present from this slide (Ctrl+Enter)', onClick: () => this.present() });
+    this.presentMenuBtn = button({ icon: 'chevron', label: 'More ways to present', iconOnly: true, variant: 'primary', onClick: (e, el) => this.openPresentMenu(el) });
+    const presentGroup = h('div', { class: 'ed-split' }, this.presentBtn, this.presentMenuBtn);
 
     const top = h('header', { class: 'ed-top' },
       h('div', { class: 'ed-logo', 'aria-hidden': 'true' }, svgIcon('M4 5h16v10H4zM8 19h8M12 15v4', { size: 16 })),
       this.titleInput,
       h('div', { class: 'ed-top__group' }, this.undoBtn, this.redoBtn),
       h('div', { class: 'ed-top__spacer' }),
-      this.statusEl, this.fileBtn, this.presentBtn);
+      this.statusEl, this.fileBtn, presentGroup);
 
     const side = h('aside', { class: 'ed-side', 'aria-label': 'Slides panel' });
     const canvasHost = h('div', { class: 'ed-canvas' });
@@ -444,13 +446,28 @@ export class Editor {
 
   // ---- presenting --------------------------------------------------------
 
-  present() {
+  openPresentMenu(anchor) {
+    openMenu({
+      anchor,
+      label: 'Present',
+      items: [
+        { label: 'From this slide', value: 'here', hint: 'Ctrl+Enter' },
+        { label: 'From the beginning', value: 'start' },
+        { label: 'With presenter view', value: 'view', hint: 'Ctrl+Shift+Enter' },
+      ],
+      onPick: (v) => this.present({ fromStart: v === 'start', presenterView: v === 'view' }),
+    });
+  }
+
+  present({ fromStart = false, presenterView = false } = {}) {
     if (this.presenter) return;
     this.canvas.finishEdit();
     this.flushSave();
     this.presenter = openPresenter({
       deck: this.deck,
-      startIndex: this.slideIndex,
+      startIndex: fromStart ? 0 : this.slideIndex,
+      presenterView,
+      onPopupBlocked: () => toast('The presenter view was blocked. Allow pop-ups for this page, then press P.', { kind: 'error', timeout: 7000 }),
       resolveAsset: this.assets.resolve,
       onClose: (index) => {
         this.presenter = null;
@@ -484,7 +501,7 @@ export class Editor {
     }
     if (mod && e.key === 'Enter') {
       e.preventDefault();
-      this.present();
+      this.present({ presenterView: e.shiftKey });
       return;
     }
     if (isTyping(e.target)) return; // native editing owns these keys

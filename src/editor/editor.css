@@ -319,3 +319,7 @@ select.ed-input { appearance: none; padding-right: 28px; background-image: linea
 }
 
 .ed-input--mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 12px; line-height: 1.5; white-space: pre; overflow-x: auto; }
+
+.ed-split { display: inline-flex; }
+.ed-split .ed-btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.ed-split .ed-btn:last-child { width: 30px; border-left-color: rgb(255 255 255 / 0.25); border-top-left-radius: 0; border-bottom-left-radius: 0; }

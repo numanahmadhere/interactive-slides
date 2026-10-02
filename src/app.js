@@ -6,6 +6,7 @@ import './styles/app.css';
 
 import { normalizeDeck } from './core/schema.js';
 import { Player } from './player/player.js';
+import { PresenterView } from './player/presenter-view.js';
 import { sampleDeck } from './samples/sample-deck.js';
 import { interactiveDeck } from './samples/interactive-deck.js';
 import { Editor } from './editor/editor.js';
@@ -23,6 +24,7 @@ if (params.has('play')) {
   if (warnings.length) console.warn('Deck warnings:', warnings);
   window.deck = deck;
   window.player = new Player(mount, deck);
+  Object.assign(window, { Player, PresenterView, normalizeDeck }); // handles for poking at the player from the console
 } else {
   const editor = new Editor(mount);
   window.editor = editor; // handy for debugging in the console

@@ -224,3 +224,20 @@ test('imageKeys reports which props hold images', () => {
   assert.deepEqual(ops.imageKeys(createBlock('hotspots')), ['src']);
   assert.deepEqual(ops.imageKeys(createBlock('heading')), []);
 });
+
+test('clearing a slide timer also clears its show-on-screen flag', () => {
+  let deck = ops.patchSlide(sample(), 's_bleed', { timer: 60 });
+  deck = ops.patchSlide(deck, 's_bleed', { showTimer: true });
+  assert.equal(ops.findSlide(deck, 's_bleed').slide.showTimer, true);
+  deck = ops.patchSlide(deck, 's_bleed', { timer: 0 });
+  const slide = ops.findSlide(deck, 's_bleed').slide;
+  assert.equal('timer' in slide, false);
+  assert.equal('showTimer' in slide, false);
+});
+
+test('setAutoplay merges and no-ops', () => {
+  const deck = sample();
+  const next = ops.setAutoplay(deck, { seconds: 10 });
+  assert.deepEqual(next.autoplay, { seconds: 10, loop: true });
+  assert.equal(ops.setAutoplay(next, { seconds: 10 }), next);
+});
