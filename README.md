@@ -11,6 +11,7 @@ npm install
 npm run dev     # http://localhost:5177 (watch + serve)
 npm run build   # dist/ (with sw.js for offline use) plus dist/single/index.html, a self-contained file
 npm test        # unit tests (node:test)
+npm run relay   # local stand-in for a realtime server, port 5199 (see Live sessions)
 ```
 
 `/` opens the editor (File > Open interactive demo loads a deck that uses every
@@ -45,6 +46,8 @@ src/editor/inspector.js  settings panel generated from each block's `fields`
 src/editor/persist.js    IndexedDB (decks + images), localStorage and memory fallbacks
 src/editor/assets.js     uploaded images, referenced from decks as asset:<id>
 src/editor/search.js     find and replace over a deck (pure; the dialog is find-dialog.js)
+src/live/               live sessions: protocol (pure), host, transport, phone pages, QR
+tools/relay.mjs          a tiny local realtime server for testing on your own network
 src/sw-template.js       the offline service worker; build.mjs stamps a version in and writes dist/sw.js
 src/offline.js           registers it in production builds
 ```
@@ -139,6 +142,7 @@ Interactive (the presenter clicks, the audience sees the result):
 | Timeline | step through stages with a track, dots and next/previous |
 | Fill in the blank | `[answer]` blanks in a sentence, with accepted alternatives `[a\|b]` |
 | Reflection prompt | a private text box that stays on the device |
+| Live poll | a question the audience answers on their phones; bars fill in as votes arrive |
 | Chart | bar, line, pie or donut from pasted spreadsheet data, with a table for screen readers |
 | Calculator | sliders feeding formulas (`people * hours * 48`), evaluated without `eval` |
 | Live code | HTML, CSS and JS the audience can edit, run in an isolated frame with no network |
@@ -197,6 +201,35 @@ Blocks take a `slot` from their slide's layout and an optional `reveal` step
 number. A block type is one file that calls `registerBlock({ type, label,
 defaults, normalize, render, steps? })`.
 
+## Live sessions
+
+Present menu > Go live. A session has two rooms: an **audience** room (6-character
+code, QR code) where phones answer polls and quiz questions and watch the totals,
+and a **remote** room (long secret link) where your own phone moves the slides
+and shows the speaker notes and the next slide's title. Quiz answer keys are never
+sent to phones. Votes count for the slide that is showing; the presenter can click
+an option too. Nothing is stored on a server: totals live in the presenter's page.
+
+Where it runs (chosen in the dialog, saved in this browser):
+
+| Setting | Use it for |
+| --- | --- |
+| Try it here | other tabs of this browser; no setup |
+| Realtime server | phones. A Supabase project (its URL and public anon key; no tables or SQL needed, only Realtime broadcast), or `npm run relay` on your own network |
+
+Phones need to open the app from an address they can reach. A deployed copy of
+`dist/` works; for a local test type this computer's network address (such as
+`http://192.168.1.5:5177`) under "Address phones open". The connection settings
+travel inside the links and QR codes, so phones configure nothing. The anon key
+is public by design; never paste a service-role key.
+
+Limits to know about: a room is protected only by its code (audience) or secret
+(remote). Anyone who knows the code can answer, and a determined person can send
+many votes under made-up ids; each prompt caps at 1000 voters. Fine for a
+workshop, not for anything that must be tamper-proof. The client is
+`@supabase/realtime-js`, tested here against the relay and not against a hosted
+Supabase project.
+
 ## Offline
 
 `npm run build` writes `dist/sw.js`. Served from any http(s) address, the app
@@ -216,7 +249,7 @@ Phases 1 to 6 are done, with phase 6 limited to what was asked for: offline
 support, shapes, icons and diagrams, a theme builder and logo, per-slide
 backgrounds, and find and replace. Not built: an accessibility checker,
 right-to-left languages and their fonts, a template library, Markdown import.
-Phase 7 (phone remote, live audience polls, accounts, cloud storage) needs a server.
+Phase 7 so far: phone remote and live polls and quizzes. Accounts, cloud storage and share links are not built.
 
 Known limits: Inter is bundled as the Latin subset only, so other scripts
 fall back to system fonts. Code blocks are not syntax-highlighted yet.

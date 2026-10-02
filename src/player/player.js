@@ -32,6 +32,7 @@ const DEFAULTS = {
   onPresenterView: undefined, // (player) => void; shows the button and the P key
   fullscreenTarget: undefined, // element to fullscreen instead of the player itself
   autoplay: undefined, // undefined follows the deck's setting, false turns it off
+  live: undefined, // an open live room (see src/live/host.js); lets polls and quizzes show the audience's answers
 };
 
 function keyframes(kind, dir) {
@@ -362,6 +363,7 @@ export class Player {
       index,
       session: this.session,
       actions: this.actions,
+      live: this.opts.live,
     });
   }
 

@@ -393,6 +393,22 @@ export const interactiveDeck = {
       ],
     },
     {
+      id: 's_poll',
+      layout: 'content',
+      notes: 'Open Go live from the Present menu, show the code, and the bars fill as people answer.',
+      blocks: [
+        h('i_pl1', 'Live poll'),
+        {
+          id: 'i_pl2', type: 'poll', slot: 'body',
+          props: {
+            question: 'Which block would you use first?',
+            options: [{ text: 'Quiz question' }, { text: 'Chart' }, { text: 'Diagram' }, { text: 'Calculator' }],
+            multi: false,
+          },
+        },
+      ],
+    },
+    {
       id: 's_end',
       layout: 'title',
       blocks: [

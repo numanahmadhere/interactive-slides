@@ -18,14 +18,16 @@ const V_ALIGN = { start: 'flex-start', center: 'center', end: 'flex-end' };
 const mounts = new WeakMap(); // slide element -> [() => dispose?]
 
 // session: shared interactive state (see session.js)
+// live: the open live room, if any: { counts(id, n), voters(id), vote(id, picks), subscribe(fn) }
 // actions: { next, prev, first, back, goToSlide(id) } for blocks that navigate
 // edit: { patch(blockId, props, { final }) } so blocks can be adjusted on the canvas
-export function makeContext({ deck, slide, mode = 'present', resolveAsset, session = null, actions = null, edit = null } = {}) {
+export function makeContext({ deck, slide, mode = 'present', resolveAsset, session = null, actions = null, edit = null, live = null } = {}) {
   const ctx = {
     deck,
     slide,
     mode,
     session,
+    live,
     actions,
     edit,
     resolveAsset: resolveAsset ?? ((src) => src),
@@ -64,9 +66,9 @@ export function renderBlock(block, ctx, { reveal = true } = {}) {
   return wrap;
 }
 
-export function renderSlide(deck, slide, { mode = 'present', resolveAsset, index = 0, session, actions, edit } = {}) {
+export function renderSlide(deck, slide, { mode = 'present', resolveAsset, index = 0, session, actions, edit, live } = {}) {
   const layout = getLayout(slide.layout) ?? getLayout('blank');
-  const ctx = makeContext({ deck, slide, mode, resolveAsset, session, actions, edit });
+  const ctx = makeContext({ deck, slide, mode, resolveAsset, session, actions, edit, live });
 
   const el = h('section', {
     class: `sp-slide sp-layout-${layout.id}`,

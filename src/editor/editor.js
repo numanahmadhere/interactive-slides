@@ -21,6 +21,10 @@ import { openPresenter } from './presenter.js';
 import { button, openMenu, toast } from './ui.js';
 import { openExportDialog } from './export-dialog.js';
 import { openFindDialog } from './find-dialog.js';
+import { openLiveDialog } from './live-dialog.js';
+import { LiveHost } from '../live/host.js';
+import { createTransport } from '../live/transport.js';
+import { newRoom } from '../live/protocol.js';
 import { Exporter } from './exporter.js';
 
 const SAVE_DELAY_MS = 600;
@@ -41,6 +45,7 @@ export class Editor {
     this.assets = new AssetStore(this.persist);
     this.selection = { slideId: null, blockId: null, slotId: null };
     this.presenter = null;
+    this.live = null; // { host, room, config, base } while a live session is open
     this.session = new Session(); // view state in the editor: open tabs, flipped cards
     this.exporter = new Exporter(this);
     this.saveTimer = 0;
@@ -477,8 +482,9 @@ export class Editor {
         { label: 'From this slide', value: 'here', hint: 'Ctrl+Enter' },
         { label: 'From the beginning', value: 'start' },
         { label: 'With presenter view', value: 'view', hint: 'Ctrl+Shift+Enter' },
+        { label: this.live ? 'Live session...' : 'Go live...', value: 'live', hint: 'Phones, polls' },
       ],
-      onPick: (v) => this.present({ fromStart: v === 'start', presenterView: v === 'view' }),
+      onPick: (v) => (v === 'live' ? openLiveDialog(this) : this.present({ fromStart: v === 'start', presenterView: v === 'view' })),
     });
   }
 
@@ -490,6 +496,7 @@ export class Editor {
       deck: this.deck,
       startIndex: fromStart ? 0 : this.slideIndex,
       presenterView,
+      live: this.live?.host,
       onPopupBlocked: () => toast('The presenter view was blocked. Allow pop-ups for this page, then press P.', { kind: 'error', timeout: 7000 }),
       resolveAsset: this.assets.resolve,
       onClose: (index) => {
@@ -498,6 +505,22 @@ export class Editor {
         if (slide) this.select({ slideId: slide.id });
       },
     });
+  }
+
+  // ---- live sessions -----------------------------------------------------
+
+  startLive({ config, base }) {
+    this.stopLive();
+    const room = newRoom();
+    const host = new LiveHost({ transport: createTransport(config), room });
+    host.start();
+    this.live = { host, room, config, base };
+  }
+
+  stopLive() {
+    if (!this.live) return;
+    this.live.host.stop();
+    this.live = null;
   }
 
   // ---- keyboard and clipboard --------------------------------------------

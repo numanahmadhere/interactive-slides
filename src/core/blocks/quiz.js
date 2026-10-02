@@ -61,8 +61,10 @@ export default registerBlock({
       const classes = `sp-choice${editing && c.correct ? ' is-correct' : ''}`;
       const tag = ctx.mode === 'present' ? 'button' : 'div';
       group.append(h(tag, { class: classes, type: tag === 'button' ? 'button' : undefined, 'data-index': i },
+        h('span', { class: 'sp-choice__bar' }),
         h('span', { class: 'sp-choice__key', text: String.fromCharCode(65 + i) }),
         h('span', { class: 'sp-choice__text', text: c.text }),
+        h('span', { class: 'sp-choice__pct', 'aria-hidden': 'true' }),
         h('span', { class: 'sp-choice__mark' }, editing && c.correct ? svgIcon(CHECK, { size: 36 }) : null)));
     });
 
@@ -135,5 +137,20 @@ export default registerBlock({
       if (!state.done && state.picked.length) settle();
     });
     paint();
+
+    // With a live room open, each choice shows how much of the audience picked it.
+    const live = ctx.live;
+    if (!live) return undefined;
+    const paintLive = () => {
+      const counts = live.counts(block.id, choices.length);
+      const sum = counts.reduce((a, b) => a + b, 0);
+      el.querySelector('.sp-quiz').dataset.live = sum ? 'on' : '';
+      buttons.forEach((button, i) => {
+        button.style.setProperty('--share', String(sum ? counts[i] / sum : 0));
+        button.querySelector('.sp-choice__pct').textContent = sum ? `${Math.round((counts[i] / sum) * 100)}%` : '';
+      });
+    };
+    paintLive();
+    return live.subscribe(paintLive);
   },
 });

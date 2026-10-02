@@ -9,7 +9,7 @@ import { button } from './ui.js';
 
 const UI_IDLE_MS = 2500;
 
-export function openPresenter({ deck, startIndex, resolveAsset, onClose, presenterView = false, onPopupBlocked }) {
+export function openPresenter({ deck, startIndex, resolveAsset, onClose, presenterView = false, onPopupBlocked, live }) {
   const overlay = h('div', { class: 'ed-present', role: 'dialog', 'aria-label': 'Presentation', 'aria-modal': 'true' });
   const closeBtn = button({ icon: 'close', label: 'Exit presentation', iconOnly: true, onClick: () => close() });
   closeBtn.classList.add('ed-present__close');
@@ -22,7 +22,9 @@ export function openPresenter({ deck, startIndex, resolveAsset, onClose, present
     resolveAsset,
     fullscreenTarget: overlay,
     onPresenterView: (p) => showPresenterView(p),
+    live,
   });
+  const detachLive = live?.attach(player);
   overlay.append(closeBtn);
 
   let view = null;
@@ -63,6 +65,7 @@ export function openPresenter({ deck, startIndex, resolveAsset, onClose, present
     document.removeEventListener('fullscreenchange', onFullscreen);
     overlay.removeEventListener('pointermove', showUi);
     const index = player.state.slide;
+    detachLive?.();
     player.destroy();
     overlay.remove();
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});

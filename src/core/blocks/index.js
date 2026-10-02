@@ -12,6 +12,7 @@ import './embed.js';
 import './button.js';
 import './quiz.js';
 import './quiz-results.js';
+import './poll.js';
 import './tabs.js';
 import './accordion.js';
 import './hotspots.js';

@@ -3,6 +3,7 @@ import './styles/slides.css';
 import './player/player.css';
 import './editor/editor.css';
 import './styles/app.css';
+import './live/live.css';
 
 import { normalizeDeck } from './core/schema.js';
 import { Player } from './player/player.js';
@@ -11,11 +12,25 @@ import { sampleDeck } from './samples/sample-deck.js';
 import { interactiveDeck } from './samples/interactive-deck.js';
 import { Editor } from './editor/editor.js';
 import { setupOffline } from './offline.js';
+import { decodeConfig, normalizeCode, normalizeKey } from './live/protocol.js';
+import { mountAudience } from './live/audience.js';
+import { mountRemote } from './live/remote.js';
 
 const mount = document.getElementById('app');
 const params = new URLSearchParams(location.search);
 
-if (params.has('play')) {
+// Phone pages. The connection settings travel in the link (rt=...); with none, the
+// try-it-here mode between tabs of this browser is used.
+const liveConfig = params.has('rt') ? decodeConfig(params.get('rt')) : { kind: 'local' };
+const audienceCode = normalizeCode(params.get('join'));
+const remoteKey = normalizeKey(params.get('remote'));
+
+if (params.has('join') || params.has('remote')) {
+  const ok = liveConfig && (params.has('join') ? audienceCode : remoteKey);
+  if (!ok) mount.textContent = 'This link is not valid. Ask the presenter for a new one.';
+  else if (params.has('join')) mountAudience(mount, { code: audienceCode, config: liveConfig });
+  else mountRemote(mount, { key: remoteKey, config: liveConfig });
+} else if (params.has('play')) {
   // Player-only shell: ?play[&deck=interactive][&theme=paper][&aspect=4:3][&transition=zoom]
   const raw = structuredClone(params.get('deck') === 'interactive' ? interactiveDeck : sampleDeck);
   if (params.has('theme')) raw.theme = { id: params.get('theme') };

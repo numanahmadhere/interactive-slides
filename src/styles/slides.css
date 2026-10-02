@@ -948,3 +948,31 @@ span.sp-chart__swatch.sp-chart__s4 { background: var(--c4); } span.sp-chart__swa
 .sp-diagram[data-count='7'].sp-diagram--cycle .sp-node, .sp-diagram[data-count='8'].sp-diagram--cycle .sp-node { width: 18%; }
 .sp-diagram__arc { fill: none; stroke: var(--sp-muted); stroke-width: 6; stroke-linecap: round; }
 .sp-diagram__head { fill: var(--sp-muted); }
+
+/* ---- live results: poll rows and quiz choices ---- */
+
+.sp-choice, .sp-poll__row { position: relative; overflow: hidden; }
+.sp-choice > *:not(.sp-choice__bar), .sp-poll__row > *:not(.sp-poll__bar) { position: relative; }
+.sp-choice__bar, .sp-poll__bar {
+  position: absolute; inset: 0 auto 0 0; width: calc(var(--share, 0) * 100%); border-radius: inherit;
+  background: color-mix(in srgb, var(--sp-accent-text) 22%, transparent); transition: width 0.4s ease; pointer-events: none;
+}
+.sp-choice__pct, .sp-poll__pct { flex: none; min-width: 3.2em; text-align: right; font-size: 32px; font-weight: 650; font-variant-numeric: tabular-nums; color: var(--sp-muted); }
+.sp-quiz:not([data-live='on']) .sp-choice__bar { display: none; }
+.sp-quiz:not([data-live='on']) .sp-choice__pct { display: none; }
+
+.sp-poll { display: flex; flex-direction: column; gap: 28px; }
+.sp-poll__q { margin: 0; font-size: 52px; font-weight: 650; line-height: 1.18; letter-spacing: -0.02em; text-wrap: balance; white-space: pre-line; }
+.sp-poll__rows { display: grid; gap: 14px; }
+.sp-poll__row {
+  display: flex; align-items: center; gap: 24px; width: 100%; padding: 15px 26px;
+  border: 3px solid var(--sp-border); border-radius: 20px; background: var(--sp-surface); color: var(--sp-fg);
+  font: 500 38px/1.25 var(--sp-font-sans); text-align: left; transition: border-color 0.15s ease;
+}
+button.sp-poll__row { cursor: pointer; }
+button.sp-poll__row:hover { border-color: var(--sp-accent-text); }
+button.sp-poll__row:focus-visible { outline: 5px solid var(--sp-accent-text); outline-offset: 4px; }
+.sp-poll__row.is-picked { border-color: var(--sp-accent-text); }
+.sp-poll__row.is-top .sp-poll__pct { color: var(--sp-accent-text); }
+.sp-poll__text { flex: 1; min-width: 0; }
+.sp-poll__total { margin: 0; color: var(--sp-muted); font-size: 30px; }
