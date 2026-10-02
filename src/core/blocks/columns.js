@@ -17,6 +17,7 @@ export default registerBlock({
     while (cols.length < MIN_COLS) cols.push({ blocks: [] });
     return { cols };
   },
+  fields: [{ type: 'columns' }],
   steps: (block) => [
     ...(block.reveal ? [block.reveal] : []),
     ...block.props.cols.flatMap((c) => c.blocks.flatMap(blockSteps)),

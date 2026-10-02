@@ -48,6 +48,14 @@ export default registerBlock({
     title: str(p.title, 'Embedded content', 200),
     ratio: oneOf(p.ratio, ['16:9', '4:3', '1:1', 'fill'], '16:9'),
   }),
+  fields: [
+    { key: 'url', label: 'Link', type: 'text', placeholder: 'https://www.youtube.com/watch?v=...' },
+    { key: 'title', label: 'Accessible title', type: 'text', placeholder: 'What this embed shows' },
+    { key: 'ratio', label: 'Shape', type: 'select', options: [
+      { value: '16:9', label: 'Widescreen 16:9' }, { value: '4:3', label: 'Standard 4:3' },
+      { value: '1:1', label: 'Square' }, { value: 'fill', label: 'Fill space' },
+    ] },
+  ],
   render: (block, ctx) => {
     const { url, title, ratio } = block.props;
     const embed = resolveEmbed(url);
@@ -62,7 +70,6 @@ export default registerBlock({
       title,
       loading: 'lazy',
       allow: 'fullscreen; autoplay; encrypted-media; picture-in-picture',
-      allowfullscreen: true,
       referrerpolicy: 'strict-origin-when-cross-origin',
       sandbox: 'allow-scripts allow-same-origin allow-presentation allow-popups',
     }));

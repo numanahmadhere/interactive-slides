@@ -1,6 +1,7 @@
 import { h, rich } from '../dom.js';
 import { str, oneOf } from '../util.js';
 import { registerBlock } from './registry.js';
+import { SIZE_OPTIONS } from './fields.js';
 
 const MAX_ITEMS = 50;
 
@@ -17,6 +18,12 @@ export default registerBlock({
     revealItems: p.revealItems === true,
     size: oneOf(p.size, ['sm', 'md', 'lg'], 'md'),
   }),
+  fields: [
+    { key: 'ordered', label: 'Numbered', type: 'toggle' },
+    { key: 'revealItems', label: 'Reveal items one at a time', type: 'toggle' },
+    { key: 'size', label: 'Size', type: 'segmented', options: SIZE_OPTIONS },
+  ],
+  edit: [{ prop: 'items', selector: '', kind: 'list', placeholder: 'List item' }],
   steps: (block) => {
     const { items, revealItems } = block.props;
     if (!revealItems) return block.reveal ? [block.reveal] : [];

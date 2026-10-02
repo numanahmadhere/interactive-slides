@@ -14,6 +14,15 @@ export default registerBlock({
     rounded: p.rounded === true,
     caption: str(p.caption, '', 300),
   }),
+  fields: [
+    { key: 'src', label: 'Image', type: 'image' },
+    { key: 'alt', label: 'Alt text', type: 'text', placeholder: 'Describe the image for screen readers' },
+    { key: 'fit', label: 'Fit', type: 'segmented', options: [
+      { value: 'contain', label: 'Contain' }, { value: 'cover', label: 'Fill' },
+    ] },
+    { key: 'rounded', label: 'Rounded corners', type: 'toggle' },
+    { key: 'caption', label: 'Caption', type: 'text', placeholder: 'Optional caption' },
+  ],
   render: (block, ctx) => {
     const { src, alt, fit, rounded, caption } = block.props;
     const url = safeImageUrl(ctx.resolveAsset(src));
