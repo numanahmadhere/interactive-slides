@@ -28,7 +28,8 @@ export class LiveHost {
   #statusSubs = new Set();
   #opened = { audience: false, remote: false };
 
-  constructor({ transport, room, now = Date.now }) {
+  constructor({ transport, room, title = '', now = Date.now }) {
+    this.title = title;
     this.transport = transport;
     this.room = room;
     this.now = now;
@@ -180,7 +181,7 @@ export class LiveHost {
     if (!this.#audience) return;
     const counts = {};
     for (const p of this.#prompts) counts[p.id] = this.#tally.counts(p.id, p.options.length);
-    this.#audience.send({ t: 'state', title: this.#player?.deck.meta.title ?? '', prompts: this.#prompts, counts });
+    this.#audience.send({ t: 'state', title: this.#player?.deck.meta.title ?? this.title, prompts: this.#prompts, counts });
     this.#publishRemote();
   }
 

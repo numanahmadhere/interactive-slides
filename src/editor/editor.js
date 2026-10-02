@@ -512,7 +512,7 @@ export class Editor {
   startLive({ config, base }) {
     this.stopLive();
     const room = newRoom();
-    const host = new LiveHost({ transport: createTransport(config), room });
+    const host = new LiveHost({ transport: createTransport(config), room, title: this.deck.meta.title });
     host.start();
     this.live = { host, room, config, base };
   }

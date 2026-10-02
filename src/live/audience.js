@@ -25,6 +25,8 @@ export function mountAudience(root, { code, config }) {
   const sent = new Set(); // prompt ids this phone has answered
   let state = { title: '', prompts: [], counts: {}, ended: false };
   let status = 'connecting';
+  let heard = false; // has the presenter said anything yet?
+  let slow = false;
 
   const head = h('header', { class: 'lv-head' }, h('div', { class: 'lv-brand', text: 'Interactive Slides' }), h('div', { class: 'lv-title' }));
   const body = h('main', { class: 'lv-body' });
@@ -42,11 +44,13 @@ export function mountAudience(root, { code, config }) {
       const next = cleanAudienceState(raw);
       if (!next) return;
       state = next;
+      heard = true;
       paint();
     },
   });
   const hello = () => channel.send({ t: 'hello', cid });
   setInterval(hello, HEARTBEAT_MS);
+  setTimeout(() => { slow = true; paint(); }, 6000);
 
   const submit = (prompt) => {
     channel.send({ t: 'vote', cid, id: prompt.id, picks: picks.get(prompt.id) });
@@ -94,7 +98,12 @@ export function mountAudience(root, { code, config }) {
     if (state.ended) {
       body.append(h('p', { class: 'lv-note', text: 'This session has ended. Thanks for taking part.' }));
     } else if (!state.prompts.length) {
-      body.append(h('p', { class: 'lv-note', text: status === 'live' ? 'Connected. The next question will appear here.' : 'Connecting...' }));
+      if (!heard) {
+        body.append(h('p', { class: 'lv-note', text: status === 'live' ? 'Waiting for the presenter...' : 'Connecting...' }));
+        if (slow && status === 'live') body.append(h('p', { class: 'lv-note', text: 'Nothing yet. Check the code, and that the presenter has started the session in the same browser (try-it-here mode) or on the same server.' }));
+      } else {
+        body.append(h('p', { class: 'lv-note', text: 'Connected. The next question will appear here.' }));
+      }
     } else {
       for (const p of state.prompts) body.append(card(p));
     }
