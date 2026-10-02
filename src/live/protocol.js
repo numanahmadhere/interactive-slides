@@ -169,7 +169,8 @@ export function cleanConfig(raw) {
   if (!isObj(raw)) return null;
   if (raw.kind === 'local') return { kind: 'local' };
   if (raw.kind !== 'realtime') return null;
-  const url = text(raw.url, 300).trim().replace(/\/+$/, '');
+  // People paste the Data API address (.../rest/v1/); only the project address is wanted.
+  const url = text(raw.url, 300).trim().replace(/\/(rest|auth|realtime|storage)\/v1\/?.*$/i, '').replace(/\/+$/, '');
   const key = text(raw.key, 2000).trim();
   if (!/^(https?|wss?):\/\/[^\s/]+/i.test(url) || !key) return null;
   return { kind: 'realtime', url, key };

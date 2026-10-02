@@ -81,6 +81,9 @@ test('connection settings round-trip through a link and reject junk', () => {
   assert.deepEqual(cleanConfig(cfg), { kind: 'realtime', url: 'https://abc.supabase.co', key: 'eyJhbGciOi.x.y' });
   assert.deepEqual(decodeConfig(encodeConfig(cleanConfig(cfg))), cleanConfig(cfg));
   assert.deepEqual(decodeConfig(encodeConfig({ kind: 'local' })), { kind: 'local' });
+  for (const pasted of ['https://abc.supabase.co/rest/v1/', 'https://abc.supabase.co/rest/v1', 'https://abc.supabase.co/auth/v1/token']) {
+    assert.equal(cleanConfig({ kind: 'realtime', url: pasted, key: 'k' }).url, 'https://abc.supabase.co', pasted);
+  }
   assert.equal(cleanConfig({ kind: 'realtime', url: 'javascript:alert(1)', key: 'k' }), null);
   assert.equal(cleanConfig({ kind: 'realtime', url: 'https://x.co', key: '' }), null);
   assert.equal(decodeConfig('%%% not base64 %%%'), null);
