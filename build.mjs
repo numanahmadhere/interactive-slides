@@ -4,6 +4,7 @@
 import { build, context } from 'esbuild';
 import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
+import { execSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { serviceWorkerSource } from './src/sw-template.js';
 import { cleanConfig } from './src/live/protocol.js';
@@ -39,6 +40,15 @@ function projectFromEnv(env) {
 }
 
 const project = projectFromEnv(await readEnv());
+
+// A short label for this build: the commit when known (Netlify sets COMMIT_REF), plus the date.
+function buildLabel() {
+  let sha = (process.env.COMMIT_REF ?? '').slice(0, 7);
+  if (!sha) {
+    try { sha = execSync('git rev-parse --short=7 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch { sha = 'local'; }
+  }
+  return `${sha} ${new Date().toISOString().slice(0, 10)}`;
+}
 
 const serve = process.argv.includes('--serve');
 const PORT = 5177;
@@ -80,7 +90,7 @@ const options = {
   format: 'iife',
   target: 'es2022',
   loader: { '.woff2': 'dataurl' },
-  define: { __DEV__: String(serve), __SUPABASE_URL__: JSON.stringify(project.url), __SUPABASE_KEY__: JSON.stringify(project.key) },
+  define: { __BUILD__: JSON.stringify(serve ? 'dev' : buildLabel()), __DEV__: String(serve), __SUPABASE_URL__: JSON.stringify(project.url), __SUPABASE_KEY__: JSON.stringify(project.key) },
   sourcemap: serve,
   minify: !serve,
   logLevel: 'info',

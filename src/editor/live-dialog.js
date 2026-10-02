@@ -5,6 +5,7 @@ import { qrElement } from '../live/qr.js';
 import { baseAddress, isLocalAddress, joinLink, loadSettings, remoteLink, saveSettings } from '../live/config.js';
 import { cleanConfig } from '../live/protocol.js';
 import { loadProject } from '../cloud/config.js';
+import { BUILD } from '../build-info.js';
 import { BUILT_IN_CONFIG } from '../cloud/defaults.js';
 import { button, field, openDialog, select, textInput, toast } from './ui.js';
 
@@ -124,6 +125,7 @@ export function openLiveDialog(editor) {
           qrElement(remoteUrl, { size: 168, label: 'QR code for the presenter remote' }),
           linkRow('Remote link', remoteUrl))),
       h('div', { class: 'ed-live__bar' }, count, status),
+      h('div', { class: 'ed-hint', text: `Build ${BUILD}  ·  ${config.kind === 'local' ? 'this browser only' : new URL(config.url).hostname}` }),
       h('div', { class: 'ed-live__actions' },
         button({ label: 'Clear all votes', onClick: () => { host.resetVotes(); toast('Votes cleared.'); } }),
         button({ label: 'Present', variant: 'primary', onClick: () => { dialog.close(); editor.present(); } }),

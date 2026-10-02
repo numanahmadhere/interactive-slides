@@ -5,8 +5,11 @@
 
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { WebSocketServer } from 'ws';
+import { serveRealtime } from '../../tools/relay.mjs';
 
-export async function startFakeSupabase({ anonKey = 'anon-key', confirmEmails = false } = {}) {
+export async function startFakeSupabase(options = {}) {
+  const { anonKey = 'anon-key', confirmEmails = false } = options;
   const users = new Map(); // email -> { id, email, password, confirmed }
   const tokens = new Map(); // access token -> { userId, expiresAt }
   const refresh = new Map(); // refresh token -> userId
@@ -125,7 +128,9 @@ export async function startFakeSupabase({ anonKey = 'anon-key', confirmEmails = 
     return send(res, 404, { message: 'not found' });
   });
 
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  // Realtime on the same port, like a real project: wss://<project>/realtime/v1/websocket
+  const wss = serveRealtime(new WebSocketServer({ server, path: '/realtime/v1/websocket' }));
+  await new Promise((resolve) => server.listen(options.port ?? 0, '127.0.0.1', resolve));
   return {
     url: `http://127.0.0.1:${server.address().port}`,
     anonKey,
@@ -141,6 +146,6 @@ export async function startFakeSupabase({ anonKey = 'anon-key', confirmEmails = 
       return `#access_token=${t.access_token}&expires_at=${t.expires_at}&expires_in=${t.expires_in}&refresh_token=${t.refresh_token}&token_type=bearer&type=magiclink`;
     },
     expireAllTokens: () => { for (const t of tokens.values()) t.expiresAt = 0; },
-    close: () => new Promise((resolve) => { server.closeAllConnections?.(); server.close(resolve); }),
+    close: () => new Promise((resolve) => { for (const c of wss.clients) c.terminate(); wss.close(); server.closeAllConnections?.(); server.close(resolve); }),
   };
 }

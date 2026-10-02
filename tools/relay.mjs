@@ -9,9 +9,10 @@
 import { WebSocketServer } from 'ws';
 import { pathToFileURL } from 'node:url';
 
-export function startRelay({ port = 5199, host = '0.0.0.0' } = {}) {
+// Serve the protocol on an existing WebSocketServer (the fake Supabase project in
+// the tests shares one port for REST, auth and realtime this way).
+export function serveRealtime(wss) {
   const topics = new Map(); // topic -> Set(socket)
-  const wss = new WebSocketServer({ port, host });
 
   const reply = (ws, msg, status, response = {}) => ws.send(JSON.stringify({
     topic: msg.topic, event: 'phx_reply', ref: msg.ref, join_ref: msg.join_ref, payload: { status, response },
@@ -53,6 +54,11 @@ export function startRelay({ port = 5199, host = '0.0.0.0' } = {}) {
     });
   });
 
+  return wss;
+}
+
+export function startRelay({ port = 5199, host = '0.0.0.0' } = {}) {
+  const wss = serveRealtime(new WebSocketServer({ port, host }));
   return new Promise((resolve) => wss.on('listening', () => resolve({
     port: wss.address().port,
     close: () => new Promise((done) => { for (const c of wss.clients) c.terminate(); wss.close(() => done()); }),

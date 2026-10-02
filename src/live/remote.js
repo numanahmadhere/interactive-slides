@@ -4,6 +4,7 @@
 import { h } from '../core/dom.js';
 import { remoteChannel, cleanRemoteState } from './protocol.js';
 import { createTransport } from './transport.js';
+import { BUILD } from '../build-info.js';
 
 export function mountRemote(root, { key, config }) {
   let state = null;
@@ -53,7 +54,7 @@ export function mountRemote(root, { key, config }) {
       notes.textContent = status === 'live' ? 'Connected. Start presenting on the computer and this page follows it.' : 'Connecting...';
       next.textContent = '';
     }
-    foot.textContent = status === 'error' ? 'Connection problem. Retrying...' : '';
+    foot.replaceChildren(status === 'error' ? 'Connection problem. Retrying...' : '', h('div', { class: 'lv-build', text: `build ${BUILD}  ·  ${config.kind === 'local' ? 'this browser only' : new URL(config.url).hostname}` }));
   }
   paint();
   return { close: () => { channel.close(); transport.close(); } };

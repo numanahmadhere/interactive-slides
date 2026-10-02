@@ -40,3 +40,5 @@
 .lv-pad--sec { background: var(--lv-surface); color: var(--lv-fg); }
 .lv-pad--pri { background: var(--lv-accent); border-color: var(--lv-accent); color: var(--lv-accent-fg); }
 .lv-pad:active { transform: scale(0.98); }
+
+.lv-build { margin-top: 6px; font-size: 11px; opacity: 0.8; overflow-wrap: anywhere; }

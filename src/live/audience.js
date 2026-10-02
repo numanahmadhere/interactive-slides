@@ -6,6 +6,7 @@ import { h } from '../core/dom.js';
 import { uid } from '../core/util.js';
 import { audienceChannel, cleanAudienceState } from './protocol.js';
 import { createTransport } from './transport.js';
+import { BUILD } from '../build-info.js';
 
 const HEARTBEAT_MS = 20_000;
 
@@ -108,7 +109,7 @@ export function mountAudience(root, { code, config }) {
       for (const p of state.prompts) body.append(card(p));
     }
     if (focusIndex >= 0) body.querySelectorAll('.lv-opt')[focusIndex]?.focus();
-    foot.textContent = status === 'error' ? 'Connection problem. Retrying...' : '';
+    foot.replaceChildren(status === 'error' ? 'Connection problem. Retrying...' : '', h('div', { class: 'lv-build', text: `Session ${code}  ·  build ${BUILD}  ·  ${config.kind === 'local' ? 'this browser only' : new URL(config.url).hostname}` }));
   }
   paint();
   return { close: () => { channel.close(); transport.close(); } };
