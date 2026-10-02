@@ -17,6 +17,8 @@ import { mountAudience } from './live/audience.js';
 import { mountRemote } from './live/remote.js';
 import { mountViewer } from './cloud/viewer.js';
 import { defaultConfig } from './live/config.js';
+import { getCloud } from './cloud/instance.js';
+import { toast } from './editor/ui.js';
 
 const mount = document.getElementById('app');
 const params = new URLSearchParams(location.search);
@@ -51,7 +53,26 @@ if (params.has('view')) {
 } else {
   const editor = new Editor(mount);
   window.editor = editor; // handy for debugging in the console
-  editor.start().catch((err) => {
+
+  // Coming back from "Continue with Google" or an emailed sign-in link: the session
+  // is in the address. Finish signing in, then tidy the address.
+  const finishSignIn = async () => {
+    const cloud = getCloud();
+    if (!cloud || !/(access_token|error_description)=/.test(location.hash)) return null;
+    let notice;
+    try {
+      if (await cloud.consumeRedirect(location.hash)) notice = { text: `Signed in as ${cloud.user.email}. Your decks now save online.` };
+    } catch (err) {
+      notice = { text: err.message || 'Sign-in did not complete.', kind: 'error' };
+    }
+    history.replaceState(null, '', location.pathname + location.search);
+    return notice ?? null;
+  };
+
+  // The session must be in place before the editor starts, so it knows who is signed in.
+  finishSignIn().then((signInNotice) => editor.start().then(() => {
+    if (signInNotice) toast(signInNotice.text, { kind: signInNotice.kind ?? 'info', timeout: 7000 });
+  })).catch((err) => {
     console.error(err);
     mount.textContent = 'The editor failed to start. See the console for details.';
   });

@@ -247,32 +247,47 @@ The build stops with an error if the key is a `service_role` or secret key. For
 local development put the same two lines in `.env.local` (git-ignored). Without
 them the app still works and falls back to typing the project in File > Cloud.
 
-## Accounts, cloud decks and share links
+## Accounts, online saving and share links
 
-File > Cloud. Connect your own Supabase project (its address and public anon
-key), create an account or sign in, then save the open deck, reopen or delete
-saved decks, and turn a share link on or off. Setup, once per project:
+Sign in once and decks save online by themselves, on any device you sign in on.
+The top bar shows the state ("Sign in to save online", "Saving online...", "Saved
+online", "Not saved online"). Each edit is sent a few seconds after you stop
+typing; a failed save says so and retries on its own. The copy in your browser
+is always saved too, so nothing is lost while offline. A deck that is merely
+opened (from the cloud, or New deck) is not saved until you edit it.
+
+File > Cloud (or the top-bar button) opens the account panel: sign in, see saved
+decks, open or delete them, turn a share link on or off, save a copy.
+
+Sign-in options, all private to the account:
+
+| Option | Notes |
+| --- | --- |
+| Continue with Google | appears only if you switch Google on in Supabase (Authentication > Providers > Google, with an OAuth client from Google Cloud) |
+| Email me a sign-in link | works out of the box; opening the link on the same device signs you in. Supabase's built-in email sender is rate-limited, so for many users add your own SMTP |
+| Password | tucked under "Use a password instead" |
+
+Setup, once per project:
 
 1. SQL Editor: paste and run `supabase/schema.sql`. It creates a `decks` table
    where each person can read and change only their own rows (row level
    security), and a `get_shared_deck` function that returns one deck for an exact
    unguessable token. Anonymous visitors cannot read or list the table.
-2. Authentication > Providers: leave Email on. If "Confirm email" is on, new
-   accounts must click the link in an email before signing in.
+2. Authentication > URL Configuration: set Site URL to your production address and
+   add it (and `http://localhost:5177` if you test locally) under Redirect URLs.
+   Sign-in links and Google send people back to these addresses.
+3. Authentication > Providers: leave Email on. After your own account exists you
+   can turn off new sign-ups (the project key is public by design).
 
-A share link looks like `?view=TOKEN&rt=...`. It opens a read-only player for
-anyone, with no account. Stopping sharing deletes the token, so the old link
-stops working; sharing again makes a new one. Images are stored inside the deck
-(25 MB limit in all). Save is manual, and Save never overwrites a cloud deck
-with a different deck (after Open then Undo it offers "Save this deck" as a
-new one). Passwords go straight to your project and are never stored here; the
-signed-in session is kept in this browser until you sign out.
+A share link looks like `?view=TOKEN`. It opens a read-only player for anyone,
+with no account. Stopping sharing deletes the token, so the old link stops
+working. Images are stored inside the deck (25 MB limit in all). Two devices
+editing the same deck at once is last write wins: there is no merging.
 
-Tested against a local stand-in for the Supabase endpoints (sign-up, token
-refresh, per-owner rows, the share function), which checks the client's
-behaviour. It does not run `schema.sql`, so the access rules themselves have
-not been exercised against real Postgres: try signing in as two accounts and
-confirm each sees only its own decks before relying on it.
+Tested against a local stand-in for the Supabase endpoints (sign-up, sign-in
+links, token refresh, per-owner rows, the share function) and in a browser
+against it. That does not run `schema.sql` or send real email, so before relying
+on it: sign in as two accounts and confirm each sees only its own decks.
 
 ## Offline
 

@@ -1,18 +1,20 @@
-// Account and cloud decks: connect a project, sign in, save the open deck, open
-// or delete saved decks, and turn a share link on or off.
+// Online saving: sign in (Google or an emailed link, with a password as a fallback),
+// see and open saved decks, share links, delete. Saving itself is automatic once you
+// are signed in (src/cloud/sync.js); the buttons here are for the cases you want to
+// control yourself.
 
 import { h } from '../core/dom.js';
-import { Cloud, browserStore } from '../cloud/client.js';
-import { getLink, loadProject, saveProject, setLink } from '../cloud/config.js';
-import { baseAddress, loadSettings } from '../live/config.js';
 import { BUILT_IN_PROJECT } from '../cloud/defaults.js';
+import { getLink, loadProject, saveProject, setLink } from '../cloud/config.js';
+import { getCloud, resetCloud } from '../cloud/instance.js';
+import { baseAddress, loadSettings } from '../live/config.js';
 import { cleanConfig, encodeConfig } from '../live/protocol.js';
 import { button, field, openDialog, textInput, toast } from './ui.js';
 
 export function shareLink(project, token) {
   const url = new URL(baseAddress(loadSettings()));
   url.searchParams.set('view', token);
-  url.searchParams.set('rt', encodeConfig({ kind: 'realtime', url: project.url, key: project.key }));
+  if (!BUILT_IN_PROJECT) url.searchParams.set('rt', encodeConfig({ kind: 'realtime', url: project.url, key: project.key }));
   return url.toString();
 }
 
@@ -21,18 +23,22 @@ const when = (iso) => {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
 };
 
+// Where the sign-in link and Google send the browser back to.
+const returnAddress = () => `${location.origin}${location.pathname}`;
+
 export function openCloudDialog(editor) {
   const content = h('div', { class: 'ed-cloud' });
-  const dialog = openDialog({ title: 'Cloud', content, wide: true });
+  const dialog = openDialog({ title: 'Online saving', content, wide: true });
   let project = loadProject();
-  let cloud = project ? new Cloud({ ...project, store: browserStore() }) : null;
+  let cloud = getCloud();
   let decks = null; // null until loaded
   let busy = false;
   let confirmDelete = null;
+  let providers = null;
   const status = h('div', { class: 'ed-dialog-status', role: 'status', 'aria-live': 'polite' });
   const say = (text, kind = '') => { status.textContent = text; status.dataset.kind = kind; };
 
-  // Runs an async step with the buttons locked and any failure shown inline.
+  // Runs an async step with a message shown, and any failure shown inline.
   const run = (label, fn) => async () => {
     if (busy) return;
     busy = true;
@@ -42,7 +48,7 @@ export function openCloudDialog(editor) {
     } catch (err) {
       console.error(err);
       say(err.message || 'That did not work.', 'error');
-      if (err.code === 'signed_out') render();
+      if (err.code === 'signed_out') { editor.sync.refresh(); render(); }
     } finally {
       busy = false;
     }
@@ -52,22 +58,24 @@ export function openCloudDialog(editor) {
     content.replaceChildren(!project ? projectView() : !cloud.user ? signInView() : decksView(), status);
   }
 
-  // ---- 1. which project -----------------------------------------------------------
+  // ---- 1. which project (only when this build has none built in) -----------------
 
   function projectView() {
     let url = '';
     let key = '';
     return h('div', null,
-      h('p', { class: 'ed-hint', text: 'Save decks to your own Supabase project and share them with a link. Run supabase/schema.sql in the project once (SQL Editor), and turn on email sign-in.' }),
+      h('p', { class: 'ed-hint', text: 'Save decks to your own Supabase project and share them with a link. Run supabase/schema.sql in the project once (SQL Editor).' }),
       field('Project address', textInput({ placeholder: 'https://your-project.supabase.co', spellcheck: false, onInput: (v) => { url = v; } })),
       field('Public key', textInput({ placeholder: 'The anon (public) key', spellcheck: false, onInput: (v) => { key = v; } }),
         'Only the public "anon" key. Never paste a service-role key. It is stored in this browser.'),
       h('div', { class: 'ed-live__actions' }, button({ label: 'Connect', variant: 'primary', onClick: () => {
         const clean = cleanConfig({ kind: 'realtime', url, key });
         if (!clean) return say('Enter the project address (https://...) and the public key.', 'error');
-        project = { url: clean.url, key: clean.key };
-        saveProject(project);
-        cloud = new Cloud({ ...project, store: browserStore() });
+        saveProject({ url: clean.url, key: clean.key });
+        resetCloud();
+        project = loadProject();
+        cloud = getCloud();
+        editor.sync.refresh();
         say('');
         render();
       } })));
@@ -76,31 +84,53 @@ export function openCloudDialog(editor) {
   // ---- 2. sign in -----------------------------------------------------------------
 
   function signInView() {
+    if (providers === null) {
+      providers = { google: false, email: true };
+      cloud.providers().then((p) => { providers = p; if (!cloud.user && content.isConnected) render(); });
+    }
     let email = '';
     let password = '';
     const emailInput = textInput({ placeholder: 'you@example.com', spellcheck: false, onInput: (v) => { email = v.trim(); } });
     emailInput.type = 'email';
-    emailInput.autocomplete = 'username';
+    emailInput.autocomplete = 'email';
     const passInput = textInput({ placeholder: 'Password (6 or more characters)', spellcheck: false, onInput: (v) => { password = v; } });
     passInput.type = 'password';
     passInput.autocomplete = 'current-password';
-    const check = () => (email && password ? true : (say('Enter your email and password.', 'error'), false));
-    return h('div', null,
-      BUILT_IN_PROJECT ? null : h('p', { class: 'ed-hint', text: `Project: ${project.url}` }),
-      field('Email', emailInput), field('Password', passInput),
+    const needEmail = () => (email ? true : (say('Enter your email address.', 'error'), false));
+
+    const google = providers.google
+      ? button({ label: 'Continue with Google', variant: 'primary', onClick: () => { location.href = cloud.oauthUrl('google', returnAddress()); } })
+      : null;
+
+    const passwordBox = h('details', { class: 'ed-cloud__pw' },
+      h('summary', { text: 'Use a password instead' }),
+      field('Password', passInput),
       h('div', { class: 'ed-live__actions' },
-        BUILT_IN_PROJECT ? null : button({ label: 'Change project', onClick: () => { project = null; cloud = null; saveProject(null); localStorage.removeItem('interactive-slides:cloud:session'); say(''); render(); } }),
         button({ label: 'Create account', onClick: run('Creating your account...', async () => {
-          if (!check()) return;
+          if (!needEmail() || !password) return say('Enter your email and password.', 'error');
           const r = await cloud.signUp(email, password);
+          editor.sync.refresh();
           if (r.signedIn) { say(''); await loadDecks(); } else say('Account created. Check your email for a confirmation link, then sign in.');
         }) }),
-        button({ label: 'Sign in', variant: 'primary', onClick: run('Signing in...', async () => {
-          if (!check()) return;
+        button({ label: 'Sign in', onClick: run('Signing in...', async () => {
+          if (!needEmail() || !password) return say('Enter your email and password.', 'error');
           await cloud.signIn(email, password);
+          editor.sync.refresh();
           say('');
           await loadDecks();
         }) })));
+
+    return h('div', null,
+      h('p', { class: 'ed-hint', text: 'Sign in once and your decks save online by themselves, on any device. You stay signed in on this browser.' }),
+      google,
+      field('Email', emailInput, google ? 'Or get a sign-in link by email.' : 'We email you a link; opening it signs you in. No password needed.'),
+      h('div', { class: 'ed-live__actions' },
+        button({ label: 'Email me a sign-in link', variant: google ? '' : 'primary', onClick: run('Sending the link...', async () => {
+          if (!needEmail()) return;
+          await cloud.sendEmailLink(email, returnAddress());
+          say(`Check ${email} for a sign-in link and open it on this device.`);
+        }) })),
+      passwordBox);
   }
 
   // ---- 3. decks -------------------------------------------------------------------
@@ -116,32 +146,23 @@ export function openCloudDialog(editor) {
       return h('p', { class: 'ed-hint', text: 'Loading...' });
     }
     const linked = getLink(editor.deck);
-    const saveHere = button({ label: linked && decks.some((d) => d.id === linked) ? 'Save changes' : 'Save this deck', variant: 'primary', onClick: run('Saving...', () => save(false)) });
-    const rows = decks.map((d) => deckRow(d, linked));
+    const here = linked && decks.some((d) => d.id === linked);
+    const stateText = { saving: 'Saving...', saved: 'This deck is saved online.', error: `Not saved yet: ${editor.sync.error}`, idle: 'Edits save online automatically.' }[editor.sync.state] ?? '';
     return h('div', null,
       h('div', { class: 'ed-cloud__who' },
         h('span', { text: `Signed in as ${cloud.user.email}` }),
-        button({ label: 'Sign out', onClick: run('Signing out...', async () => { await cloud.signOut(); decks = null; say(''); render(); }) })),
+        button({ label: 'Sign out', onClick: run('Signing out...', async () => { await cloud.signOut(); editor.sync.refresh(); decks = null; say(''); render(); }) })),
+      h('p', { class: 'ed-hint', text: `${stateText} Images are stored inside the deck, up to 25 MB in all.` }),
       h('div', { class: 'ed-live__actions' },
-        linked && decks.some((d) => d.id === linked) ? button({ label: 'Save as a new copy', onClick: run('Saving...', () => save(true)) }) : null,
-        saveHere),
-      h('p', { class: 'ed-hint', text: 'Images are stored inside the deck, up to 25 MB in all.' }),
-      rows.length ? h('ul', { class: 'ed-cloud__list' }, ...rows) : h('p', { class: 'ed-hint', text: 'No saved decks yet.' }));
-  }
-
-  async function save(asCopy) {
-    editor.canvas.finishEdit();
-    const data = await editor.assets.inline(editor.deck);
-    data.meta = { ...data.meta, updatedAt: new Date().toISOString() };
-    const title = editor.deck.meta.title;
-    const linked = getLink(editor.deck);
-    let row;
-    if (linked && !asCopy && decks.some((d) => d.id === linked)) row = await cloud.update(linked, { title, data });
-    else row = await cloud.create({ title, data });
-    setLink(row.id, editor.deck);
-    decks = await cloud.list();
-    say(`Saved "${title}".`);
-    render();
+        here ? button({ label: 'Save as a new copy', onClick: run('Saving a copy...', async () => { await editor.sync.flush({ asCopy: true, manual: true }); decks = await cloud.list(); say('Saved a copy.'); render(); }) }) : null,
+        button({ label: here ? 'Save now' : 'Save this deck online', variant: 'primary', onClick: run('Saving...', async () => {
+          editor.canvas.finishEdit();
+          const row = await editor.sync.flush({ manual: true });
+          decks = await cloud.list();
+          say(row ? `Saved "${editor.deck.meta.title}".` : 'Already saved.');
+          render();
+        }) })),
+      decks.length ? h('ul', { class: 'ed-cloud__list' }, ...decks.map((d) => deckRow(d, linked))) : h('p', { class: 'ed-hint', text: 'No saved decks yet.' }));
   }
 
   function deckRow(d, linked) {

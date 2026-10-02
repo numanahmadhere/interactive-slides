@@ -23,7 +23,9 @@ import { openExportDialog } from './export-dialog.js';
 import { openFindDialog } from './find-dialog.js';
 import { openLiveDialog } from './live-dialog.js';
 import { openCloudDialog } from './cloud-dialog.js';
-import { setLink } from '../cloud/config.js';
+import { getLink, setLink } from '../cloud/config.js';
+import { getCloud } from '../cloud/instance.js';
+import { CloudSync } from '../cloud/sync.js';
 import { LiveHost } from '../live/host.js';
 import { createTransport } from '../live/transport.js';
 import { newRoom } from '../live/protocol.js';
@@ -48,6 +50,7 @@ export class Editor {
     this.selection = { slideId: null, blockId: null, slotId: null };
     this.presenter = null;
     this.live = null; // { host, room, config, base } while a live session is open
+    this.sync = null; // saves the deck to the cloud by itself when signed in
     this.session = new Session(); // view state in the editor: open tabs, flipped cards
     this.exporter = new Exporter(this);
     this.saveTimer = 0;
@@ -100,6 +103,16 @@ export class Editor {
     this.#bindGlobal();
     this.#syncAll({ selectionChanged: true });
     this.#setSaveState('saved');
+    this.sync = new CloudSync({
+      getCloud,
+      getDeck: () => this.deck,
+      inline: (d) => this.assets.inline(d),
+      getLink,
+      setLink,
+      onState: (state, error) => this.#paintCloud(state, error),
+    });
+    this.sync.markClean(this.deck); // what was just loaded is not an edit
+    this.#paintCloud(this.sync.state, '');
 
     if (!this.persist.durable) {
       toast('Browser storage is unavailable, so this deck will not survive a reload. Export it to keep it.', { kind: 'error', timeout: 9000 });
@@ -123,6 +136,8 @@ export class Editor {
     this.undoBtn = button({ icon: 'undo', label: 'Undo (Ctrl+Z)', iconOnly: true, variant: 'ghost', onClick: () => this.undo() });
     this.redoBtn = button({ icon: 'redo', label: 'Redo (Ctrl+Shift+Z)', iconOnly: true, variant: 'ghost', onClick: () => this.redo() });
     this.statusEl = h('div', { class: 'ed-status', role: 'status', 'aria-live': 'polite' });
+    this.cloudBtn = button({ label: 'Cloud', variant: 'ghost', title: 'Online saving', onClick: () => openCloudDialog(this) });
+    this.cloudBtn.hidden = true;
     this.fileBtn = button({ label: 'File', onClick: (e, el) => this.openFileMenu(el) });
     this.presentBtn = button({ icon: 'play', label: 'Present', variant: 'primary', title: 'Present from this slide (Ctrl+Enter)', onClick: () => this.present() });
     this.presentMenuBtn = button({ icon: 'chevron', label: 'More ways to present', iconOnly: true, variant: 'primary', onClick: (e, el) => this.openPresentMenu(el) });
@@ -133,7 +148,7 @@ export class Editor {
       this.titleInput,
       h('div', { class: 'ed-top__group' }, this.undoBtn, this.redoBtn),
       h('div', { class: 'ed-top__spacer' }),
-      this.statusEl, this.fileBtn, presentGroup);
+      this.statusEl, this.cloudBtn, this.fileBtn, presentGroup);
 
     const side = h('aside', { class: 'ed-side', 'aria-label': 'Slides panel' });
     const canvasHost = h('div', { class: 'ed-canvas' });
@@ -200,6 +215,7 @@ export class Editor {
     const quiet = source === 'inspector' || source === 'canvas-edit' || source === 'title';
     this.#syncAll({ source, rebuildInspector: !quiet });
     this.#scheduleSave();
+    this.sync?.changed();
   }
 
   // Re-draw every view from the current state (after an edit that may not have
@@ -218,6 +234,16 @@ export class Editor {
   }
 
   // ---- autosave ----------------------------------------------------------
+
+  // The small online-saving button in the top bar.
+  #paintCloud(state, error) {
+    const labels = { signedout: 'Sign in to save online', idle: 'Online saving on', saving: 'Saving online...', saved: 'Saved online', error: 'Not saved online' };
+    this.cloudBtn.hidden = state === 'off';
+    const span = this.cloudBtn.querySelector('span') ?? this.cloudBtn;
+    span.textContent = labels[state] ?? 'Cloud';
+    this.cloudBtn.dataset.state = state;
+    this.cloudBtn.title = state === 'error' ? `${error} It will try again.` : 'Online saving';
+  }
 
   #setSaveState(state) {
     this.saveState = state;
@@ -438,6 +464,7 @@ export class Editor {
     this.canvas.finishEdit();
     this.commit(deck);
     setLink(cloudId, deck); // a different deck is no longer the one saved in the cloud
+    this.sync?.markClean(this.deck); // saved on the first edit, not on being opened
     this.select({ slideId: deck.slides[0].id });
   }
 

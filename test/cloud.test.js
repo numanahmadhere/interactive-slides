@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Cloud, CloudError, memoryStore } from '../src/cloud/client.js';
+import { CloudSync } from '../src/cloud/sync.js';
 import { startFakeSupabase } from './helpers/fake-supabase.js';
 import { normalizeDeck } from '../src/core/schema.js';
 
@@ -167,4 +168,145 @@ test('a publishable (non-JWT) key goes in apikey only; a JWT anon key is also th
   const old = new Cloud({ url: 'https://x.supabase.co', key: jwt, fetch: fake(seen) });
   await assert.rejects(old.getShared('x'.repeat(22)), { code: 'not_found' });
   assert.equal(seen[1].Authorization, `Bearer ${jwt}`);
+});
+
+test('email link: requested with a redirect, then the returned address signs this browser in', async () => {
+  const srv = await startFakeSupabase({ anonKey: KEY });
+  try {
+    const c = client(srv);
+    assert.deepEqual(await c.providers(), { google: false, email: true });
+    srv.state.googleEnabled = true;
+    assert.equal((await c.providers()).google, true);
+
+    await c.sendEmailLink('me@example.com', 'https://site.test/');
+    assert.deepEqual(srv.state.otpRequests, [{ email: 'me@example.com', redirectTo: 'https://site.test/', createUser: true }]);
+
+    assert.equal(await c.consumeRedirect(''), false, 'an ordinary address is not a sign-in');
+    assert.equal(await c.consumeRedirect('#3'), false);
+    assert.equal(await c.consumeRedirect(srv.emailLinkHash('me@example.com')), true);
+    assert.equal(c.user.email, 'me@example.com');
+    assert.deepEqual(await c.list(), []);
+
+    const oauth = new URL(c.oauthUrl('google', 'https://site.test/'));
+    assert.equal(oauth.pathname, '/auth/v1/authorize');
+    assert.equal(oauth.searchParams.get('provider'), 'google');
+    assert.equal(oauth.searchParams.get('redirect_to'), 'https://site.test/');
+  } finally { await srv.close(); }
+});
+
+test('a forged or failed return is not trusted', async () => {
+  const srv = await startFakeSupabase({ anonKey: KEY });
+  try {
+    const c = client(srv);
+    await assert.rejects(c.consumeRedirect('#access_token=forged&refresh_token=x&expires_in=3600'), CloudError);
+    assert.equal(c.user, null, 'tokens the project does not recognise sign nobody in');
+    await assert.rejects(c.consumeRedirect('#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired'), /invalid or has expired/);
+    assert.equal(c.user, null);
+  } finally { await srv.close(); }
+});
+
+// ---- automatic saving ---------------------------------------------------------------
+
+function syncRig({ signedIn = true } = {}) {
+  const calls = [];
+  const rows = new Map();
+  let n = 0;
+  const cloud = {
+    user: signedIn ? { id: 'u1', email: 'a@b.co' } : null,
+    failNext: null,
+    async create({ title, data }) { if (cloud.failNext) { const e = cloud.failNext; cloud.failNext = null; throw e; } const row = { id: `d${++n}` }; rows.set(row.id, { title, data }); calls.push(['create', title]); return row; },
+    async update(id, { title, data }) { if (!rows.has(id)) throw new CloudError('gone', { code: 'not_found' }); rows.set(id, { title, data }); calls.push(['update', id, title]); return { id }; },
+  };
+  const rig = { calls, rows, cloud, deck: { meta: { title: 'One', createdAt: 'c1' } }, link: null, states: [], timers: [] };
+  rig.sync = new CloudSync({
+    getCloud: () => rig.cloudOn === false ? null : cloud,
+    getDeck: () => rig.deck,
+    inline: async (d) => structuredClone(d),
+    getLink: (d) => (rig.link && rig.link.at === d.meta.createdAt ? rig.link.id : null),
+    setLink: (id, d) => { rig.link = id ? { id, at: d.meta.createdAt } : null; },
+    onState: (s, e) => rig.states.push(e ? `${s}:${e}` : s),
+    delayMs: 5,
+  });
+  return rig;
+}
+const tick = (ms = 40) => new Promise((r) => setTimeout(r, ms));
+
+test('auto-save: first edit creates the cloud deck, later edits update it, one request per pause', async () => {
+  const rig = syncRig();
+  rig.deck = { meta: { title: 'One', createdAt: 'c1' }, v: 1 };
+  rig.sync.changed(); rig.sync.changed(); rig.sync.changed();
+  await tick();
+  assert.deepEqual(rig.calls, [['create', 'One']]);
+  assert.equal(rig.sync.state, 'saved');
+  rig.deck = { meta: { title: 'Renamed', createdAt: 'c1' }, v: 2 };
+  rig.sync.changed();
+  await tick();
+  assert.deepEqual(rig.calls.slice(1), [['update', 'd1', 'Renamed']]);
+});
+
+test('auto-save: nothing is sent when signed out, and nothing for a deck that was just loaded', async () => {
+  const out = syncRig({ signedIn: false });
+  assert.equal(out.sync.state, 'signedout');
+  out.sync.changed();
+  await tick();
+  assert.deepEqual(out.calls, []);
+
+  const rig = syncRig();
+  const loaded = { meta: { title: 'From cloud', createdAt: 'c9' } };
+  rig.deck = loaded;
+  rig.sync.markClean(loaded);
+  rig.sync.changed(); // a commit that replaced the deck
+  rig.sync.markClean(loaded);
+  await tick();
+  assert.deepEqual(rig.calls, []);
+});
+
+test('auto-save: no cloud project means the feature is simply off', async () => {
+  const rig = syncRig();
+  rig.cloudOn = false;
+  rig.sync.refresh();
+  assert.equal(rig.sync.state, 'off');
+  rig.sync.changed();
+  await tick();
+  assert.deepEqual(rig.calls, []);
+});
+
+test('auto-save: a failed save reports it and recovers on the next change', async () => {
+  const rig = syncRig();
+  rig.cloud.failNext = new CloudError('Could not reach the server.', { code: 'network' });
+  rig.deck = { meta: { title: 'One', createdAt: 'c1' }, v: 1 };
+  rig.sync.changed();
+  await tick();
+  assert.equal(rig.sync.state, 'error');
+  assert.match(rig.sync.error, /reach the server/);
+  rig.deck = { meta: { title: 'One', createdAt: 'c1' }, v: 2 };
+  rig.sync.changed();
+  await tick();
+  assert.equal(rig.sync.state, 'saved');
+  assert.deepEqual(rig.calls, [['create', 'One']]);
+});
+
+test('auto-save: a deck deleted elsewhere is saved again as a new one; edits made mid-save are not lost', async () => {
+  const rig = syncRig();
+  rig.deck = { meta: { title: 'One', createdAt: 'c1' }, v: 1 };
+  rig.link = { id: 'gone', at: 'c1' };
+  rig.sync.changed();
+  await tick();
+  assert.deepEqual(rig.calls, [['create', 'One']]);
+  assert.equal(rig.link.id, 'd1');
+
+  const slow = syncRig();
+  slow.deck = { meta: { title: 'A', createdAt: 'c1' }, v: 1 };
+  const origCreate = slow.cloud.create;
+  slow.cloud.create = async (x) => { slow.deck = { meta: { title: 'B', createdAt: 'c1' }, v: 2 }; return origCreate(x); };
+  slow.sync.changed();
+  await tick(80);
+  assert.deepEqual(slow.calls.map((c) => c.slice(0, 1).concat(c.at(-1))), [['create', 'A'], ['update', 'B']]);
+});
+
+test('manual save reports failures to the caller', async () => {
+  const rig = syncRig();
+  rig.cloud.failNext = new CloudError('Boom', { code: 'x' });
+  rig.deck = { meta: { title: 'One', createdAt: 'c1' }, v: 1 };
+  await assert.rejects(rig.sync.flush({ manual: true }), /Boom/);
 });

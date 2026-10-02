@@ -68,6 +68,44 @@ export class Cloud {
     return { signedIn: false, needsConfirmation: true };
   }
 
+  // Which one-click providers the project has switched on (public settings endpoint).
+  async providers() {
+    try {
+      const s = await this.#call('/auth/v1/settings', { auth: 'anon' });
+      return { google: !!s?.external?.google, email: s?.external?.email !== false };
+    } catch {
+      return { google: false, email: true };
+    }
+  }
+
+  // Emails a one-time sign-in link (creating the account on first use). Opening the
+  // link on this device returns here with the session in the address; see consumeRedirect.
+  async sendEmailLink(email, redirectTo) {
+    await this.#call(`/auth/v1/otp?redirect_to=${encodeURIComponent(redirectTo)}`, { method: 'POST', body: { email, create_user: true }, auth: 'anon' });
+  }
+
+  // Where to send the browser to sign in with a provider such as Google.
+  oauthUrl(provider, redirectTo) {
+    return `${this.url}/auth/v1/authorize?provider=${encodeURIComponent(provider)}&redirect_to=${encodeURIComponent(redirectTo)}`;
+  }
+
+  // Call with location.hash on page load. Returns false when the address is not a
+  // sign-in return, true when it signed this browser in, and throws when the
+  // provider reported a problem. The tokens are only trusted after the project
+  // itself confirms them by naming the user.
+  async consumeRedirect(hash) {
+    const params = new URLSearchParams(String(hash ?? '').replace(/^#/, ''));
+    if (params.get('error') || params.get('error_description')) {
+      throw new CloudError(params.get('error_description')?.replace(/\+/g, ' ') ?? 'Sign-in did not complete.', { code: params.get('error_code') ?? 'oauth' });
+    }
+    const access = params.get('access_token');
+    const refresh = params.get('refresh_token');
+    if (!access || !refresh) return false;
+    const user = await this.#call('/auth/v1/user', { auth: access });
+    this.#keep({ access_token: access, refresh_token: refresh, expires_in: Number(params.get('expires_in')) || 3600, expires_at: Number(params.get('expires_at')) || undefined, user });
+    return true;
+  }
+
   async signIn(email, password) {
     this.#keep(await this.#call('/auth/v1/token?grant_type=password', { method: 'POST', body: { email, password }, auth: 'anon' }));
   }

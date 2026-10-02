@@ -11,7 +11,7 @@ export async function startFakeSupabase({ anonKey = 'anon-key', confirmEmails = 
   const tokens = new Map(); // access token -> { userId, expiresAt }
   const refresh = new Map(); // refresh token -> userId
   const decks = []; // { id, owner, title, data, share_token, created_at, updated_at }
-  const state = { clock: () => Date.now() / 1000, requests: [], ttl: 3600 };
+  const state = { clock: () => Date.now() / 1000, requests: [], ttl: 3600, googleEnabled: false, otpRequests: [] };
 
   const iso = () => new Date(state.clock() * 1000).toISOString(); // Postgres timestamps come back as ISO strings
 
@@ -74,6 +74,17 @@ export async function startFakeSupabase({ anonKey = 'anon-key', confirmEmails = 
         return send(res, 200, issue(user));
       }
     }
+    if (url.pathname === '/auth/v1/settings') return send(res, 200, { external: { email: true, google: state.googleEnabled === true } });
+    if (url.pathname === '/auth/v1/otp') {
+      if (!body?.email) return send(res, 422, { msg: 'To signup, please provide your email' });
+      state.otpRequests.push({ email: body.email, redirectTo: url.searchParams.get('redirect_to'), createUser: body.create_user });
+      return send(res, 200, {});
+    }
+    if (url.pathname === '/auth/v1/user') {
+      if (!authed) return send(res, 401, { msg: 'invalid JWT' });
+      const user = [...users.values()].find((u) => u.id === authed.userId);
+      return send(res, 200, { id: user.id, email: user.email });
+    }
     if (url.pathname === '/auth/v1/logout') {
       tokens.delete(bearer);
       return send(res, 204);
@@ -122,6 +133,13 @@ export async function startFakeSupabase({ anonKey = 'anon-key', confirmEmails = 
     users,
     decks,
     tokens,
+    // What the browser address looks like after someone opens the emailed link.
+    emailLinkHash: (email) => {
+      let user = users.get(email);
+      if (!user) users.set(email, (user = { id: randomUUID(), email, password: '', confirmed: true }));
+      const t = issue(user);
+      return `#access_token=${t.access_token}&expires_at=${t.expires_at}&expires_in=${t.expires_in}&refresh_token=${t.refresh_token}&token_type=bearer&type=magiclink`;
+    },
     expireAllTokens: () => { for (const t of tokens.values()) t.expiresAt = 0; },
     close: () => new Promise((resolve) => { server.closeAllConnections?.(); server.close(resolve); }),
   };
