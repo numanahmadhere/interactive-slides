@@ -61,9 +61,9 @@ const hosts = new Set((js.match(/https?:\/\/[a-zA-Z0-9.-]+/g) ?? []).map((u) => 
 const allowed = new RegExp('(^|\\.)(' + [
   'supabase\\.co', 'supabase\\.com', 'w3\\.org', 'localhost', '127\\.0\\.0\\.1', 'example\\.com', 'yoursite\\.com', '192\\.168\\.1\\.5',
   'youtube\\.com', 'youtube-nocookie\\.com', 'vimeo\\.com', 'loom\\.com',
-  'github\\.com', 'github\\.io', 'mozilla\\.org', 'wikipedia\\.org', 'ecma-international\\.org',
+  'github\\.com', 'github\\.io', 'openxmlformats\\.org', 'microsoft\\.com', 'purl\\.org', 'stuartk\\.com', 'mozilla\\.org', 'wikipedia\\.org', 'ecma-international\\.org',
 ].join('|') + ')$');
-const unexpected = [...hosts].filter((h) => !allowed.test(h));
+const unexpected = [...hosts].filter((h) => /[a-z0-9]/i.test(h) && !allowed.test(h)); // "https://..." in help text is not a host
 check('no unexpected third-party hosts in the bundle', unexpected.length === 0, unexpected.slice(0, 8).join(', '));
 
 // 8. size budgets (gzip is what people download)
