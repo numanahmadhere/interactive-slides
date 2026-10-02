@@ -310,3 +310,21 @@ test('manual save reports failures to the caller', async () => {
   rig.deck = { meta: { title: 'One', createdAt: 'c1' }, v: 1 };
   await assert.rejects(rig.sync.flush({ manual: true }), /Boom/);
 });
+
+test('a deck that was only opened or created never claims to be saved online', async () => {
+  const rig = syncRig();
+  const fresh = { meta: { title: 'Brand new', createdAt: 'c7' } };
+  rig.deck = fresh;
+  rig.sync.changed(); // the commit that replaced the deck
+  rig.sync.markClean(fresh);
+  assert.equal(rig.sync.state, 'idle', 'no cloud copy exists, so it is not "saved"');
+  await tick();
+  assert.deepEqual(rig.calls, []);
+
+  const opened = { meta: { title: 'From cloud', createdAt: 'c8' } };
+  rig.deck = opened;
+  rig.link = { id: 'd9', at: 'c8' };
+  rig.sync.changed();
+  rig.sync.markClean(opened);
+  assert.equal(rig.sync.state, 'saved', 'it has a cloud copy, which matches');
+});

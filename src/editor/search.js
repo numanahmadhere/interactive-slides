@@ -18,8 +18,14 @@ const MAX_SNIPPETS = 2;
 export function makeMatcher({ query, caseSensitive = false, wholeWord = false }) {
   if (!query) return null;
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const body = wholeWord ? `(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])` : escaped;
-  return new RegExp(body, `g${caseSensitive ? '' : 'i'}u`);
+  const flags = `g${caseSensitive ? '' : 'i'}u`;
+  if (!wholeWord) return new RegExp(escaped, flags);
+  try {
+    return new RegExp(`(?<![\\p{L}\\p{N}_])${escaped}(?![\\p{L}\\p{N}_])`, flags);
+  } catch {
+    // Safari before 16.4 has no lookbehind: \b is a close second for most words.
+    return new RegExp(`\\b${escaped}\\b`, flags);
+  }
 }
 
 const plainOf = (s) => (RICHISH.test(s) ? decodeEntities(s.replace(/<[^>]*>/g, '')) : s);

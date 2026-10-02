@@ -28,9 +28,10 @@ import { getCloud } from '../cloud/instance.js';
 import { CloudSync } from '../cloud/sync.js';
 import { LiveHost } from '../live/host.js';
 import { createTransport } from '../live/transport.js';
-import { newRoom } from '../live/protocol.js';
+import { newRoom, cleanSavedSession } from '../live/protocol.js';
 import { Exporter } from './exporter.js';
 
+const LIVE_SESSION_KEY = 'interactive-slides:live-session';
 const SAVE_DELAY_MS = 600;
 const SAVE_LABELS = { saved: 'Saved', saving: 'Saving...', error: 'Not saved' };
 
@@ -113,6 +114,7 @@ export class Editor {
     });
     this.sync.markClean(this.deck); // what was just loaded is not an edit
     this.#paintCloud(this.sync.state, '');
+    this.#resumeLive();
 
     if (!this.persist.durable) {
       toast('Browser storage is unavailable, so this deck will not survive a reload. Export it to keep it.', { kind: 'error', timeout: 9000 });
@@ -546,18 +548,31 @@ export class Editor {
 
   // ---- live sessions -----------------------------------------------------
 
-  startLive({ config, base }) {
+  // room is given when resuming a session after a reload; otherwise a new one is made.
+  startLive({ config, base, room = newRoom() }) {
     this.stopLive();
-    const room = newRoom();
     const host = new LiveHost({ transport: createTransport(config), room, title: this.deck.meta.title });
     host.start();
     this.live = { host, room, config, base };
+    // Kept for this tab only, so an accidental reload picks the same session up again
+    // (same code, same links) instead of stranding everyone on their phones.
+    try { sessionStorage.setItem(LIVE_SESSION_KEY, JSON.stringify({ room, config, base })); } catch { /* no resume without it */ }
   }
 
   stopLive() {
+    try { sessionStorage.removeItem(LIVE_SESSION_KEY); } catch { /* nothing to remove */ }
     if (!this.live) return;
     this.live.host.stop();
     this.live = null;
+  }
+
+  #resumeLive() {
+    try {
+      const saved = cleanSavedSession(JSON.parse(sessionStorage.getItem(LIVE_SESSION_KEY) ?? 'null'));
+      if (!saved) return;
+      this.startLive(saved);
+      toast(`Live session ${saved.room.code} resumed. Phones will reconnect and send their answers again.`, { timeout: 7000 });
+    } catch { /* a bad saved session is ignored */ }
   }
 
   // ---- keyboard and clipboard --------------------------------------------

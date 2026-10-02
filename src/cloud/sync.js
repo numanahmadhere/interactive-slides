@@ -45,7 +45,9 @@ export class CloudSync {
     this.#savedDeck = deck;
     this.timers.clear(this.#timer);
     this.#timer = 0;
-    if (this.state === 'saving' && !this.#running) this.#set('saved');
+    // Nothing is waiting to be saved. Say "saved" only if this deck really has a cloud
+    // copy (it was opened from the cloud); a brand new or imported deck has none yet.
+    if (this.state === 'saving' && !this.#running) this.#set(this.getLink(deck) ? 'saved' : 'idle');
   }
 
   // Call after every edit.

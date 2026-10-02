@@ -67,7 +67,7 @@ const playerRuntime = {
         write: false,
         bundle: true,
         format: 'iife',
-        target: 'es2022',
+        target: ['es2022', 'safari15', 'chrome100', 'firefox100'],
         minify: true,
         loader: { '.woff2': 'dataurl' },
         metafile: true,
@@ -88,7 +88,8 @@ const options = {
   outdir: 'dist',
   bundle: true,
   format: 'iife',
-  target: 'es2022',
+  // iPhones in the audience may be a few iOS versions behind: compile for Safari 15 and up.
+  target: ['es2022', 'safari15', 'chrome100', 'firefox100'],
   loader: { '.woff2': 'dataurl' },
   define: { __BUILD__: JSON.stringify(serve ? 'dev' : buildLabel()), __DEV__: String(serve), __SUPABASE_URL__: JSON.stringify(project.url), __SUPABASE_KEY__: JSON.stringify(project.key) },
   sourcemap: serve,

@@ -2,10 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   newRoom, normalizeCode, normalizeKey, parseVote, parseCommand, parseHello, cleanAudienceState, cleanRemoteState,
-  cleanConfig, encodeConfig, decodeConfig, Tally, LIMITS,
+  cleanConfig, encodeConfig, decodeConfig, Tally, LIMITS, isStale, STALE_AFTER_MS, cleanSavedSession,
 } from '../src/live/protocol.js';
 import { collectPrompts } from '../src/live/prompts.js';
-import { LiveHost } from '../src/live/host.js';
+import { LiveHost, HEARTBEAT_MS } from '../src/live/host.js';
 import { normalizeDeck } from '../src/core/schema.js';
 
 const poll = { id: 'p1', kind: 'poll', question: 'Q', options: ['a', 'b', 'c'], multi: false };
@@ -200,4 +200,56 @@ test('host: votes tally for the current slide only, remote commands drive the pl
   assert.deepEqual(host.counts('poll1', 2), [2, 2], 'the presenter can answer too');
   host.stop();
   assert.equal(host.status, 'stopped');
+});
+
+test('presenter heartbeat: phones give up after three missed beats, never before', () => {
+  assert.equal(STALE_AFTER_MS, 3 * HEARTBEAT_MS);
+  assert.equal(isStale(null, 1e9), false, 'nothing heard yet is "waiting", not "lost"');
+  assert.equal(isStale(1000, 1000 + STALE_AFTER_MS), false);
+  assert.equal(isStale(1000, 1000 + STALE_AFTER_MS + 1), true);
+});
+
+test('the host keeps announcing itself while live, and stops when ended', async () => {
+  const h = hub();
+  const room = newRoom();
+  const host = new LiveHost({ transport: h.transport(), room });
+  const heard = [];
+  h.transport().open(`is-a-${room.code}`, { onMessage: (m) => heard.push(m), onStatus() {} });
+  host.start();
+  const { deck } = normalizeDeck({ slides: [{ layout: 'content', blocks: [] }] });
+  host.attach(fakePlayer(deck));
+  await wait(20);
+  const before = heard.length;
+  assert.ok(before >= 1);
+  host.stop();
+  assert.equal(heard.at(-1).ended, true, 'phones are told the session ended');
+});
+
+test('a presenter page that restarts announces a new session id, so phones know to re-send', async () => {
+  const h = hub();
+  const room = newRoom();
+  const heard = [];
+  h.transport().open(`is-a-${room.code}`, { onMessage: (m) => heard.push(cleanAudienceState(m)), onStatus() {} });
+  const first = new LiveHost({ transport: h.transport(), room });
+  const second = new LiveHost({ transport: h.transport(), room });
+  assert.notEqual(first.sessionId, second.sessionId);
+  first.start();
+  await wait(20);
+  assert.equal(heard.at(-1).session, first.sessionId);
+  first.stop();
+  second.start();
+  await wait(20);
+  assert.equal(heard.at(-1).session, second.sessionId);
+  second.stop();
+});
+
+test('a saved session is only resumed if it is complete and valid', () => {
+  const room = newRoom();
+  const good = { room, config: { kind: 'realtime', url: 'https://abc.supabase.co', key: 'k' }, base: 'https://x.test/' };
+  assert.deepEqual(cleanSavedSession(good), good);
+  assert.equal(cleanSavedSession({ ...good, room: { code: 'BAD', key: room.key } }), null);
+  assert.equal(cleanSavedSession({ ...good, room: { code: room.code, key: 'short' } }), null);
+  assert.equal(cleanSavedSession({ ...good, config: { kind: 'realtime', url: 'javascript:1', key: 'k' } }), null);
+  assert.equal(cleanSavedSession(null), null);
+  assert.equal(cleanSavedSession('x'), null);
 });

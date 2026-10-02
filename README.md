@@ -11,6 +11,7 @@ npm install
 npm run dev     # http://localhost:5177 (watch + serve)
 npm run build   # dist/ (with sw.js for offline use) plus dist/single/index.html, a self-contained file
 npm test        # unit tests (node:test)
+npm run qa      # pre-deploy check: tests, a production build, inspections (see docs/QA.md)
 npm run relay   # local stand-in for a realtime server, port 5199 (see Live sessions)
 ```
 
@@ -224,6 +225,11 @@ Phones need to open the app from an address they can reach. A deployed copy of
 `http://192.168.1.5:5177`) under "Address phones open". The connection settings
 travel inside the links and QR codes, so phones configure nothing. The anon key
 is public by design; never paste a service-role key.
+
+If the presenter's page reloads, the session resumes with the same code and links
+(kept for that browser tab), and phones send their answers again so the totals
+rebuild. If the presenter goes silent for 45 seconds, phones say so and recover
+on their own.
 
 Limits to know about: a room is protected only by its code (audience) or secret
 (remote). Anyone who knows the code can answer, and a determined person can send

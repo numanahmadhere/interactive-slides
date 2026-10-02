@@ -4,7 +4,7 @@
 
 import { h } from '../core/dom.js';
 import { uid } from '../core/util.js';
-import { audienceChannel, cleanAudienceState } from './protocol.js';
+import { audienceChannel, cleanAudienceState, isStale } from './protocol.js';
 import { createTransport } from './transport.js';
 import { BUILD } from '../build-info.js';
 
@@ -27,6 +27,9 @@ export function mountAudience(root, { code, config }) {
   let state = { title: '', prompts: [], counts: {}, ended: false };
   let status = 'connecting';
   let heard = false; // has the presenter said anything yet?
+  let lastHeardAt = null;
+  let session = null; // which presenter page is talking; a new one has lost the totals
+  const answeredIn = new Map(); // prompt id -> the presenter session that has our answer
   let slow = false;
 
   const head = h('header', { class: 'lv-head' }, h('div', { class: 'lv-brand', text: 'Interactive Slides' }), h('div', { class: 'lv-title' }));
@@ -44,18 +47,36 @@ export function mountAudience(root, { code, config }) {
     onMessage: (raw) => {
       const next = cleanAudienceState(raw);
       if (!next) return;
+      if (next.session) session = next.session;
       state = next;
       heard = true;
+      lastHeardAt = Date.now();
+      // A presenter page that restarted (a reload) has lost the totals. Whenever a
+      // question we answered shows up and that page has not got our answer, send it again.
+      if (!next.ended) {
+        for (const p of next.prompts) {
+          if (sent.has(p.id) && picks.get(p.id)?.length && answeredIn.get(p.id) !== session) {
+            channel.send({ t: 'vote', cid, id: p.id, picks: picks.get(p.id) });
+            answeredIn.set(p.id, session);
+          }
+        }
+      }
       paint();
     },
   });
   const hello = () => channel.send({ t: 'hello', cid });
   setInterval(hello, HEARTBEAT_MS);
   setTimeout(() => { slow = true; paint(); }, 6000);
+  let wasStale = false;
+  setInterval(() => {
+    const stale = isStale(lastHeardAt, Date.now()) && !state.ended;
+    if (stale !== wasStale) { wasStale = stale; paint(); }
+  }, 5000);
 
   const submit = (prompt) => {
     channel.send({ t: 'vote', cid, id: prompt.id, picks: picks.get(prompt.id) });
     sent.add(prompt.id);
+    answeredIn.set(prompt.id, session);
     paint();
   };
 
@@ -64,10 +85,10 @@ export function mountAudience(root, { code, config }) {
     const answered = sent.has(prompt.id);
     const counts = state.counts[prompt.id];
     const total = counts ? counts.reduce((a, b) => a + b, 0) : 0;
-    const list = h('div', { class: 'lv-options', role: prompt.multi ? 'group' : 'radiogroup', 'aria-label': prompt.question });
+    const list = h('div', { class: 'lv-options', role: 'group', 'aria-label': prompt.question });
     prompt.options.forEach((text, i) => {
       const on = chosen.includes(i);
-      const btn = h('button', { type: 'button', class: `lv-opt${on ? ' is-on' : ''}`, role: prompt.multi ? 'checkbox' : 'radio', 'aria-checked': String(on) },
+      const btn = h('button', { type: 'button', class: `lv-opt${on ? ' is-on' : ''}`, 'aria-pressed': String(on) },
         h('span', { class: 'lv-opt__bar', style: answered && total ? `width:${(counts[i] / total) * 100}%` : 'width:0' }),
         h('span', { class: 'lv-opt__key', text: String.fromCharCode(65 + i) }),
         h('span', { class: 'lv-opt__text', text }),
@@ -96,6 +117,9 @@ export function mountAudience(root, { code, config }) {
     // Keep the focused option focused across a repaint.
     const focusIndex = [...body.querySelectorAll('.lv-opt')].indexOf(document.activeElement);
     body.replaceChildren();
+    if (isStale(lastHeardAt, Date.now()) && !state.ended) {
+      body.append(h('p', { class: 'lv-warn', role: 'alert', text: 'Lost contact with the presenter. Answers may not be counted until they are back. This page will update by itself.' }));
+    }
     if (state.ended) {
       body.append(h('p', { class: 'lv-note', text: 'This session has ended. Thanks for taking part.' }));
     } else if (!state.prompts.length) {

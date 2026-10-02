@@ -4,6 +4,7 @@
 // decides which slide is current, which prompts are open, and what the totals are.
 
 import { slideTitle } from '../core/schema.js';
+import { uid } from '../core/util.js';
 import { stripTags } from '../core/util.js';
 import { collectPrompts } from './prompts.js';
 import {
@@ -13,6 +14,7 @@ import {
 const HOST_CID = 'host';
 const PUBLISH_DELAY_MS = 250;
 const SEEN_WINDOW_MS = 60_000;
+export const HEARTBEAT_MS = 15_000; // phones treat 3 missed beats as "presenter offline"
 
 export class LiveHost {
   #audience = null;
@@ -27,9 +29,11 @@ export class LiveHost {
   #status = 'idle';
   #statusSubs = new Set();
   #opened = { audience: false, remote: false };
+  #heartbeat = 0;
 
   constructor({ transport, room, title = '', now = Date.now }) {
     this.title = title;
+    this.sessionId = uid('h_'); // changes whenever a presenter page (re)starts; phones re-send their answers when it does
     this.transport = transport;
     this.room = room;
     this.now = now;
@@ -51,6 +55,7 @@ export class LiveHost {
 
   start() {
     this.#setStatus('connecting');
+    this.#heartbeat = setInterval(() => { if (this.#status === 'live') this.#publishNow(); }, HEARTBEAT_MS);
     const onStatus = (which) => (s) => {
       if (s === 'connected') {
         this.#opened[which] = true;
@@ -70,9 +75,10 @@ export class LiveHost {
   stop() {
     this.#setStatus('stopped');
     clearTimeout(this.#timer);
+    clearInterval(this.#heartbeat);
     this.#detach?.();
     this.#detach = null;
-    this.#audience?.send({ t: 'state', ended: true });
+    this.#audience?.send({ t: 'state', session: this.sessionId, ended: true });
     this.#audience?.close();
     this.#remote?.close();
     this.#audience = this.#remote = null;
@@ -181,7 +187,7 @@ export class LiveHost {
     if (!this.#audience) return;
     const counts = {};
     for (const p of this.#prompts) counts[p.id] = this.#tally.counts(p.id, p.options.length);
-    this.#audience.send({ t: 'state', title: this.#player?.deck.meta.title ?? this.title, prompts: this.#prompts, counts });
+    this.#audience.send({ t: 'state', session: this.sessionId, title: this.#player?.deck.meta.title ?? this.title, prompts: this.#prompts, counts });
     this.#publishRemote();
   }
 

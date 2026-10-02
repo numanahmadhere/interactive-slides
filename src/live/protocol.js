@@ -79,7 +79,7 @@ export function cleanAudienceState(raw) {
       if (Array.isArray(row)) counts[p.id] = p.options.map((_, i) => int(row[i], 0, 1_000_000) ?? 0);
     }
   }
-  return { title: text(raw.title, 200), prompts, counts, ended: raw.ended === true };
+  return { title: text(raw.title, 200), prompts, counts, ended: raw.ended === true, session: text(raw.session, 40) };
 }
 
 // What the host tells the phone remote.
@@ -184,4 +184,21 @@ export function decodeConfig(token) {
   } catch {
     return null;
   }
+}
+
+// ---- is the presenter still there? ----------------------------------------------------
+
+// The host announces itself every 15 s; three missed announcements means it is gone
+// (laptop asleep, Wi-Fi dropped, page reloaded).
+export const STALE_AFTER_MS = 45_000;
+export const isStale = (lastHeardAt, now, limit = STALE_AFTER_MS) => lastHeardAt !== null && now - lastHeardAt > limit;
+
+// A session saved by the presenter's page so a reload can pick it up again.
+export function cleanSavedSession(raw) {
+  if (!isObj(raw)) return null;
+  const code = normalizeCode(raw.room?.code);
+  const key = normalizeKey(raw.room?.key);
+  const config = cleanConfig(raw.config);
+  if (!code || !key || !config) return null;
+  return { room: { code, key }, config, base: text(raw.base, 300) };
 }
