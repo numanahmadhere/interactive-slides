@@ -1,7 +1,9 @@
 // The offline service worker, as source text. build.mjs stamps a version into it
-// and writes dist/sw.js. The whole app is four files (fonts are inlined), so all
-// of them are cached up front and served cache-first; a new build gets a new
-// cache name, and activating it removes the old ones.
+// and writes dist/sw.js. The whole app is four files (fonts are inlined). They are
+// cached up front, but the network is asked first so that anyone online always gets
+// the newest build (an audience member must never see a stale page); the cache
+// answers only when the network fails or is slow. A new build gets a new cache
+// name, and activating it removes the old ones.
 
 export const CACHE_PREFIX = 'interactive-slides-';
 export const SHELL_FILES = ['./', 'index.html', 'app.js', 'app.css'];
@@ -26,11 +28,30 @@ self.addEventListener('activate', (event) => {
       .then(() => self.clients.claim()));
 });
 
+const NETWORK_WAIT_MS = 4000;
+
+// Ask the network, refresh the cached copy with what comes back, and fall back to
+// the cache if the network fails or does not answer in time.
+function networkFirst(request) {
+  const cached = () => caches.match(request, { ignoreSearch: true });
+  const fresh = fetch(request).then((response) => {
+    if (response.ok && response.type === 'basic') {
+      const copy = response.clone();
+      caches.open(CACHE).then((cache) => cache.put(request.mode === 'navigate' ? './' : request, copy)).catch(() => {});
+    }
+    return response;
+  });
+  fresh.catch(() => {}); // a late failure after the cache already answered is not an error
+  const timeout = new Promise((resolve) => setTimeout(() => resolve(null), NETWORK_WAIT_MS));
+  return Promise.race([fresh, timeout])
+    .then((response) => response ?? cached().then((hit) => hit ?? fresh))
+    .catch(() => cached().then((hit) => hit ?? Response.error()));
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
-  // ignoreSearch: ?play and ?deck=... are the same page as far as the cache is concerned.
-  event.respondWith(caches.match(request, { ignoreSearch: true }).then((hit) => hit || fetch(request)));
+  event.respondWith(networkFirst(request));
 });
 `;
 }

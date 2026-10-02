@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { serviceWorkerSource, CACHE_PREFIX, SHELL_FILES } from '../src/sw-template.js';
 
 // Runs the generated worker against a tiny fake of the service worker globals.
-function boot(version, { existing = [], origin = 'https://example.test' } = {}) {
+function boot(version, { existing = [], origin = 'https://example.test', network = async (req) => ({ from: 'network', url: req.url }), impatient = false } = {}) {
   const handlers = {};
   const stores = new Map(existing.map((name) => [name, new Map()]));
   const fetched = [];
@@ -31,8 +31,10 @@ function boot(version, { existing = [], origin = 'https://example.test' } = {}) 
     skipWaiting: async () => { state.skipped = true; },
     clients: { claim: async () => { state.claimed = true; } },
   };
-  const fetchFn = async (req) => { fetched.push(req.url); return { from: 'network' }; };
-  new Function('self', 'caches', 'Request', 'fetch', 'URL', serviceWorkerSource(version))(self, cacheApi, Request, fetchFn, URL);
+  const fetchFn = async (req) => { fetched.push(req.url); return network(req); };
+  const timer = impatient ? (fn) => queueMicrotask(fn) : setTimeout; // an impatient worker gives up on the network at once
+  const ResponseStub = { error: () => ({ from: 'error' }) };
+  new Function('self', 'caches', 'Request', 'fetch', 'URL', 'setTimeout', 'Response', serviceWorkerSource(version))(self, cacheApi, Request, fetchFn, URL, timer, ResponseStub);
   const run = async (type, event) => {
     let promise;
     await handlers[type]({ ...event, waitUntil: (p) => { promise = p; }, respondWith: (p) => { promise = p; } });
@@ -57,20 +59,34 @@ test('activate removes older versions and nothing else', async () => {
   assert.ok(sw.state.claimed);
 });
 
-test('fetch: cached files come from the cache, ignoring the query string', async () => {
+test('fetch: the network is asked first, so an online visitor always gets the newest file', async () => {
   const sw = boot('v1');
   await sw.run('install', {});
-  const req = new sw.Request('https://example.test/app/app.js?x=1');
-  const res = await sw.run('fetch', { request: req });
-  assert.equal(res.from, 'cache');
-  assert.equal(res.ignoreSearch, true);
-  assert.deepEqual(sw.fetched, []);
+  const fetchedAfterInstall = sw.fetched.length;
+  const res = await sw.run('fetch', { request: new sw.Request('https://example.test/app/app.js?x=1') });
+  assert.equal(res.from, 'network', 'not the stale cached copy');
+  assert.equal(sw.fetched.length, fetchedAfterInstall + 1);
 });
 
-test('fetch: unknown files go to the network, other origins and non-GET are left alone', async () => {
+test('fetch: offline, or too slow, the cache answers (ignoring the query string)', async () => {
+  const down = boot('v1', { network: async () => { throw new TypeError('Failed to fetch'); } });
+  down.stores.set('interactive-slides-v1', new Map([['/app/app.js', { path: '/app/app.js' }]]));
+  const offline = await down.run('fetch', { request: new down.Request('https://example.test/app/app.js?x=1') });
+  assert.equal(offline.from, 'cache');
+  assert.equal(offline.ignoreSearch, true);
+
+  const slow = boot('v1', { network: () => new Promise(() => {}), impatient: true });
+  slow.stores.set('interactive-slides-v1', new Map([['/app/app.js', { path: '/app/app.js' }]]));
+  assert.equal((await slow.run('fetch', { request: new slow.Request('https://example.test/app/app.js') })).from, 'cache');
+});
+
+test('fetch: nothing cached and no network is an error, not a hang', async () => {
+  const sw = boot('v1', { network: async () => { throw new TypeError('Failed to fetch'); } });
+  assert.equal((await sw.run('fetch', { request: new sw.Request('https://example.test/app/other.json') })).from, 'error');
+});
+
+test('fetch: other origins and non-GET requests are left alone', async () => {
   const sw = boot('v1');
-  await sw.run('install', {});
-  assert.equal((await sw.run('fetch', { request: new sw.Request('https://example.test/app/other.json') })).from, 'network');
   assert.equal(await sw.run('fetch', { request: new sw.Request('https://cdn.test/x.js') }), undefined);
   assert.equal(await sw.run('fetch', { request: new sw.Request('https://example.test/app/app.js', { method: 'POST' }) }), undefined);
 });
