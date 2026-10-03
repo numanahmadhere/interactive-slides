@@ -62,11 +62,11 @@ check('project address is clean (no /rest/v1 suffix)', urls.every((u) => !/\/(re
 // 7. no unexpected third parties: pages must not call out to sites other than the project
 const hosts = new Set((js.match(/https?:\/\/[a-zA-Z0-9.-]+/g) ?? []).map((u) => new URL(u).hostname));
 // Known and harmless: the Supabase project, XML namespaces, the video embed block's
-// providers (only used when someone adds an embed), and documentation links that
+// providers (only used when someone adds an embed), our own company site (a plain link), and documentation links that
 // libraries print inside error messages (never fetched).
 const allowed = new RegExp('(^|\\.)(' + [
   'supabase\\.co', 'supabase\\.com', 'w3\\.org', 'localhost', '127\\.0\\.0\\.1', 'example\\.com', 'yoursite\\.com', '192\\.168\\.1\\.5',
-  'youtube\\.com', 'youtube-nocookie\\.com', 'vimeo\\.com', 'loom\\.com',
+  'densightlabs\\.com', 'youtube\\.com', 'youtube-nocookie\\.com', 'vimeo\\.com', 'loom\\.com',
   'github\\.com', 'github\\.io', 'openxmlformats\\.org', 'microsoft\\.com', 'purl\\.org', 'stuartk\\.com', 'mozilla\\.org', 'wikipedia\\.org', 'ecma-international\\.org',
 ].join('|') + ')$');
 const unexpected = [...hosts].filter((h) => /[a-z0-9]/i.test(h) && !allowed.test(h)); // "https://..." in help text is not a host
