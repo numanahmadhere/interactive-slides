@@ -4,6 +4,7 @@ import { parseAppPath, deckPath } from '../src/shell/paths.js';
 import { Persistence, metaOf } from '../src/editor/persist.js';
 import { blankDeck, duplicateDeck, demoDeckCopy } from '../src/library/starters.js';
 import { buildSite } from '../tools/site.mjs';
+import { existsSync, readFileSync } from 'node:fs';
 
 test('app routes', () => {
   assert.deepEqual(parseAppPath('/app'), { page: 'dashboard' });
@@ -95,5 +96,46 @@ test('the public pages are complete, small and honest', () => {
   assert.ok(site['404.html'].includes('noindex'));
   // claims on the page must be features that exist
   for (const promised of ['Interactive blocks', 'Live audience', 'Phone remote']) assert.ok(home.includes(promised));
-  for (const unbuilt of ['word cloud', 'Word cloud', 'artificial intelligence', ' AI ', 'templates']) assert.ok(!home.includes(unbuilt), `home mentions something not built: ${unbuilt}`);
+  for (const unbuilt of ['word cloud', 'Word cloud', 'AI-powered', 'AI assistant', 'with AI', 'AI features', 'templates']) assert.ok(!home.includes(unbuilt), `home mentions something not built: ${unbuilt}`);
+});
+
+test('brand: the logo, icons and sharing image exist and every page uses them', () => {
+  for (const f of ['logo-64.png', 'logo-light-64.png', 'logo-mark.png', 'logo-mark-light.png', 'favicon-16.png', 'favicon-32.png', 'favicon-48.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'og-image.png']) {
+    assert.ok(existsSync(new URL(`../site/brand/${f}`, import.meta.url)), `site/brand/${f}`);
+  }
+  assert.ok(existsSync(new URL('../site/favicon.ico', import.meta.url)));
+  const png = (f) => readFileSync(new URL(`../site/brand/${f}`, import.meta.url));
+  const size = (b) => [b.readUInt32BE(16), b.readUInt32BE(20)];
+  assert.deepEqual(size(png('og-image.png')), [1200, 630], 'social image size');
+  assert.deepEqual(size(png('apple-touch-icon.png')), [180, 180]);
+  assert.deepEqual(size(png('icon-512.png')), [512, 512]);
+  const site = buildSite();
+  for (const [file, html] of Object.entries(site)) {
+    if (!file.endsWith('.html')) continue;
+    assert.ok(html.includes('/favicon.ico') && html.includes('apple-touch-icon') && html.includes('rel="manifest"'), `${file} links its icons`);
+    assert.ok(html.includes('/brand/logo-64.png') && html.includes('/brand/logo-light-64.png'), `${file} shows the logo in both variants`);
+    assert.ok(html.includes('og:image') && html.includes('/brand/og-image.png'), `${file} has a sharing image`);
+  }
+  const app = readFileSync(new URL('../src/app.html', import.meta.url), 'utf8');
+  assert.ok(app.includes('/favicon.ico') && app.includes('manifest'), 'the app page has icons too');
+});
+
+test('support and company: the support address and a link to densightlabs.com appear where people look', () => {
+  const site = buildSite();
+  const mail = 'mailto:hello@densight.com';
+  for (const f of ['index.html', 'learn/index.html', 'privacy/index.html', 'terms/index.html']) {
+    assert.ok(site[f].includes(mail), `${f} links the support address`);
+    assert.ok(site[f].includes('href="https://densightlabs.com"'), `${f} links densightlabs.com`);
+  }
+  assert.ok(site['index.html'].includes('"@type":"Organization"') && site['index.html'].includes('https://densightlabs.com'), 'structured data names the company');
+  assert.doesNotThrow(() => JSON.parse(/<script type="application\/ld\+json">(.*?)<\/script>/s.exec(site['index.html'])[1]), 'structured data is valid JSON');
+  assert.ok(!/href="https?:\/\/densightlabs\.com"[^>]*rel="[^"]*nofollow/.test(site['index.html']), 'the backlink is a normal followed link');
+});
+
+test('the in-app pages offer the same support and company links', () => {
+  const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
+  assert.match(read('src/shell/contact.js'), /hello@densight\.com/);
+  assert.match(read('src/shell/contact.js'), /https:\/\/densightlabs\.com/);
+  for (const f of ['src/shell/chrome.js', 'src/shell/account.js', 'src/editor/editor.js']) assert.match(read(f), /supportHref|SUPPORT_EMAIL/, `${f} offers support`);
+  assert.match(read('src/shell/chrome.js'), /COMPANY_URL/, 'the footer links the company');
 });

@@ -9,7 +9,7 @@
   .lv { --lv-bg: #0F1117; --lv-fg: #f1f3f9; --lv-muted: #9aa3b8; --lv-surface: #181b25; --lv-border: #2b3040; --lv-control: #68718a; --lv-accent: #6b6bff; --lv-accent-fg: #0F1117; }
 }
 .lv-head { padding: 18px 20px 8px; }
-.lv-brand { color: var(--lv-muted); font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.lv-brand { display: flex; align-items: center; gap: 8px; color: var(--lv-muted); font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 .lv-title { margin-top: 4px; font-size: 20px; font-weight: 650; }
 .lv-meta { margin-top: 4px; color: var(--lv-muted); font-size: 14px; }
 .lv-body { flex: 1; padding: 8px 20px 24px; display: flex; flex-direction: column; gap: 16px; }
@@ -44,3 +44,8 @@
 .lv-build { margin-top: 6px; font-size: 12px; overflow-wrap: anywhere; }
 
 .lv-warn { margin: 0; padding: 12px 14px; border: 2px solid var(--lv-control); border-radius: 12px; background: var(--lv-surface); font-weight: 600; }
+
+/* phone pages follow the phone's own scheme, so their logo does too */
+.lv.lv .logo--on-light { display: block; }
+.lv.lv .logo--on-dark { display: none; }
+@media (prefers-color-scheme: dark) { .lv.lv .logo--on-light { display: none; } .lv.lv .logo--on-dark { display: block; } }

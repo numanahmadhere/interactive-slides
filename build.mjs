@@ -2,7 +2,7 @@
 //   node build.mjs           bundle to dist/ (and dist/single/index.html)
 //   node build.mjs --serve   watch and serve dist/ on http://localhost:5177
 import { build, context } from 'esbuild';
-import { copyFile, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, readdir, writeFile, rm } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
@@ -116,7 +116,18 @@ async function writeSite() {
   await copyFile('src/app.html', 'dist/app/index.html');
   await copyFile('site/site.css', 'dist/site.css');
   await copyFile('src/styles/tokens.css', 'dist/tokens.css');
-  await copyFile('site/favicon.svg', 'dist/favicon.svg');
+  await copyFile('site/favicon.ico', 'dist/favicon.ico');
+  await mkdir('dist/brand', { recursive: true });
+  for (const f of await readdir('site/brand')) await copyFile(`site/brand/${f}`, `dist/brand/${f}`);
+  await writeFile('dist/manifest.webmanifest', JSON.stringify({
+    name: 'Densight Slides', short_name: 'Densight Slides', description: 'Interactive presentations your audience can answer.',
+    start_url: '/app/', scope: '/', display: 'standalone', background_color: '#FFFFFF', theme_color: '#2020E8',
+    icons: [
+      { src: '/brand/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: '/brand/icon-512.png', sizes: '512x512', type: 'image/png' },
+      { src: '/brand/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+    ],
+  }, null, 2));
   for (const [file, content] of Object.entries(buildSite())) {
     await mkdir(dirname(resolve('dist', file)), { recursive: true });
     await writeFile(resolve('dist', file), content);

@@ -38,6 +38,9 @@ check('privacy, terms, learn, sitemap and robots exist', ['privacy', 'terms', 'l
 check('service worker was generated with a versioned cache', /const CACHE = "interactive-slides-[0-9a-f]{12}"/.test(sw));
 check('/app/* is rewritten to the app page', /from\s*=\s*"\/app\/\*"[\s\S]*?to\s*=\s*"\/app\/index\.html"[\s\S]*?status\s*=\s*200/.test(existsSync('netlify.toml') ? readFileSync('netlify.toml', 'utf8') : ''));
 
+check('brand icons, manifest and sharing image are in the build', ['favicon.ico', 'brand/apple-touch-icon.png', 'brand/icon-512.png', 'brand/og-image.png', 'brand/logo-64.png', 'brand/logo-light-64.png', 'manifest.webmanifest'].every((f) => existsSync(`dist/${f}`)));
+check('the support address is on the home page', html.includes('hello@densight.com') && html.includes('https://densightlabs.com'));
+
 // 4. no source maps or debug builds shipped
 check('no source map reference in the bundle', !/sourceMappingURL/.test(js));
 check('production mode (not the development build)', !/__DEV__/.test(js));

@@ -11,7 +11,7 @@ import { getCloud } from '../cloud/instance.js';
 import { slugify } from '../core/util.js';
 import { slideToPng } from '../export/png.js';
 import { blankDeck, demoDeckCopy, duplicateDeck, sampleDeckCopy } from '../library/starters.js';
-import { appHeader } from './chrome.js';
+import { appFooter, appHeader } from './chrome.js';
 import { deckPath } from './paths.js';
 import { takeFlash } from './flash.js';
 
@@ -287,7 +287,8 @@ export async function mountDashboard(root) {
         startTile('upload', 'Import a deck', 'Open a .json file', importFile)),
       h('div', { class: 'sh-toolbar' },
         h('div', { class: 'sh-search' }, icon('search', 16), search), sortSel),
-      status, skeleton, empty, noMatch, grid));
+      status, skeleton, empty, noMatch, grid),
+    appFooter());
 
   const flash = takeFlash();
   if (flash) toast(flash.text, { kind: flash.kind });

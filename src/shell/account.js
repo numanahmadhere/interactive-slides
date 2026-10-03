@@ -5,7 +5,8 @@ import { Persistence } from '../editor/persist.js';
 import { button, openDialog, textInput, toast } from '../editor/ui.js';
 import { getCloud } from '../cloud/instance.js';
 import { signInPanel } from '../cloud/sign-in-panel.js';
-import { appHeader } from './chrome.js';
+import { appFooter, appHeader } from './chrome.js';
+import { COMPANY_NAME, COMPANY_URL, SUPPORT_EMAIL, supportHref } from './contact.js';
 import { takeFlash } from './flash.js';
 
 export async function mountAccount(root) {
@@ -52,8 +53,11 @@ export async function mountAccount(root) {
         h('div', { class: 'ed-live__actions' }, button({ label: 'Delete my account...', variant: 'danger', onClick: confirmDelete }))));
     }
 
+    body.push(section('Help and support',
+      h('p', {}, 'Questions about your account, a deck, or a live session? Write to ', h('a', { href: supportHref(), text: SUPPORT_EMAIL }), ' and a person at ', h('a', { href: COMPANY_URL, text: COMPANY_NAME }), ' will reply.')));
+
     body.push(section('Your data', h('p', {}, 'We keep your decks and your email address, nothing else, and we do not use tracking cookies. Read the ', h('a', { href: '/privacy/', text: 'privacy policy' }), '.')));
-    root.replaceChildren(appHeader({ active: 'account' }), h('main', { class: 'sh-main sh-narrow', id: 'main' }, ...body));
+    root.replaceChildren(appHeader({ active: 'account' }), h('main', { class: 'sh-main sh-narrow', id: 'main' }, ...body), appFooter());
   }
 
   function confirmWipe(n) {

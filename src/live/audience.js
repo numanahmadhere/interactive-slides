@@ -6,6 +6,7 @@ import { h } from '../core/dom.js';
 import { uid } from '../core/util.js';
 import { audienceChannel, cleanAudienceState, isStale } from './protocol.js';
 import { createTransport } from './transport.js';
+import { logoPair } from '../shell/chrome.js';
 import { BUILD } from '../build-info.js';
 
 const HEARTBEAT_MS = 20_000;
@@ -32,7 +33,7 @@ export function mountAudience(root, { code, config }) {
   const answeredIn = new Map(); // prompt id -> the presenter session that has our answer
   let slow = false;
 
-  const head = h('header', { class: 'lv-head' }, h('div', { class: 'lv-brand', text: 'Densight Slides' }), h('div', { class: 'lv-title' }));
+  const head = h('header', { class: 'lv-head' }, h('div', { class: 'lv-brand' }, ...logoPair(22), h('span', { text: 'Densight Slides' })), h('div', { class: 'lv-title' }));
   const body = h('main', { class: 'lv-body' });
   const foot = h('footer', { class: 'lv-foot' });
   const footStatus = h('div', { role: 'status', 'aria-live': 'polite' });

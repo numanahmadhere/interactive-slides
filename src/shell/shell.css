@@ -9,7 +9,7 @@ body.sh a:focus-visible, body.sh button:focus-visible, body.sh select:focus-visi
 .sh-header { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: saturate(1.6) blur(14px); -webkit-backdrop-filter: saturate(1.6) blur(14px); border-bottom: 1px solid var(--border); }
 .sh-header__in { display: flex; align-items: center; gap: 8px; max-width: 1240px; height: 64px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px); }
 .sh-brand { display: inline-flex; align-items: center; gap: 10px; margin-right: 12px; color: var(--ink); font-weight: 800; letter-spacing: -0.02em; text-decoration: none; }
-.sh-brand__mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--blue); color: var(--on-blue); font-weight: 800; box-shadow: 0 6px 16px -6px var(--blue-glow); }
+
 .sh-nav { display: flex; gap: 2px; }
 .sh-nav__link { padding: 8px 14px; border-radius: 10px; color: var(--muted); font-weight: 600; text-decoration: none; transition: color var(--t), background var(--t); }
 .sh-nav__link:hover { color: var(--ink); background: var(--bg-sunk); }
@@ -115,7 +115,7 @@ body.sh a:focus-visible, body.sh button:focus-visible, body.sh select:focus-visi
 
 /* messages */
 .sh-message { display: grid; justify-items: center; gap: 8px; padding-top: 12vh; text-align: center; }
-.sh-message__mark { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 8px; border-radius: 16px; background: var(--blue); color: #fff; font-size: 24px; font-weight: 800; box-shadow: 0 14px 30px -12px var(--blue-glow); }
+.sh-message__mark { display: grid; place-items: center; margin-bottom: 8px; }
 
 .sh-check { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
 .sh-link { color: var(--blue-text); }
@@ -131,3 +131,9 @@ body.sh a:focus-visible, body.sh button:focus-visible, body.sh select:focus-visi
   .sh-start { flex-direction: column; align-items: flex-start; }
   .sh-start__go { display: none; }
 }
+
+.sh-help { margin-top: 28px; color: var(--muted); font-size: 14px; }
+.sh-help a, .sh-footer a { color: var(--blue-text); }
+.sh-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; max-width: 1240px; margin: 0 auto; padding: 24px clamp(16px, 4vw, 40px) 40px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+.sh-footer__links { display: flex; flex-wrap: wrap; gap: 6px 20px; }
+.sh-brand .logo { width: 34px; height: 34px; }

@@ -390,8 +390,9 @@ h2.ed-section__title { font-size: inherit; margin: 0; }
 
 /* top bar */
 .ed-top { gap: 12px; padding: 0 16px; background: var(--ed-panel); box-shadow: 0 1px 0 var(--ed-border); }
-a.ed-logo { width: 32px; height: 32px; border-radius: 10px; background: var(--ed-accent); color: #fff; text-decoration: none; font-weight: 800; font-size: 15px; transition: transform var(--t), box-shadow var(--t); box-shadow: 0 4px 12px -4px var(--blue-glow); }
-a.ed-logo:hover { transform: translateY(-1px); box-shadow: 0 8px 18px -6px var(--blue-glow); }
+a.ed-logo { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; transition: background var(--t); }
+a.ed-logo:hover { background: var(--ed-hover); }
+a.ed-logo .logo { width: 28px; height: 28px; }
 .ed-crumb { color: var(--ed-muted); text-decoration: none; font-weight: 550; font-size: 13px; padding: 6px 8px; border-radius: 8px; margin-left: -4px; transition: background var(--t), color var(--t); }
 .ed-crumb:hover { background: var(--ed-hover); color: var(--ed-text); }
 .ed-crumb::after { content: '/'; margin-left: 10px; color: var(--ed-border-strong); }

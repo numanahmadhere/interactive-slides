@@ -4,6 +4,11 @@
 
 const SITE = (process.env.SITE_URL ?? 'https://densight-slides.netlify.app').replace(/\/+$/, '');
 const NAME = 'Densight Slides';
+const SUPPORT = 'hello@densight.com';
+const COMPANY = 'https://densightlabs.com';
+const mailto = (subject = 'Densight Slides support') => `mailto:${SUPPORT}?subject=${encodeURIComponent(subject)}`;
+const LOGO = '<img class="logo logo--on-light" src="/brand/logo-64.png" width="32" height="32" alt=""><img class="logo logo--on-dark" src="/brand/logo-light-64.png" width="32" height="32" alt="">';
+const LOGO_DARK_BG = '<img class="logo" src="/brand/logo-light-64.png" width="32" height="32" alt="">';
 const UPDATED = '3 October 2026';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -30,7 +35,10 @@ function layout({ path, title, description, body, index = true, hero = false }) 
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">
 ${index ? '' : '<meta name="robots" content="noindex">\n'}<link rel="canonical" href="${url}">
-<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/brand/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="stylesheet" href="/tokens.css">
 <link rel="stylesheet" href="/site.css">
 <meta name="theme-color" content="#2020E8">
@@ -39,7 +47,12 @@ ${index ? '' : '<meta name="robots" content="noindex">\n'}<link rel="canonical" 
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${url}">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="${SITE}/brand/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="${SITE}/brand/og-image.png">
+<link rel="author" href="${COMPANY}">
 <script>${THEME_INIT}</script>
 <script>
 // Links made before the platform had a home page (/?join=, /?remote=, /?view=) and
@@ -50,7 +63,7 @@ ${index ? '' : '<meta name="robots" content="noindex">\n'}<link rel="canonical" 
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-<a class="brand" href="/"><span class="mark" aria-hidden="true">D</span><span>${NAME}</span></a>
+<a class="brand" href="/">${LOGO}<span>${NAME}</span></a>
 <nav class="main" aria-label="Main"><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/#how">How it works</a><a href="/learn/">Learn</a><a href="/#faq">FAQ</a></nav>
 <span class="grow"></span>
 <a class="link-quiet" href="/app/account">Sign in</a><a class="btn sm" href="/app/">Start building <span aria-hidden="true">&rarr;</span></a>
@@ -62,12 +75,12 @@ ${index ? '' : '<meta name="robots" content="noindex">\n'}<link rel="canonical" 
 ${body}
 </main>
 <footer class="site"><div class="wrap">
-<div class="foot-brand"><a class="brand" href="/"><span class="mark" aria-hidden="true">D</span><span>${NAME}</span></a>
-<p>Interactive presentations your audience can answer. Built by Densight Labs.</p></div>
+<div class="foot-brand"><a class="brand" href="/">${LOGO_DARK_BG}<span>${NAME}</span></a>
+<p>Interactive presentations your audience can answer. A product of <a href="${COMPANY}">Densight Labs</a>, an applied AI firm.</p></div>
 <div><h3 class="foot-h">Product</h3><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/#how">How it works</a><a href="/app/">Open the app</a></div>
 <div><h3 class="foot-h">Learn</h3><a href="/learn/">Guides</a><a href="/#faq">FAQ</a></div>
-<div><h3 class="foot-h">Company</h3><a href="https://densightlabs.com">Densight Labs</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></div>
-</div><div class="wrap foot-end"><span>&copy; ${new Date().getFullYear()} Densight Labs</span></div></footer>
+<div><h3 class="foot-h">Company</h3><a href="${COMPANY}">Densight Labs</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="${mailto()}">Support: ${SUPPORT}</a></div>
+</div><div class="wrap foot-end"><span>&copy; ${new Date().getFullYear()} <a href="${COMPANY}">Densight Labs</a>. All rights reserved.</span><a href="${mailto()}">${SUPPORT}</a></div></footer>
 <script>
 if(/[?&]account-deleted=1/.test(location.search))document.getElementById('flash').hidden=false;
 (function(){var els=document.querySelectorAll('.reveal');if(!('IntersectionObserver' in window)||matchMedia('(prefers-reduced-motion: reduce)').matches){els.forEach(function(e){e.classList.add('in')});return}
@@ -90,11 +103,11 @@ const home = () => layout({
   body: `
 <section class="hero"><div class="wrap hero__grid">
 <div class="hero__copy">
-<span class="pill"><i class="dot"></i>Live polls and quizzes in every deck</span>
-<h1>Slides your audience can <em>answer.</em></h1>
-<p class="lead">Build presentations with quizzes, polls and branching. Run them live with the room on their phones. Share or export when you are done.</p>
-<div class="cta"><a class="btn lg" href="/app/">Start building <span aria-hidden="true">&rarr;</span></a><a class="btn lg ghost" href="#demo">Try the demo</a></div>
-<p class="assure">${CHECK}Free to start. No download. No account needed to try it.</p>
+<span class="pill"><i class="dot"></i>For workshops, briefings and training</span>
+<h1>Presentations your audience can <em>answer.</em></h1>
+<p class="lead">Add live polls, quizzes and questions to the presentations you already give. Run them from your browser while the room responds from their phones, then share or export the deck.</p>
+<div class="cta"><a class="btn lg" href="/app/">Start building <span aria-hidden="true">&rarr;</span></a><a class="btn lg ghost" href="#demo">See it in action</a></div>
+<p class="assure">${CHECK}Free to start. Nothing to install. No account needed to try it.</p>
 <dl class="stats">
 <div><dt>30</dt><dd>interactive and design blocks</dd></div>
 <div><dt>0</dt><dd>apps for your audience to install</dd></div>
@@ -120,11 +133,11 @@ const home = () => layout({
 </div></section>
 
 <section class="strip"><div class="wrap"><p class="strip__label">Made for</p>
-<ul class="tags"><li>Workshops</li><li>Training</li><li>Classrooms</li><li>Pitches</li><li>Team meetings</li><li>Webinars</li><li>Town halls</li></ul></div></section>
+<ul class="tags"><li>Executive briefings</li><li>Training</li><li>Workshops</li><li>Client presentations</li><li>Town halls</li><li>Classrooms</li><li>Webinars</li></ul></div></section>
 
 <section id="features"><div class="wrap">
 <div class="head reveal"><span class="eyebrow">Features</span><h2>Everything a live presentation needs.</h2>
-<p class="sub">Made for rooms where people should take part, not just watch.</p></div>
+<p class="sub">Built for rooms where people are expected to take part, not just watch.</p></div>
 <div class="cards">
 <div class="card reveal">${ico('quiz')}<h3>Interactive blocks</h3><p>Quizzes with instant feedback, polls, matching, ordering, flip cards, hotspots, timelines, charts, calculators and a live code lab, all inside your slides.</p></div>
 <div class="card reveal">${ico('live')}<h3>Live audience</h3><p>Show a code or QR. People answer on their phones and watch the results build on your screen. Nothing for them to install.</p></div>
@@ -160,19 +173,29 @@ const home = () => layout({
 <li class="reveal"><span class="num">3</span><h3>Engage</h3><p>Start a live session, show the code and watch answers arrive. Download or share the deck afterwards.</p></li>
 </ol></div></section>
 
+<section id="trust"><div class="wrap">
+<div class="head reveal"><span class="eyebrow">Security and privacy</span><h2>Built with confidential material in mind.</h2>
+<p class="sub">Presentations often carry sensitive content. These are the choices we made, stated plainly.</p></div>
+<div class="cards four">
+<div class="card reveal"><h3>On your device first</h3><p>Decks are stored in your browser. Nothing is uploaded unless you sign in or choose to share.</p></div>
+<div class="card reveal"><h3>No tracking</h3><p>No advertising, no tracking cookies and no sale of data. See the <a href="/privacy/">privacy policy</a>.</p></div>
+<div class="card reveal"><h3>Answers stay with you</h3><p>Audience responses are held in the presenter's browser and are not stored on our servers.</p></div>
+<div class="card reveal"><h3>You stay in control</h3><p>Export any deck, revoke a share link instantly, and delete your account and online data at any time.</p></div>
+</div></div></section>
+
 <section id="demo" class="alt"><div class="wrap">
-<div class="head reveal"><span class="eyebrow">Demo</span><h2>Try it right here.</h2><p class="sub">This is the real thing: click the quiz, open a tab, flip a card.</p></div>
+<div class="head reveal"><span class="eyebrow">Demo</span><h2>See it in action.</h2><p class="sub">This is the real presentation player. Answer the quiz, open a tab, flip a card.</p></div>
 <div class="demo reveal"><div class="win__bar"><i></i><i></i><i></i><span>Interactive demo</span></div>
 <div class="frame" id="frame"><button type="button" id="load"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>Play the interactive demo</span></button></div></div>
 </div></section>
 
 <section><div class="wrap">
-<div class="head reveal"><span class="eyebrow">Use cases</span><h2>For people who teach, train and pitch.</h2></div>
+<div class="head reveal"><span class="eyebrow">Use cases</span><h2>For people who lead the room.</h2></div>
 <div class="cards four">
-<div class="card reveal"><h3>Workshops and training</h3><p>Check understanding with quick quizzes and see at a glance what the room knows.</p></div>
-<div class="card reveal"><h3>Classrooms</h3><p>Start with a poll, end with a quiz, and share the deck with students afterwards.</p></div>
-<div class="card reveal"><h3>Pitches and meetings</h3><p>Branch to the part that matters to this audience with buttons, and keep notes on your phone.</p></div>
-<div class="card reveal"><h3>Events and talks</h3><p>Let a whole room vote from their seats while you stay in control of the screen.</p></div>
+<div class="card reveal"><h3>Executive briefings</h3><p>Take the temperature of the room before you decide, and branch to the topics that matter to this audience.</p></div>
+<div class="card reveal"><h3>Training and workshops</h3><p>Check understanding with short quizzes and see at a glance what the room knows.</p></div>
+<div class="card reveal"><h3>Client presentations</h3><p>Keep your notes on your phone, move the slides from anywhere in the room, and leave behind a shareable deck.</p></div>
+<div class="card reveal"><h3>Town halls and events</h3><p>Let a whole room respond from their seats while you stay in control of the screen.</p></div>
 </div></div></section>
 
 <section id="faq" class="alt"><div class="wrap faq">
@@ -183,14 +206,23 @@ const home = () => layout({
 <details><summary>Where are my decks stored?</summary><p>On your device first. If you sign in they are also saved to your online account so you can open them on other devices. See the <a href="/privacy/">privacy policy</a>.</p></details>
 <details><summary>Does it work offline?</summary><p>After your first visit, yes: you can edit and present without a connection. Live audience features and online saving need one.</p></details>
 <details><summary>Can I get my slides out?</summary><p>Yes: a standalone web page, PDF, PNG images, PowerPoint, or the deck file itself. Your content is yours.</p></details>
+<details><summary>How do I get help?</summary><p>Write to <a href="${mailto()}">${SUPPORT}</a> and a person at Densight Labs will reply. The <a href="/learn/">guides</a> cover the common questions.</p></details>
 <details><summary>Which browsers work?</summary><p>Current Chrome, Edge, Firefox and Safari, on computers, tablets and phones. Audience pages work on phones from about 2022 onward.</p></details>
 </div></div></section>
 
+<section class="built"><div class="wrap built__in reveal">
+<img class="logo logo--on-light" src="/brand/logo-64.png" width="48" height="48" alt=""><img class="logo logo--on-dark" src="/brand/logo-light-64.png" width="48" height="48" alt="">
+<p><strong>Built by <a href="${COMPANY}">Densight Labs</a>.</strong> We are an applied AI firm that deploys AI inside enterprise teams. Densight Slides is the tool we wanted for running workshops and briefings. <a href="${COMPANY}">Visit densightlabs.com</a></p>
+</div></section>
 <section class="cta-band"><div class="wrap reveal">
 <h2>Make your next presentation a conversation.</h2>
-<p>Open the app and have your first deck ready in minutes.</p>
+<p>Open the app and have your first deck ready in minutes. Questions first? Write to <a class="plain" href="${mailto()}">${SUPPORT}</a>.</p>
 <a class="btn lg light" href="/app/">Start building <span aria-hidden="true">&rarr;</span></a>
 </div></section>
+<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': [
+  { '@type': 'Organization', '@id': COMPANY + '/#org', name: 'Densight Labs', url: COMPANY, logo: SITE + '/brand/icon-512.png', email: SUPPORT },
+  { '@type': 'SoftwareApplication', name: NAME, url: SITE + '/', applicationCategory: 'BusinessApplication', operatingSystem: 'Any (web browser)', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' }, publisher: { '@id': COMPANY + '/#org' }, image: SITE + '/brand/og-image.png' },
+] })}</script>
 <script>
 (function(){var b=document.getElementById('load');if(!b)return;b.addEventListener('click',function(){var f=document.createElement('iframe');f.src='/app/?play&deck=interactive';f.title='Interactive demo deck';f.loading='lazy';f.allow='fullscreen';document.getElementById('frame').replaceChildren(f);f.focus()})})();
 </script>`,
@@ -211,14 +243,14 @@ const learn = () => layout({
   description: 'Short guides: make a deck, add quizzes and polls, present, run a live session with phones, save and share, export.',
   body: `<div class="doc"><h1>Learn ${NAME}</h1><p class="meta">Short guides. The app also has an optional guided tour that you can skip.</p>
 ${guides.map(([t, b]) => `<div class="guide"><h2>${esc(t)}</h2>${b}</div>`).join('\n')}
-<p style="margin-top:32px"><a class="btn" href="/app/">Open the app</a></p></div>`,
+<p style="margin-top:32px"><a class="btn" href="/app/">Open the app</a> &nbsp; Need a hand? <a href="${mailto()}">${SUPPORT}</a></p></div>`,
 });
 
 const privacy = () => layout({
   path: '/privacy/',
   title: `Privacy policy | ${NAME}`,
   description: `What ${NAME} stores, where, and how to delete it.`,
-  body: `<div class="doc"><h1>Privacy policy</h1><p class="meta">Last updated ${UPDATED}. ${NAME} is run by Densight Labs.</p>
+  body: `<div class="doc"><h1>Privacy policy</h1><p class="meta">Last updated ${UPDATED}. ${NAME} is a product of <a href="${COMPANY}">Densight Labs</a>.</p>
 <h2>The short version</h2><p>We keep your decks and your email address, only if you create an account. We do not use advertising or tracking cookies, and we do not sell data.</p>
 <h2>On your device</h2><p>Decks and images you create are stored in your browser (IndexedDB and localStorage) on your device. They are not sent anywhere unless you sign in. Clearing your browser data removes them. We use this storage to make the app work, not to follow you.</p>
 <h2>If you create an account</h2><p>We store your email address, the decks you save online (including images inside them), and for decks you choose to share, an unguessable link token. Sign-in and storage are provided by Supabase. You can delete your account and all online decks at any time from Account &gt; Delete my account.</p>
@@ -227,7 +259,7 @@ const privacy = () => layout({
 <h2>Hosting and logs</h2><p>The site is hosted on Netlify, which may keep standard server logs (such as IP address and time of request) for security and operation.</p>
 <h2>Your choices</h2><ul><li>Delete a deck, or all decks on this device, from My decks and Account.</li><li>Delete your account and all online data from Account.</li><li>Export any deck as a file at any time.</li></ul>
 <h2>Children</h2><p>The service is not directed at children under 13, and accounts are for people old enough to agree to the terms in their country. Teachers should not require pupils to create accounts; audience members never need one.</p>
-<h2>Changes and contact</h2><p>If this policy changes we will update the date above. Questions: contact Densight Labs through <a href="https://densightlabs.com">densightlabs.com</a>.</p></div>`,
+<h2>Changes and contact</h2><p>If this policy changes we will update the date above. Questions or requests about your data: write to <a href="${mailto('Densight Slides privacy')}">${SUPPORT}</a>. ${NAME} is a product of <a href="${COMPANY}">Densight Labs</a>.</p></div>`,
 });
 
 const terms = () => layout({
@@ -238,7 +270,7 @@ const terms = () => layout({
 <p>By using ${NAME} you agree to these terms. If you do not agree, please do not use the service.</p>
 <h2>Your content</h2><p>You own the decks you make. You give us permission to store and display them as needed to run the service for you, including showing a shared deck to anyone who has its link.</p>
 <h2>What you may not do</h2><ul><li>Upload or share anything illegal, hateful, harassing, deceptive, or that infringes someone else's rights.</li><li>Use the service to send spam, malware, or phishing content, or to collect people's personal data without consent.</li><li>Try to break, overload, scrape, or gain unauthorised access to the service or other people's data.</li><li>Create accounts or sessions in bulk, or use live sessions to flood others.</li></ul>
-<h2>Reporting and removal</h2><p>We may remove content or suspend sharing or accounts that break these rules, with or without notice. If you see a shared deck that breaks them, tell us through <a href="https://densightlabs.com">densightlabs.com</a>.</p>
+<h2>Reporting and removal</h2><p>We may remove content or suspend sharing or accounts that break these rules, with or without notice. If you see a shared deck that breaks them, tell us at <a href="${mailto('Report a shared deck')}">${SUPPORT}</a>.</p>
 <h2>Availability and changes</h2><p>We work to keep the service running but do not promise it will always be available, error-free, or that features will not change. Keep your own copy of important decks by exporting them.</p>
 <h2>No warranty and limits of liability</h2><p>The service is provided as is. To the extent the law allows, Densight Labs is not liable for indirect or consequential losses, or for losses from content you or others create or share. Nothing here limits rights you have by law that cannot be limited.</p>
 <h2>Ending</h2><p>You can stop using the service and delete your account at any time. We may end or limit access if these terms are broken.</p>

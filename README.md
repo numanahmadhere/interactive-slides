@@ -13,6 +13,16 @@ follows the device by default; the sun/moon button on the dashboard and File >
 Appearance in the editor switch it (remembered per browser). Tests check the
 contrast of every palette pair and that every CSS variable used is defined.
 
+## Brand and contact
+
+The logo is the Densight Labs mark. `site/brand/` holds every size generated from the
+original PNG: a dark mark for light surfaces, a light mark for dark ones, the
+favicons (`favicon.ico`, 16/32/48), the Apple touch icon, the 192/512 and maskable
+app icons, and the 1200x630 sharing image. The logo pair switches with the theme.
+Support is `hello@densight.com` and the company link is `https://densightlabs.com`;
+both are defined once in `src/shell/contact.js` (app) and the top of `tools/site.mjs`
+(public pages).
+
 ## The site
 
 | Address | What |

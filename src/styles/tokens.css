@@ -150,3 +150,13 @@
 @media (prefers-reduced-motion: reduce) {
   :root { --t: 0s; }
 }
+
+/* ---- brand logo: dark mark on light surfaces, light mark on dark ones ---- */
+.logo { display: block; width: 32px; height: 32px; object-fit: contain; flex: none; }
+.logo--on-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .logo--on-light { display: none; }
+  :root:not([data-theme='light']) .logo--on-dark { display: block; }
+}
+:root[data-theme='dark'] .logo--on-light { display: none; }
+:root[data-theme='dark'] .logo--on-dark { display: block; }

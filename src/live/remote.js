@@ -4,6 +4,7 @@
 import { h } from '../core/dom.js';
 import { remoteChannel, cleanRemoteState } from './protocol.js';
 import { createTransport } from './transport.js';
+import { logoPair } from '../shell/chrome.js';
 import { BUILD } from '../build-info.js';
 
 export function mountRemote(root, { key, config }) {
@@ -25,7 +26,7 @@ export function mountRemote(root, { key, config }) {
   const buildLine = h('div', { class: 'lv-build', text: `build ${BUILD}  ·  ${config.kind === 'local' ? 'this browser only' : new URL(config.url).hostname}` });
   foot.append(footStatus, buildLine);
   root.replaceChildren(h('div', { class: 'lv lv--remote' },
-    h('header', { class: 'lv-head' }, h('div', { class: 'lv-brand', text: 'Remote' }), title, meta),
+    h('header', { class: 'lv-head' }, h('div', { class: 'lv-brand' }, ...logoPair(22), h('span', { text: 'Remote' })), title, meta),
     h('main', { class: 'lv-body' }, next, notes),
     h('div', { class: 'lv-pads' }, pad('Previous', 'prev', 'lv-pad--sec'), pad('Next', 'next', 'lv-pad--pri')),
     foot));

@@ -30,6 +30,8 @@ import { newRoom, cleanSavedSession } from '../live/protocol.js';
 import { Exporter } from './exporter.js';
 import { slideToPng } from '../export/png.js';
 import { setThemePref, themePref } from '../styles/theme.js';
+import { logoPair } from '../shell/chrome.js';
+import { SUPPORT_EMAIL, supportHref } from '../shell/contact.js';
 import { deckPath, DASHBOARD_PATH } from '../shell/paths.js';
 import { setFlash } from '../shell/flash.js';
 
@@ -157,7 +159,7 @@ export class Editor {
     const presentGroup = h('div', { class: 'ed-split' }, this.presentBtn, this.presentMenuBtn);
 
     const top = h('header', { class: 'ed-top' },
-      h('a', { class: 'ed-logo', href: DASHBOARD_PATH, title: 'Back to My decks', 'aria-label': 'Back to My decks' }, 'D'),
+      h('a', { class: 'ed-logo', href: DASHBOARD_PATH, title: 'Back to My decks', 'aria-label': 'Back to My decks' }, ...logoPair(30)),
       h('a', { class: 'ed-crumb', href: DASHBOARD_PATH, text: 'My decks' }),
       this.titleInput,
       h('div', { class: 'ed-top__group' }, this.undoBtn, this.redoBtn),
@@ -496,6 +498,7 @@ export class Editor {
         { label: 'Cloud: save, open, share...', value: 'cloud', hint: 'Account' },
         { label: 'Find and replace...', value: 'find', hint: 'Ctrl+H' },
         { label: 'Export...', value: 'export', hint: 'HTML, PDF, PNG, PPTX' },
+        { label: 'Contact support', value: 'support', hint: SUPPORT_EMAIL },
         { label: `Appearance: ${{ system: 'follows device', light: 'light', dark: 'dark' }[themePref()]}`, value: 'theme', hint: 'Change' },
       ],
       onPick: (value) => {
@@ -506,6 +509,7 @@ export class Editor {
         else if (value === 'import') this.#pickImportFile();
         else if (value === 'find') openFindDialog(this);
         else if (value === 'cloud') openCloudDialog(this);
+        else if (value === 'support') location.href = supportHref(`Help with "${this.deck.meta.title}"`);
         else if (value === 'theme') { const next = { system: 'light', light: 'dark', dark: 'system' }[themePref()]; setThemePref(next); toast(`Appearance: ${{ system: 'follows your device', light: 'light', dark: 'dark' }[next]}.`); }
         else openExportDialog(this);
       },
