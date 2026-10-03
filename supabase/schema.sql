@@ -12,6 +12,9 @@ create table if not exists public.decks (
   updated_at  timestamptz not null default now()
 );
 
+-- Added later: a small picture of the first slide for the dashboard. Safe to run again.
+alter table public.decks add column if not exists thumb text check (thumb is null or char_length(thumb) <= 60000);
+
 create index if not exists decks_owner_idx on public.decks (owner, updated_at desc);
 
 -- updated_at is set by the database, not trusted from the browser.
@@ -52,3 +55,17 @@ $$;
 
 revoke all on function public.get_shared_deck(text) from public;
 grant execute on function public.get_shared_deck(text) to anon, authenticated;
+
+-- Deleting your own account. Removes the sign-in and, through the foreign key, every
+-- deck. The browser can only call this for the signed-in person.
+create or replace function public.delete_my_account() returns void
+language plpgsql security definer set search_path = public, auth as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in';
+  end if;
+  delete from auth.users where id = auth.uid();
+end $$;
+
+revoke all on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;

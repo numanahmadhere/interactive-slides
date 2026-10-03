@@ -28,12 +28,15 @@ if (build.status !== 0) finish();
 const js = readFileSync('dist/app.js', 'utf8');
 const css = readFileSync('dist/app.css', 'utf8');
 const html = readFileSync('dist/index.html', 'utf8');
+const appHtml = readFileSync('dist/app/index.html', 'utf8');
 const sw = existsSync('dist/sw.js') ? readFileSync('dist/sw.js', 'utf8') : '';
 
 // 3. the app files are all there and wired together
-check('index.html loads app.js and app.css', html.includes('src="app.js"') && html.includes('href="app.css"'));
+check('the app page loads /app.js and /app.css', appHtml.includes('src="/app.js"') && appHtml.includes('href="/app.css"'));
+check('the home page is small (under 30 KB, no app bundle)', html.length < 30 * 1024 && !html.includes('app.js'), `${(html.length / 1024).toFixed(1)} KB`);
+check('privacy, terms, learn, sitemap and robots exist', ['privacy', 'terms', 'learn'].every((d) => existsSync(`dist/${d}/index.html`)) && existsSync('dist/sitemap.xml') && existsSync('dist/robots.txt'));
 check('service worker was generated with a versioned cache', /const CACHE = "interactive-slides-[0-9a-f]{12}"/.test(sw));
-check('dist/single/index.html is one self-contained file', existsSync('dist/single/index.html') && !/<(script|link)[^>]+(src|href)="https?:/.test(readFileSync('dist/single/index.html', 'utf8')));
+check('/app/* is rewritten to the app page', /from\s*=\s*"\/app\/\*"[\s\S]*?to\s*=\s*"\/app\/index\.html"[\s\S]*?status\s*=\s*200/.test(existsSync('netlify.toml') ? readFileSync('netlify.toml', 'utf8') : ''));
 
 // 4. no source maps or debug builds shipped
 check('no source map reference in the bundle', !/sourceMappingURL/.test(js));

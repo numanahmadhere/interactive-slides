@@ -1,0 +1,62 @@
+/* Dashboard and account pages. Dark, to match the editor. */
+
+body.sh { margin: 0; background: #0b0d12; color: #e8eaf2; font: 15px/1.5 'Inter Variable', Inter, system-ui, sans-serif; }
+.sh-header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 20px; padding: 0 clamp(16px, 4vw, 40px); height: 60px; background: rgba(11, 13, 18, 0.92); backdrop-filter: blur(8px); border-bottom: 1px solid #1d2230; }
+.sh-brand { display: inline-flex; align-items: center; gap: 10px; color: #fff; font-weight: 700; text-decoration: none; letter-spacing: -0.01em; }
+.sh-brand__mark { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: #2020E8; font-size: 15px; }
+.sh-nav { display: flex; gap: 4px; }
+.sh-nav__link { padding: 8px 12px; border-radius: 8px; color: #a9b0c4; text-decoration: none; font-weight: 550; }
+.sh-nav__link:hover { color: #fff; background: #151a26; }
+.sh-nav__link.is-active { color: #fff; background: #1a2030; }
+.sh-spacer { flex: 1; }
+.sh-account { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; color: #e8eaf2; text-decoration: none; font-weight: 600; border: 1px solid #262c3d; }
+.sh-account:hover { background: #151a26; }
+.sh-avatar { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #2020E8; color: #fff; font-size: 13px; }
+a:focus-visible, button:focus-visible, select:focus-visible { outline: 3px solid #8f8fff; outline-offset: 2px; }
+
+.sh-main { max-width: 1180px; margin: 0 auto; padding: 32px clamp(16px, 4vw, 40px) 80px; }
+.sh-narrow { max-width: 720px; }
+.sh-title { margin: 0 0 24px; font-size: 30px; letter-spacing: -0.02em; }
+.sh-lead { font-size: 17px; color: #c6cbdb; }
+.sh-section { margin: 0 0 18px; padding: 22px; border: 1px solid #1d2230; border-radius: 16px; background: #10131b; }
+.sh-section h2 { margin: 0 0 10px; font-size: 18px; }
+.sh-section p { margin: 0 0 12px; color: #c6cbdb; }
+.sh-section a { color: #a9a9ff; }
+
+.sh-starts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 28px; }
+.sh-start { display: grid; gap: 4px; padding: 16px; text-align: left; border: 1px solid #262c3d; border-radius: 14px; background: #10131b; color: #e8eaf2; font: inherit; cursor: pointer; }
+.sh-start strong { font-size: 16px; }
+.sh-start span { color: #98a0b6; font-size: 13px; }
+.sh-start:hover { border-color: #5a5aff; background: #131827; }
+.sh-start--primary { background: #2020E8; border-color: #2020E8; }
+.sh-start--primary span { color: #dcdcff; }
+.sh-start--primary:hover { background: #3434f0; border-color: #3434f0; }
+
+.sh-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+.sh-toolbar .ed-input { max-width: 340px; }
+.sh-sort { width: auto; }
+.sh-status { min-height: 1.4em; margin: 0 0 8px; color: #f0a05d; font-size: 13px; }
+.sh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+.sh-grid[hidden], .sh-empty[hidden] { display: none; }
+.sh-card { border: 1px solid #1d2230; border-radius: 14px; background: #10131b; overflow: hidden; transition: border-color 0.15s; }
+.sh-card:hover, .sh-card:focus-within { border-color: #4a4aff; }
+.sh-card__open { display: block; text-decoration: none; }
+.sh-thumb { display: grid; place-items: center; aspect-ratio: 16 / 9; background: linear-gradient(135deg, #171c2b, #0f1220); border-bottom: 1px solid #1d2230; }
+.sh-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sh-thumb__initial { font-size: 44px; font-weight: 700; color: #3a4260; }
+.sh-card__body { display: flex; align-items: flex-start; gap: 6px; padding: 12px 8px 12px 14px; }
+.sh-card__text { flex: 1; min-width: 0; }
+.sh-card__title { display: block; overflow: hidden; color: #fff; font-weight: 650; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.sh-card__title:hover { text-decoration: underline; }
+.sh-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 2px; color: #98a0b6; font-size: 12.5px; }
+.sh-badge { padding: 1px 8px; border-radius: 999px; background: #232a3d; color: #c6cbdb; font-size: 11.5px; font-weight: 600; }
+.sh-badge--ok { background: #12301f; color: #7fe0a3; }
+.sh-badge--share { background: #2b2a52; color: #c4c4ff; }
+.sh-empty { padding: 48px 24px; text-align: center; color: #98a0b6; border: 1px dashed #262c3d; border-radius: 16px; }
+.sh-empty h2 { margin: 0 0 8px; color: #fff; }
+.sh-check { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
+
+@media (max-width: 640px) {
+  .sh-nav { display: none; }
+  .sh-title { font-size: 24px; }
+}

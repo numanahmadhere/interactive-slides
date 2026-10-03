@@ -93,6 +93,13 @@ export async function startFakeSupabase(options = {}) {
       return send(res, 204);
     }
 
+    if (url.pathname === '/rest/v1/rpc/delete_my_account') {
+      if (!authed) return send(res, 401, { message: 'JWT expired' });
+      for (let i = decks.length - 1; i >= 0; i--) if (decks[i].owner === authed.userId) decks.splice(i, 1);
+      for (const [email, u] of users) if (u.id === authed.userId) users.delete(email);
+      tokens.delete(bearer);
+      return send(res, 204);
+    }
     if (url.pathname === '/rest/v1/rpc/get_shared_deck') {
       const t = body?.t;
       const deck = typeof t === 'string' && t.length >= 22 ? decks.find((d) => d.share_token === t) : null;
@@ -103,13 +110,14 @@ export async function startFakeSupabase(options = {}) {
       if (!authed) return send(res, 401, { message: 'JWT expired', code: 'PGRST301' }); // anon has no table access
       const mine = decks.filter((d) => d.owner === authed.userId); // row level security
       const idFilter = url.searchParams.get('id')?.replace(/^eq\./, '');
-      const target = idFilter ? mine.filter((d) => d.id === idFilter) : mine;
+      const guardTs = url.searchParams.get('updated_at')?.replace(/^eq\./, '');
+      const target = (idFilter ? mine.filter((d) => d.id === idFilter) : mine).filter((d) => !guardTs || d.updated_at === guardTs);
       const pick = (d) => ({ ...d });
       if (req.method === 'GET') {
         return send(res, 200, [...target].sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1)).map(pick));
       }
       if (req.method === 'POST') {
-        const row = { id: randomUUID(), owner: authed.userId, title: body.title ?? 'Untitled deck', data: body.data, share_token: null, created_at: iso(), updated_at: iso() };
+        const row = { id: randomUUID(), owner: authed.userId, title: body.title ?? 'Untitled deck', data: body.data, thumb: body.thumb ?? null, share_token: null, created_at: iso(), updated_at: iso() };
         decks.push(row);
         return send(res, 201, [pick(row)]);
       }

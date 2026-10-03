@@ -19,8 +19,9 @@ export class AssetStore {
     this.version = 0; // bumped when the set of resolvable images changes
   }
 
-  async init() {
-    for (const rec of await this.persistence.loadAssets()) this.#register(rec.id, rec.blob);
+  // ids: the images this deck uses. Others stay on disk until the deck that uses them is opened.
+  async init(ids) {
+    for (const rec of await this.persistence.loadAssets(ids)) this.#register(rec.id, rec.blob);
   }
 
   // Passed to the renderer as resolveAsset.
@@ -35,7 +36,7 @@ export class AssetStore {
     const blob = await downscale(file);
     const id = uid();
     this.#register(id, blob);
-    await this.persistence.saveAsset({ id, blob, name: file.name || 'image', type: blob.type });
+    await this.persistence.saveAsset({ id, blob, name: file.name || 'image', type: blob.type, addedAt: Date.now() });
     return `asset:${id}`;
   }
 
@@ -43,17 +44,10 @@ export class AssetStore {
     return new Set([...JSON.stringify(deck).matchAll(ASSET_REF)].map((m) => m[1]));
   }
 
-  // Drop stored images no deck refers to. Run at startup, never mid-session,
+  // Drop stored images no deck in the library uses. Run at startup, never mid-session,
   // so undo can still bring back an image that was just removed.
-  async gc(deck) {
-    const keep = this.referenced(deck);
-    for (const id of [...this.#blobs.keys()]) {
-      if (keep.has(id)) continue;
-      URL.revokeObjectURL(this.#urls.get(id));
-      this.#urls.delete(id);
-      this.#blobs.delete(id);
-      await this.persistence.deleteAsset(id).catch(() => {});
-    }
+  async gc(keep) {
+    await this.persistence.gcAssets(keep);
   }
 
   // Deck copy with every asset: reference replaced by a data URI, so the JSON

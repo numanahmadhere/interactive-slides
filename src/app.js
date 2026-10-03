@@ -4,12 +4,14 @@ import './player/player.css';
 import './editor/editor.css';
 import './styles/app.css';
 import './live/live.css';
+import './shell/shell.css';
 
 import { normalizeDeck } from './core/schema.js';
 import { Player } from './player/player.js';
 import { PresenterView } from './player/presenter-view.js';
 import { sampleDeck } from './samples/sample-deck.js';
 import { interactiveDeck } from './samples/interactive-deck.js';
+import { h } from './core/dom.js';
 import { Editor } from './editor/editor.js';
 import { setupOffline } from './offline.js';
 import { decodeConfig, normalizeCode, normalizeKey } from './live/protocol.js';
@@ -19,6 +21,10 @@ import { mountViewer } from './cloud/viewer.js';
 import { defaultConfig } from './live/config.js';
 import { getCloud } from './cloud/instance.js';
 import { toast } from './editor/ui.js';
+import { parseAppPath, takeReturn, DASHBOARD_PATH } from './shell/paths.js';
+import { takeFlash } from './shell/flash.js';
+import { mountDashboard } from './shell/dashboard.js';
+import { mountAccount } from './shell/account.js';
 
 const mount = document.getElementById('app');
 const params = new URLSearchParams(location.search);
@@ -51,8 +57,8 @@ if (params.has('view')) {
   window.player = new Player(mount, deck);
   Object.assign(window, { Player, PresenterView, normalizeDeck }); // handles for poking at the player from the console
 } else {
-  const editor = new Editor(mount);
-  window.editor = editor; // handy for debugging in the console
+  // The platform: /app/ (decks), /app/account, /app/d/<id> (the editor).
+  const route = parseAppPath(location.pathname);
 
   // Coming back from "Continue with Google" or an emailed sign-in link: the session
   // is in the address. Finish signing in, then tidy the address.
@@ -66,15 +72,45 @@ if (params.has('view')) {
       notice = { text: err.message || 'Sign-in did not complete.', kind: 'error' };
     }
     history.replaceState(null, '', location.pathname + location.search);
+    // Put them back where they were before signing in.
+    const back = notice && !notice.kind ? takeReturn() : null;
+    if (back && back !== location.pathname + location.search) {
+      const { setFlash } = await import('./shell/flash.js');
+      setFlash(notice.text);
+      location.replace(back);
+      return 'redirecting';
+    }
     return notice ?? null;
   };
 
-  // The session must be in place before the editor starts, so it knows who is signed in.
-  finishSignIn().then((signInNotice) => editor.start().then(() => {
-    if (signInNotice) toast(signInNotice.text, { kind: signInNotice.kind ?? 'info', timeout: 7000 });
-  })).catch((err) => {
+  const notFound = (text) => {
+    document.body.className = 'sh';
+    mount.replaceChildren(h('main', { class: 'sh-main sh-narrow' }, h('h1', { class: 'sh-title', text }), h('p', {}, h('a', { href: DASHBOARD_PATH, style: 'color:#a9a9ff', text: 'Go to My decks' }))));
+  };
+
+  finishSignIn().then(async (notice) => {
+    if (notice === 'redirecting') return;
+    if (route.page === 'editor') {
+      const editor = new Editor(mount, route.deckId);
+      window.editor = editor; // handy for debugging in the console
+      try {
+        await editor.start();
+      } catch (err) {
+        if (err.code === 'not_found') return notFound('That deck is not on this device');
+        throw err;
+      }
+      const flash = notice ?? takeFlash();
+      if (flash) toast(flash.text, { kind: flash.kind ?? 'info', timeout: 7000 });
+      return;
+    }
+    document.body.className = 'sh';
+    if (notice) { const { setFlash } = await import('./shell/flash.js'); setFlash(notice.text, notice.kind); }
+    if (route.page === 'dashboard') await mountDashboard(mount);
+    else if (route.page === 'account') await mountAccount(mount);
+    else notFound('Page not found');
+  }).catch((err) => {
     console.error(err);
-    mount.textContent = 'The editor failed to start. See the console for details.';
+    mount.textContent = 'Something went wrong starting the app. See the console for details.';
   });
 }
 

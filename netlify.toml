@@ -1,5 +1,5 @@
-# Static site: `npm run build` writes everything to dist/. All pages are query
-# strings on index.html, so no rewrite rules are needed.
+# Static site: `npm run build` writes everything to dist/. The public pages are plain
+# files; every address under /app/ is the same single page (the platform).
 [build]
   command = "npm run build"
   publish = "dist"
@@ -9,6 +9,11 @@
   # The anon key is public and is compiled into the page on purpose; do not let
   # the secrets scanner fail the build over it.
   SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,SUPABASE_ANON_KEY"
+
+[[redirects]]
+  from = "/app/*"
+  to = "/app/index.html"
+  status = 200
 
 [[headers]]
   for = "/*"

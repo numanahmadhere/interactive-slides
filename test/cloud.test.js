@@ -214,16 +214,16 @@ function syncRig({ signedIn = true } = {}) {
   const cloud = {
     user: signedIn ? { id: 'u1', email: 'a@b.co' } : null,
     failNext: null,
-    async create({ title, data }) { if (cloud.failNext) { const e = cloud.failNext; cloud.failNext = null; throw e; } const row = { id: `d${++n}` }; rows.set(row.id, { title, data }); calls.push(['create', title]); return row; },
-    async update(id, { title, data }) { if (!rows.has(id)) throw new CloudError('gone', { code: 'not_found' }); rows.set(id, { title, data }); calls.push(['update', id, title]); return { id }; },
+    async create({ title, data }) { if (cloud.failNext) { const e = cloud.failNext; cloud.failNext = null; throw e; } const row = { id: `d${++n}`, updated_at: `t${n}` }; rows.set(row.id, { title, data }); calls.push(['create', title]); return row; },
+    async update(id, { title, data, expectedUpdatedAt }) { if (!rows.has(id)) throw new CloudError('gone', { code: 'not_found' }); if (cloud.conflict) throw new CloudError('changed', { code: 'conflict' }); rows.set(id, { title, data }); calls.push(['update', id, title, expectedUpdatedAt]); return { id, updated_at: `u${++n}` }; },
   };
   const rig = { calls, rows, cloud, deck: { meta: { title: 'One', createdAt: 'c1' } }, link: null, states: [], timers: [] };
   rig.sync = new CloudSync({
     getCloud: () => rig.cloudOn === false ? null : cloud,
     getDeck: () => rig.deck,
     inline: async (d) => structuredClone(d),
-    getLink: (d) => (rig.link && rig.link.at === d.meta.createdAt ? rig.link.id : null),
-    setLink: (id, d) => { rig.link = id ? { id, at: d.meta.createdAt } : null; },
+    getLink: (d) => (rig.link && rig.link.at === d.meta.createdAt ? { id: rig.link.id, updatedAt: rig.link.updatedAt ?? null } : null),
+    setLink: async (link, d) => { rig.link = link ? { id: link.id, at: d.meta.createdAt, updatedAt: link.updatedAt } : null; },
     onState: (s, e) => rig.states.push(e ? `${s}:${e}` : s),
     delayMs: 5,
   });
@@ -241,7 +241,7 @@ test('auto-save: first edit creates the cloud deck, later edits update it, one r
   rig.deck = { meta: { title: 'Renamed', createdAt: 'c1' }, v: 2 };
   rig.sync.changed();
   await tick();
-  assert.deepEqual(rig.calls.slice(1), [['update', 'd1', 'Renamed']]);
+  assert.deepEqual(rig.calls.slice(1), [['update', 'd1', 'Renamed', 't1']], 'the update names the version it is based on');
 });
 
 test('auto-save: nothing is sent when signed out, and nothing for a deck that was just loaded', async () => {
@@ -301,7 +301,7 @@ test('auto-save: a deck deleted elsewhere is saved again as a new one; edits mad
   slow.cloud.create = async (x) => { slow.deck = { meta: { title: 'B', createdAt: 'c1' }, v: 2 }; return origCreate(x); };
   slow.sync.changed();
   await tick(80);
-  assert.deepEqual(slow.calls.map((c) => c.slice(0, 1).concat(c.at(-1))), [['create', 'A'], ['update', 'B']]);
+  assert.deepEqual(slow.calls.map((c) => [c[0], c[2] ?? c[1]]), [['create', 'A'], ['update', 'B']]);
 });
 
 test('manual save reports failures to the caller', async () => {
@@ -327,4 +327,78 @@ test('a deck that was only opened or created never claims to be saved online', a
   rig.sync.changed();
   rig.sync.markClean(opened);
   assert.equal(rig.sync.state, 'saved', 'it has a cloud copy, which matches');
+});
+
+test('a conflict stops saving until the person chooses; forcing overwrites', async () => {
+  const rig = syncRig();
+  rig.deck = { meta: { title: 'One', createdAt: 'c1' }, v: 1 };
+  rig.sync.changed();
+  await tick();
+  assert.equal(rig.sync.state, 'saved');
+  rig.cloud.conflict = true;
+  rig.deck = { meta: { title: 'Two', createdAt: 'c1' }, v: 2 };
+  rig.sync.changed();
+  await tick();
+  assert.equal(rig.sync.state, 'conflict');
+  const callsBefore = rig.calls.length;
+  rig.deck = { meta: { title: 'Three', createdAt: 'c1' }, v: 3 };
+  rig.sync.changed();
+  await tick();
+  assert.equal(rig.calls.length, callsBefore, 'no further attempts while the choice is pending');
+  assert.equal(rig.sync.state, 'conflict');
+  rig.cloud.conflict = false;
+  await rig.sync.flush({ force: true, manual: true });
+  assert.equal(rig.sync.state, 'saved');
+  assert.equal(rig.calls.at(-1)[3], null, 'a forced save does not name a base version');
+});
+
+test('update refuses to overwrite a newer online copy, and says so', async () => {
+  const srv = await startFakeSupabase({ anonKey: KEY });
+  try {
+    const a = client(srv);
+    const b = client(srv);
+    await a.signUp('a@example.com', 'secret1');
+    await b.signIn('a@example.com', 'secret1');
+    const row = await a.create({ title: 'Shared', data: deckOf('Shared') });
+    const seen = row.updated_at;
+    await b.update(row.id, { title: 'B edited', data: deckOf('B'), expectedUpdatedAt: seen });   // fine: based on the latest
+    await assert.rejects(a.update(row.id, { title: 'A edited', data: deckOf('A'), expectedUpdatedAt: seen }), { code: 'conflict' });
+    assert.equal((await a.get(row.id)).title, 'B edited', 'the newer copy was not overwritten');
+    const forced = await a.update(row.id, { title: 'A forced', data: deckOf('A') });
+    assert.equal(forced.title, 'A forced');
+    await a.remove(row.id);
+    await assert.rejects(a.update(row.id, { title: 'x', data: {}, expectedUpdatedAt: seen }), { code: 'not_found' });
+  } finally { await srv.close(); }
+});
+
+test('dashboard thumbnails travel with the deck, and only small PNGs are sent', async () => {
+  const srv = await startFakeSupabase({ anonKey: KEY });
+  try {
+    const c = client(srv);
+    await c.signUp('a@example.com', 'secret1');
+    const png = 'data:image/png;base64,' + 'A'.repeat(100);
+    const row = await c.create({ title: 'T', data: deckOf('T'), thumb: png });
+    assert.equal((await c.list())[0].thumb, png);
+    const noImage = await c.create({ title: 'U', data: deckOf('U'), thumb: 'data:text/html;base64,AAAA' });
+    assert.equal(srv.decks.find((d) => d.id === noImage.id).thumb, null, 'not an image');
+    const huge = await c.create({ title: 'V', data: deckOf('V'), thumb: 'data:image/png;base64,' + 'A'.repeat(70000) });
+    assert.equal(srv.decks.find((d) => d.id === huge.id).thumb, null, 'too big');
+    const updated = await c.setThumb(row.id, 'data:image/png;base64,' + 'B'.repeat(50));
+    assert.ok(updated.updated_at);
+  } finally { await srv.close(); }
+});
+
+test('deleting an account removes its decks and signs out', async () => {
+  const srv = await startFakeSupabase({ anonKey: KEY });
+  try {
+    const store = memoryStore();
+    const c = client(srv, store);
+    await c.signUp('gone@example.com', 'secret1');
+    await c.create({ title: 'Mine', data: deckOf('Mine') });
+    await c.deleteAccount();
+    assert.equal(c.user, null);
+    assert.equal(store.get('session'), null);
+    assert.equal(srv.decks.length, 0);
+    await assert.rejects(client(srv).signIn('gone@example.com', 'secret1'), /Invalid login/);
+  } finally { await srv.close(); }
 });

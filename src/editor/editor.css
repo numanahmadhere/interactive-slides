@@ -390,7 +390,7 @@ select.ed-input { appearance: none; padding-right: 28px; background-image: linea
 .ed-cloud__row { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; align-items: center; padding: 12px 0; border-top: 1px solid #232838; }
 .ed-cloud__share { grid-column: 1 / -1; display: grid; gap: 6px; justify-items: start; }
 
-.ed-top button[data-state="error"] { color: #f0605d; }
+.ed-top button[data-state="error"], .ed-top button[data-state="conflict"] { color: #f0605d; }
 .ed-top button[data-state="signedout"] { color: #a9a9ff; }
 .ed-cloud__pw { margin-top: 14px; padding-top: 10px; border-top: 1px solid #232838; }
 .ed-cloud__pw summary { cursor: pointer; color: #8f97ad; font-size: 13px; }

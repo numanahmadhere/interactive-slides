@@ -20,6 +20,7 @@ const PATHS = {
   close: 'M18 6 6 18M6 6l12 12',
   file: 'M14 3H6v18h12V7zM14 3v4h4',
   image: 'M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6',
+  dots: 'M12 5.5v.01M12 12v.01M12 18.5v.01',
 };
 
 export function icon(name, size = 16) {

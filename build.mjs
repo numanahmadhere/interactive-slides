@@ -2,11 +2,12 @@
 //   node build.mjs           bundle to dist/ (and dist/single/index.html)
 //   node build.mjs --serve   watch and serve dist/ on http://localhost:5177
 import { build, context } from 'esbuild';
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
 import { serviceWorkerSource } from './src/sw-template.js';
+import { buildSite } from './tools/site.mjs';
 import { cleanConfig } from './src/live/protocol.js';
 
 // The project this build talks to. Real environment variables win over .env.local
@@ -98,47 +99,44 @@ const options = {
   plugins: [
     playerRuntime,
     {
-      name: 'copy-html',
+      name: 'site',
       setup(b) {
         b.onEnd(async () => {
-          await mkdir('dist', { recursive: true });
-          await copyFile('src/index.html', 'dist/index.html');
+          await writeSite();
         });
       },
     },
   ],
 };
 
-// One self-contained HTML file: opens from disk with no server.
-async function inlineSingleFile() {
-  const [html, js, css] = await Promise.all([
-    readFile('src/index.html', 'utf8'),
-    readFile('dist/app.js', 'utf8'),
-    readFile('dist/app.css', 'utf8'),
-  ]);
-  const out = html
-    .replace('<meta charset="utf-8">', '<meta charset="utf-8">\n  <meta name="no-service-worker" content="">')
-    .replace('<link rel="stylesheet" href="app.css">', () => `<style>${css}</style>`)
-    .replace('<script src="app.js"></script>', () => `<script>${js.replace(/<\/script/gi, '<\\/script')}</script>`);
-  await mkdir('dist/single', { recursive: true });
-  await writeFile('dist/single/index.html', out);
+// The public pages, the app shell (served for every address under /app/) and the
+// static files next to them.
+async function writeSite() {
+  await mkdir('dist/app', { recursive: true });
+  await copyFile('src/app.html', 'dist/app/index.html');
+  await copyFile('site/site.css', 'dist/site.css');
+  await copyFile('site/favicon.svg', 'dist/favicon.svg');
+  for (const [file, content] of Object.entries(buildSite())) {
+    await mkdir(dirname(resolve('dist', file)), { recursive: true });
+    await writeFile(resolve('dist', file), content);
+  }
 }
 
 // The cache name carries a hash of everything the worker caches, so a changed
 // build is a changed worker and visitors get the update.
 async function writeServiceWorker() {
   const hash = createHash('sha256');
-  for (const file of ['dist/index.html', 'dist/app.js', 'dist/app.css']) hash.update(await readFile(file));
+  for (const file of ['dist/index.html', 'dist/app/index.html', 'dist/app.js', 'dist/app.css', 'dist/site.css']) hash.update(await readFile(file));
   await writeFile('dist/sw.js', serviceWorkerSource(hash.digest('hex').slice(0, 12)));
 }
 
 if (serve) {
   const ctx = await context(options);
   await ctx.watch();
-  const { port } = await ctx.serve({ servedir: 'dist', port: PORT });
+  const { port } = await ctx.serve({ servedir: 'dist', port: PORT, fallback: 'src/app.html' });
   console.log(`Serving on http://localhost:${port}`);
 } else {
+  await rm('dist', { recursive: true, force: true }); // no stale files from older builds
   await build(options);
-  await inlineSingleFile();
   await writeServiceWorker();
 }

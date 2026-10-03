@@ -149,35 +149,71 @@ export class Cloud {
 
   // ---- decks -----------------------------------------------------------------------
 
+  // Summaries for the dashboard. Falls back to a plainer query on a project that has
+  // not run the latest schema.sql yet (no thumbnail column).
   async list() {
-    return this.#rest('/rest/v1/decks?select=id,title,updated_at,share_token&order=updated_at.desc&limit=100');
+    try {
+      return await this.#rest('/rest/v1/decks?select=id,title,updated_at,share_token,thumb&order=updated_at.desc&limit=200');
+    } catch (err) {
+      if (err.status !== 400) throw err;
+      return this.#rest('/rest/v1/decks?select=id,title,updated_at,share_token&order=updated_at.desc&limit=200');
+    }
   }
 
   async get(id) {
-    const rows = await this.#rest(`/rest/v1/decks?select=id,title,data,share_token&id=eq.${encodeURIComponent(id)}`);
+    const rows = await this.#rest(`/rest/v1/decks?select=id,title,data,share_token,updated_at&id=eq.${encodeURIComponent(id)}`);
     if (!rows[0]) throw new CloudError('That deck was not found.', { code: 'not_found' });
     return rows[0];
   }
 
-  // title and data (the deck JSON with its images inlined). Returns { id, ... }.
-  async create({ title, data }) {
-    return (await this.#rest('/rest/v1/decks', { method: 'POST', body: this.#payload(title, data), prefer: 'return=representation' }))[0];
+  // title and data (the deck JSON with its images inlined), plus a small picture.
+  async create({ title, data, thumb }) {
+    return (await this.#rest('/rest/v1/decks', { method: 'POST', body: this.#payload(title, data, thumb), prefer: 'return=representation' }))[0];
   }
 
-  async update(id, { title, data }) {
-    const rows = await this.#rest(`/rest/v1/decks?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: this.#payload(title, data), prefer: 'return=representation' });
-    if (!rows[0]) throw new CloudError('That deck is not in your account any more.', { code: 'not_found' });
-    return rows[0];
+  // expectedUpdatedAt is the online copy's time when we last saw it. If someone (or
+  // another device) saved since, nothing is written and a 'conflict' error is thrown.
+  async update(id, { title, data, thumb, expectedUpdatedAt = null }) {
+    const guard = expectedUpdatedAt ? `&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}` : '';
+    const rows = await this.#rest(`/rest/v1/decks?id=eq.${encodeURIComponent(id)}${guard}`, { method: 'PATCH', body: this.#payload(title, data, thumb), prefer: 'return=representation' });
+    if (rows[0]) return rows[0];
+    if (expectedUpdatedAt) {
+      const now = await this.#rest(`/rest/v1/decks?select=id,updated_at&id=eq.${encodeURIComponent(id)}`);
+      if (now[0]) throw new CloudError('This deck was changed somewhere else since you last saved it.', { code: 'conflict' });
+    }
+    throw new CloudError('That deck is not in your account any more.', { code: 'not_found' });
+  }
+
+  // Sends only the dashboard picture (it is drawn a few seconds after the deck is saved).
+  async setThumb(id, thumb, expectedUpdatedAt = null) {
+    if (this.noThumb || typeof thumb !== 'string' || !/^data:image\/png;base64,/.test(thumb) || thumb.length > 60000) return null;
+    const guard = expectedUpdatedAt ? `&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}` : '';
+    return (await this.#rest(`/rest/v1/decks?id=eq.${encodeURIComponent(id)}${guard}`, { method: 'PATCH', body: { thumb }, prefer: 'return=representation' }))[0] ?? null;
+  }
+
+  // Rename without touching the content.
+  async rename(id, title) {
+    return (await this.#rest(`/rest/v1/decks?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: { title: String(title).slice(0, 200) || 'Untitled deck' }, prefer: 'return=representation' }))[0] ?? null;
   }
 
   async remove(id) {
     await this.#rest(`/rest/v1/decks?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 
-  #payload(title, data) {
+  #payload(title, data, thumb) {
     const size = JSON.stringify(data).length;
     if (size > MAX_DECK_BYTES) throw new CloudError(`This deck is ${(size / 1048576).toFixed(0)} MB with its images. The limit is 25 MB; use smaller images.`, { code: 'too_big' });
-    return { title: String(title ?? '').slice(0, 200) || 'Untitled deck', data };
+    const body = { title: String(title ?? '').slice(0, 200) || 'Untitled deck', data };
+    // A small picture for the dashboard. Left out, not truncated, if it is not a modest image.
+    if (typeof thumb === 'string' && /^data:image\/png;base64,/.test(thumb) && thumb.length <= 60000 && !this.noThumb) body.thumb = thumb;
+    return body;
+  }
+
+  // Deletes the account and, through the database, every deck in it. Irreversible.
+  async deleteAccount() {
+    await this.#rest('/rest/v1/rpc/delete_my_account', { method: 'POST', body: {} });
+    this.#session = null;
+    this.store.remove('session');
   }
 
   // ---- sharing ---------------------------------------------------------------------
@@ -200,7 +236,18 @@ export class Cloud {
   // ---- plumbing --------------------------------------------------------------------
 
   async #rest(path, { method = 'GET', body, prefer } = {}) {
-    const result = await this.#call(path, { method, body, auth: await this.#token(), prefer });
+    let result;
+    try {
+      result = await this.#call(path, { method, body, auth: await this.#token(), prefer });
+    } catch (err) {
+      // Not yet migrated: the thumb column does not exist. Save without it from now on.
+      if (body?.thumb !== undefined && err.status === 400 && /thumb/i.test(err.message)) {
+        this.noThumb = true;
+        const { thumb, ...rest } = body;
+        return this.#rest(path, { method, body: rest, prefer });
+      }
+      throw err;
+    }
     return Array.isArray(result) ? result : [];
   }
 

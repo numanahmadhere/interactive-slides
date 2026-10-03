@@ -6,6 +6,7 @@
 //   idle       signed in, nothing to save
 //   saving     a save is under way or waiting for you to stop typing
 //   saved      the cloud copy matches
+//   conflict   the online copy changed somewhere else; nothing is overwritten until you choose
 //   error      the last save failed (it retries on the next change and after a pause)
 
 const RETRY_MS = 30_000;
@@ -19,8 +20,8 @@ export class CloudSync {
   state = 'off';
   error = '';
 
-  constructor({ getCloud, getDeck, inline, getLink, setLink, onState = () => {}, delayMs = 3000, timers = { set: (fn, ms) => setTimeout(fn, ms), clear: (id) => clearTimeout(id) } }) {
-    Object.assign(this, { getCloud, getDeck, inline, getLink, setLink, onState, delayMs, timers });
+  constructor({ getCloud, getDeck, inline, getLink, setLink, getThumb = () => '', onState = () => {}, delayMs = 3000, timers = { set: (fn, ms) => setTimeout(fn, ms), clear: (id) => clearTimeout(id) } }) {
+    Object.assign(this, { getCloud, getDeck, inline, getLink, setLink, getThumb, onState, delayMs, timers });
     this.refresh();
   }
 
@@ -48,20 +49,32 @@ export class CloudSync {
     // Nothing is waiting to be saved. Say "saved" only if this deck really has a cloud
     // copy (it was opened from the cloud); a brand new or imported deck has none yet.
     if (this.state === 'saving' && !this.#running) this.#set(this.getLink(deck) ? 'saved' : 'idle');
+    if (this.state === 'conflict') this.#set('idle');
   }
 
   // Call after every edit.
   changed() {
     this.refresh();
-    if (this.state === 'off' || this.state === 'signedout') return;
+    if (this.state === 'off' || this.state === 'signedout' || this.state === 'conflict') return; // a conflict waits for a choice
     this.#set('saving');
     this.timers.clear(this.#timer);
     this.#timer = this.timers.set(() => this.flush(), this.delayMs);
   }
 
+  // The dashboard picture was drawn after the deck was saved: send just that.
+  async pushThumb() {
+    const cloud = this.getCloud();
+    const linked = this.getLink(this.getDeck());
+    if (!cloud?.user || !linked || this.#running || this.state === 'conflict') return;
+    try {
+      const row = await cloud.setThumb(linked.id, this.getThumb(), linked.updatedAt);
+      if (row) await this.setLink({ id: row.id, updatedAt: row.updated_at ?? null }, this.getDeck());
+    } catch { /* the picture is cosmetic; the next save sends it */ }
+  }
+
   // Save now. asCopy forces a new cloud deck; manual means a person asked, so errors are thrown to them. Returns the saved row, or null if
   // there was nothing to do.
-  async flush({ asCopy = false, manual = false } = {}) {
+  async flush({ asCopy = false, manual = false, force = false } = {}) {
     this.timers.clear(this.#timer);
     this.timers.clear(this.#retry);
     this.#timer = this.#retry = 0;
@@ -86,17 +99,18 @@ export class CloudSync {
         data.meta = { ...data.meta, updatedAt: new Date().toISOString() };
         const title = deck.meta.title;
         const linked = asCopy ? null : this.getLink(deck);
+        const thumb = this.getThumb();
         if (linked) {
           try {
-            row = await cloud.update(linked, { title, data });
+            row = await cloud.update(linked.id, { title, data, thumb, expectedUpdatedAt: force ? null : linked.updatedAt });
           } catch (err) {
             if (err.code !== 'not_found') throw err;
-            row = await cloud.create({ title, data });
+            row = await cloud.create({ title, data, thumb });
           }
         } else {
-          row = await cloud.create({ title, data });
+          row = await cloud.create({ title, data, thumb });
         }
-        this.setLink(row.id, deck);
+        await this.setLink({ id: row.id, updatedAt: row.updated_at ?? null }, deck);
         this.#savedDeck = deck;
         asCopy = false;
         if (this.getDeck() !== deck) this.#again = true; // edited while saving
@@ -104,6 +118,7 @@ export class CloudSync {
       this.#set('saved');
     } catch (err) {
       if (err.code === 'signed_out') this.refresh();
+      else if (err.code === 'conflict') this.#set('conflict', err.message);
       else {
         this.#set('error', err.message || 'Could not save to the cloud.');
         this.#retry = this.timers.set(() => this.flush(), RETRY_MS);

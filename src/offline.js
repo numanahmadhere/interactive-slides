@@ -12,8 +12,8 @@ export async function setupOffline() {
     await Promise.all(registrations.map((r) => r.unregister()));
     return;
   }
-  // Needs a real server address, and the single-file build has no worker beside it.
-  if (!/^https?:$/.test(location.protocol) || document.querySelector('meta[name="no-service-worker"]')) return;
+  // Needs a real server address.
+  if (!/^https?:$/.test(location.protocol)) return;
 
   const hadController = !!navigator.serviceWorker.controller;
   let notified = false;
@@ -25,7 +25,7 @@ export async function setupOffline() {
       : 'Ready to work offline.', { timeout: hadController ? 8000 : 4000 });
   });
   try {
-    await navigator.serviceWorker.register('sw.js');
+    await navigator.serviceWorker.register('/sw.js', { scope: '/' });
   } catch (err) {
     console.warn('Offline support is unavailable:', err);
   }

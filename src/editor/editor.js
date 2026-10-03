@@ -3,11 +3,10 @@
 // keyboard shortcuts. Views call back into it; none of them talk to each other.
 
 import { h, svgIcon } from '../core/dom.js';
-import { createDeck, createSlide, normalizeDeck } from '../core/schema.js';
+import { createSlide, normalizeDeck } from '../core/schema.js';
 import { createBlock, listBlocks, getBlock } from '../core/blocks/index.js';
 import { getLayout, listLayouts } from '../core/layouts.js';
-import { sampleDeck } from '../samples/sample-deck.js';
-import { interactiveDeck } from '../samples/interactive-deck.js';
+import { blankDeck, sampleDeckCopy, demoDeckCopy } from '../library/starters.js';
 import { Session } from '../core/session.js';
 import { slugify } from '../core/util.js';
 import * as ops from './ops.js';
@@ -23,29 +22,27 @@ import { openExportDialog } from './export-dialog.js';
 import { openFindDialog } from './find-dialog.js';
 import { openLiveDialog } from './live-dialog.js';
 import { openCloudDialog } from './cloud-dialog.js';
-import { getLink, setLink } from '../cloud/config.js';
 import { getCloud } from '../cloud/instance.js';
 import { CloudSync } from '../cloud/sync.js';
 import { LiveHost } from '../live/host.js';
 import { createTransport } from '../live/transport.js';
 import { newRoom, cleanSavedSession } from '../live/protocol.js';
 import { Exporter } from './exporter.js';
+import { slideToPng } from '../export/png.js';
+import { deckPath, DASHBOARD_PATH } from '../shell/paths.js';
+import { setFlash } from '../shell/flash.js';
 
 const LIVE_SESSION_KEY = 'interactive-slides:live-session';
 const SAVE_DELAY_MS = 600;
 const SAVE_LABELS = { saved: 'Saved', saving: 'Saving...', error: 'Not saved' };
 
-function starterDeck() {
-  const deck = createDeck({ title: 'Untitled deck' });
-  deck.slides = [createSlide('title'), createSlide('content')];
-  return deck;
-}
-
 const isTyping = (el) => !!el?.closest?.('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]');
 
 export class Editor {
-  constructor(mount) {
+  constructor(mount, deckId) {
     this.mount = mount;
+    this.deckId = deckId;
+    this.meta = null; // this deck's library summary: title, thumbnail, cloud link
     this.persist = new Persistence();
     this.assets = new AssetStore(this.persist);
     this.selection = { slideId: null, blockId: null, slotId: null };
@@ -57,6 +54,8 @@ export class Editor {
     this.saveTimer = 0;
     this.saveState = 'saved';
     this.warnedImages = false;
+    this.thumbTimer = 0;
+    this.thumbSlide = null;
   }
 
   get deck() {
@@ -80,7 +79,7 @@ export class Editor {
     await this.persist.init();
     let deck = null;
     try {
-      const saved = await this.persist.loadDeck();
+      const saved = await this.persist.loadDeck(this.deckId);
       if (saved) {
         const result = normalizeDeck(saved);
         deck = result.deck;
@@ -89,10 +88,18 @@ export class Editor {
     } catch (err) {
       console.error('Could not load the saved deck', err);
     }
-    deck ??= starterDeck();
+    if (!deck) {
+      const missing = new Error('That deck is not on this device.');
+      missing.code = 'not_found';
+      throw missing;
+    }
+    this.meta = await this.persist.getMeta(this.deckId);
     try {
-      await this.assets.init();
-      await this.assets.gc(deck);
+      const mine = this.assets.referenced(deck);
+      await this.assets.init(mine);
+      const keep = await this.persist.allAssetIds();
+      for (const id of mine) keep.add(id);
+      await this.assets.gc(keep);
     } catch (err) {
       console.error('Could not load stored images', err);
     }
@@ -108,8 +115,11 @@ export class Editor {
       getCloud,
       getDeck: () => this.deck,
       inline: (d) => this.assets.inline(d),
-      getLink,
-      setLink,
+      getLink: () => (this.meta?.cloudId ? { id: this.meta.cloudId, updatedAt: this.meta.cloudUpdatedAt } : null),
+      setLink: async (link) => {
+        this.meta = await this.persist.patchMeta(this.deckId, { cloudId: link?.id ?? null, cloudUpdatedAt: link?.updatedAt ?? null });
+      },
+      getThumb: () => this.meta?.thumb ?? '',
       onState: (state, error) => this.#paintCloud(state, error),
     });
     this.sync.markClean(this.deck); // what was just loaded is not an edit
@@ -239,7 +249,7 @@ export class Editor {
 
   // The small online-saving button in the top bar.
   #paintCloud(state, error) {
-    const labels = { signedout: 'Sign in to save online', idle: 'Online saving on', saving: 'Saving online...', saved: 'Saved online', error: 'Not saved online' };
+    const labels = { signedout: 'Sign in to save online', idle: 'Online saving on', saving: 'Saving online...', saved: 'Saved online', error: 'Not saved online', conflict: 'Changed elsewhere' };
     this.cloudBtn.hidden = state === 'off';
     const span = this.cloudBtn.querySelector('span') ?? this.cloudBtn;
     span.textContent = labels[state] ?? 'Cloud';
@@ -259,12 +269,46 @@ export class Editor {
     this.saveTimer = setTimeout(() => this.flushSave(), SAVE_DELAY_MS);
   }
 
+  async unlinkCloud() {
+    this.meta = await this.persist.patchMeta(this.deckId, { cloudId: null, cloudUpdatedAt: null });
+  }
+
+  get cloudId() {
+    return this.meta?.cloudId ?? null;
+  }
+
+  // The dashboard card picture: the first slide, drawn small once you stop editing.
+  #scheduleThumb() {
+    clearTimeout(this.thumbTimer);
+    const first = this.deck.slides[0];
+    if (first === this.thumbSlide && this.meta?.thumb) return;
+    this.thumbTimer = setTimeout(async () => {
+      try {
+        const deck = this.deck;
+        const mini = await this.assets.inline({ ...deck, slides: [deck.slides[0]] });
+        const blob = await slideToPng(mini, 0, { scale: 0.2 });
+        const thumb = await new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result);
+          r.onerror = () => reject(r.error);
+          r.readAsDataURL(blob);
+        });
+        this.thumbSlide = deck.slides[0];
+        this.meta = await this.persist.patchMeta(this.deckId, { thumb, thumbSlideId: deck.slides[0].id });
+        this.sync?.pushThumb();
+      } catch (err) {
+        console.warn('Could not draw the thumbnail', err);
+      }
+    }, 4000);
+  }
+
   async flushSave() {
     clearTimeout(this.saveTimer);
     const deck = this.deck;
     try {
-      await this.persist.saveDeck(deck);
+      this.meta = await this.persist.saveDeck(this.deckId, deck);
       if (deck === this.deck) this.#setSaveState('saved');
+      this.#scheduleThumb();
     } catch (err) {
       console.error('Autosave failed', err);
       this.#setSaveState('error');
@@ -442,6 +486,7 @@ export class Editor {
       anchor,
       label: 'File',
       items: [
+        { label: 'My decks', value: 'decks' },
         { label: 'New deck', value: 'new' },
         { label: 'Open sample deck', value: 'sample' },
         { label: 'Open interactive demo', value: 'interactive' },
@@ -451,9 +496,10 @@ export class Editor {
         { label: 'Export...', value: 'export', hint: 'HTML, PDF, PNG, PPTX' },
       ],
       onPick: (value) => {
-        if (value === 'new') this.#replaceDeck(starterDeck());
-        else if (value === 'sample') this.#replaceDeck(normalizeDeck(structuredClone(sampleDeck)).deck);
-        else if (value === 'interactive') this.#replaceDeck(normalizeDeck(structuredClone(interactiveDeck)).deck);
+        if (value === 'decks') location.assign(DASHBOARD_PATH);
+        else if (value === 'new') this.openAsNew(blankDeck());
+        else if (value === 'sample') this.openAsNew(sampleDeckCopy());
+        else if (value === 'interactive') this.openAsNew(demoDeckCopy());
         else if (value === 'import') this.#pickImportFile();
         else if (value === 'find') openFindDialog(this);
         else if (value === 'cloud') openCloudDialog(this);
@@ -462,12 +508,14 @@ export class Editor {
     });
   }
 
-  #replaceDeck(deck, { cloudId = null } = {}) {
+  // A new deck never overwrites the one you are editing: it becomes another deck in
+  // your library and opens in its place.
+  async openAsNew(deck, { cloudId = null, cloudUpdatedAt = null, flash = '' } = {}) {
     this.canvas.finishEdit();
-    this.commit(deck);
-    setLink(cloudId, deck); // a different deck is no longer the one saved in the cloud
-    this.sync?.markClean(this.deck); // saved on the first edit, not on being opened
-    this.select({ slideId: deck.slides[0].id });
+    await this.flushSave();
+    const id = await this.persist.createDeck(deck, { cloudId, cloudUpdatedAt });
+    if (flash) setFlash(flash);
+    location.assign(deckPath(id));
   }
 
   #pickImportFile() {
@@ -479,18 +527,17 @@ export class Editor {
   }
 
   // Deck JSON from anywhere (a file, the cloud) goes through the same gate.
-  async importDeck(raw, { cloudId = null } = {}) {
+  async importDeck(raw, { cloudId = null, cloudUpdatedAt = null, flash = '' } = {}) {
     const { deck, warnings } = normalizeDeck(raw);
     const adopted = await this.assets.adoptDataUrls(deck);
-    this.#replaceDeck(adopted, { cloudId });
     if (warnings.length) console.warn('Imported deck was repaired:', warnings);
+    await this.openAsNew(adopted, { cloudId, cloudUpdatedAt, flash });
     return warnings;
   }
 
   async importFile(file) {
     try {
-      const warnings = await this.importDeck(JSON.parse(await file.text()));
-      toast(warnings.length ? `Imported with ${warnings.length} repair${warnings.length === 1 ? '' : 's'}. Details are in the console.` : 'Deck imported.');
+      await this.importDeck(JSON.parse(await file.text()), { flash: 'Deck imported as a new deck.' });
     } catch (err) {
       toast(err instanceof SyntaxError ? 'That file is not valid JSON.' : err.message || 'Could not import that file.', { kind: 'error' });
     }

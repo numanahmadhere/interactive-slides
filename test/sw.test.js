@@ -27,6 +27,7 @@ function boot(version, { existing = [], origin = 'https://example.test', network
   const state = { skipped: false, claimed: false };
   const self = {
     location: { origin },
+    registration: { scope: origin + '/app/'.replace('app/', '') },
     addEventListener: (type, fn) => { handlers[type] = fn; },
     skipWaiting: async () => { state.skipped = true; },
     clients: { claim: async () => { state.claimed = true; } },

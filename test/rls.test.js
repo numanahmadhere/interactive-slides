@@ -131,3 +131,28 @@ test('deleting an account deletes its decks', async () => {
   const left = await db.query(`select count(*)::int as n from decks where owner = '33333333-3333-3333-3333-333333333333'`);
   assert.equal(left.rows[0].n, 0);
 });
+
+test('delete_my_account removes only the caller, and only when signed in', async () => {
+  const C = '44444444-4444-4444-4444-444444444444';
+  const D = '55555555-5555-5555-5555-555555555555';
+  await db.exec(`insert into auth.users (id, email) values ('${C}', 'c2@example.test'), ('${D}', 'd@example.test')`);
+  await as(C, `insert into decks (title, data) values ('C deck', '{}')`);
+  await as(D, `insert into decks (title, data) values ('D deck', '{}')`);
+
+  assert.match((await as(null, 'select public.delete_my_account()')).error ?? '', /permission denied/i, 'anonymous visitors cannot call it');
+  assert.equal((await db.query(`select count(*)::int as n from auth.users where id = '${C}'`)).rows[0].n, 1, 'still there');
+
+  const ok = await as(C, 'select public.delete_my_account()');
+  assert.ok(!ok.error, ok.error);
+  assert.equal((await db.query(`select count(*)::int as n from auth.users where id = '${C}'`)).rows[0].n, 0, 'the account is gone');
+  assert.equal((await db.query(`select count(*)::int as n from decks where owner = '${C}'`)).rows[0].n, 0, 'and its decks');
+  assert.equal((await db.query(`select count(*)::int as n from auth.users where id = '${D}'`)).rows[0].n, 1, 'other people are untouched');
+  assert.equal((await db.query(`select count(*)::int as n from decks where owner = '${D}'`)).rows[0].n, 1);
+});
+
+test('the thumbnail column accepts a small image and refuses an oversized one', async () => {
+  const [row] = await as(A, `insert into decks (title, data, thumb) values ('With pic', '{}', 'data:image/png;base64,AAAA') returning id`);
+  assert.ok(row.id);
+  const big = await as(A, `insert into decks (title, data, thumb) values ('Big pic', '{}', $1)`, ['x'.repeat(60001)]);
+  assert.match(big.error ?? '', /check constraint/i);
+});
