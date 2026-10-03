@@ -23,6 +23,7 @@ export async function mountAccount(root) {
   };
 
   const section = (title, ...children) => h('section', { class: 'sh-section' }, h('h2', { text: title }), ...children);
+  const danger = (title, ...children) => h('section', { class: 'sh-section sh-section--danger' }, h('h2', { text: title }), ...children);
 
   async function render() {
     const local = await persist.listDecks();
@@ -36,7 +37,7 @@ export async function mountAccount(root) {
         signInPanel({ cloud, run, say, onSignedIn: () => location.reload() }), status));
     } else {
       body.push(section('Signed in',
-        h('p', { class: 'sh-lead', text: cloud.user.email }),
+        h('div', { class: 'sh-profile' }, h('span', { class: 'sh-avatar sh-avatar--lg', 'aria-hidden': 'true', text: (cloud.user.email[0] ?? '?').toUpperCase() }), h('div', {}, h('div', { class: 'sh-profile__email', text: cloud.user.email }), h('div', { class: 'sh-profile__note', text: 'Your decks save online automatically.' }))),
         h('div', { class: 'ed-live__actions' }, button({ label: 'Sign out', onClick: run('Signing out...', async () => { await cloud.signOut(); location.reload(); }) })),
         status));
     }
@@ -46,7 +47,7 @@ export async function mountAccount(root) {
       local.length ? h('div', { class: 'ed-live__actions' }, button({ label: 'Remove all decks from this device', variant: 'danger', onClick: () => confirmWipe(local.length) })) : null));
 
     if (cloud?.user) {
-      body.push(section('Delete my account',
+      body.push(danger('Delete my account',
         h('p', { text: 'Permanently deletes your account and every deck saved online, including shared links. Decks stored only on this device are not touched. This cannot be undone.' }),
         h('div', { class: 'ed-live__actions' }, button({ label: 'Delete my account...', variant: 'danger', onClick: confirmDelete }))));
     }

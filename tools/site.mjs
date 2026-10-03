@@ -18,7 +18,9 @@ const ICONS = {
 };
 const ico = (n) => `<span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONS[n]}</svg></span>`;
 
-function layout({ path, title, description, body, index = true }) {
+const THEME_INIT = "try{var t=localStorage.getItem('interactive-slides:theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}document.documentElement.classList.add('js')";
+
+function layout({ path, title, description, body, index = true, hero = false }) {
   const url = SITE + path;
   return `<!doctype html>
 <html lang="en">
@@ -29,13 +31,16 @@ function layout({ path, title, description, body, index = true }) {
 <meta name="description" content="${esc(description)}">
 ${index ? '' : '<meta name="robots" content="noindex">\n'}<link rel="canonical" href="${url}">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/tokens.css">
 <link rel="stylesheet" href="/site.css">
+<meta name="theme-color" content="#2020E8">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="${NAME}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:url" content="${url}">
 <meta name="twitter:card" content="summary">
+<script>${THEME_INIT}</script>
 <script>
 // Links made before the platform had a home page (/?join=, /?remote=, /?view=) and
 // sign-in returns that land here go to the app, with everything after the address kept.
@@ -45,85 +50,146 @@ ${index ? '' : '<meta name="robots" content="noindex">\n'}<link rel="canonical" 
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
-<a class="brand" href="/"><span class="mark" aria-hidden="true">D</span>${NAME}</a>
-<nav class="main" aria-label="Main"><a href="/#features">Features</a><a href="/#how">How it works</a><a href="/learn/">Learn</a><a href="/#faq">FAQ</a></nav>
+<a class="brand" href="/"><span class="mark" aria-hidden="true">D</span><span>${NAME}</span></a>
+<nav class="main" aria-label="Main"><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/#how">How it works</a><a href="/learn/">Learn</a><a href="/#faq">FAQ</a></nav>
 <span class="grow"></span>
-<a class="btn sm ghost" href="/app/account">Sign in</a><a class="btn sm" href="/app/">Open the app</a>
+<a class="link-quiet" href="/app/account">Sign in</a><a class="btn sm" href="/app/">Start building <span aria-hidden="true">&rarr;</span></a>
+<details class="menu"><summary aria-label="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
+<div class="menu__panel"><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/#how">How it works</a><a href="/learn/">Learn</a><a href="/#faq">FAQ</a><a href="/app/account">Sign in</a></div></details>
 </div></header>
 <div class="flash" id="flash" role="status" hidden>Your account and online decks were deleted. Decks on this device were kept.</div>
 <main id="main">
 ${body}
 </main>
 <footer class="site"><div class="wrap">
-<span>&copy; ${new Date().getFullYear()} Densight Labs</span>
-<a href="/learn/">Learn</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/app/">Open the app</a>
-</div></footer>
-<script>if(/[?&]account-deleted=1/.test(location.search))document.getElementById('flash').hidden=false;</script>
+<div class="foot-brand"><a class="brand" href="/"><span class="mark" aria-hidden="true">D</span><span>${NAME}</span></a>
+<p>Interactive presentations your audience can answer. Built by Densight Labs.</p></div>
+<div><h3 class="foot-h">Product</h3><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/#how">How it works</a><a href="/app/">Open the app</a></div>
+<div><h3 class="foot-h">Learn</h3><a href="/learn/">Guides</a><a href="/#faq">FAQ</a></div>
+<div><h3 class="foot-h">Company</h3><a href="https://densightlabs.com">Densight Labs</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></div>
+</div><div class="wrap foot-end"><span>&copy; ${new Date().getFullYear()} Densight Labs</span></div></footer>
+<script>
+if(/[?&]account-deleted=1/.test(location.search))document.getElementById('flash').hidden=false;
+(function(){var els=document.querySelectorAll('.reveal');if(!('IntersectionObserver' in window)||matchMedia('(prefers-reduced-motion: reduce)').matches){els.forEach(function(e){e.classList.add('in')});return}
+var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{rootMargin:'0px 0px -8% 0px'});els.forEach(function(e){io.observe(e)})})();
+document.querySelectorAll('.menu__panel a').forEach(function(a){a.addEventListener('click',function(){document.querySelector('.menu').open=false})});
+</script>
 </body>
 </html>
 `;
 }
+
+const CHECK = '<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
+const pollBars = (rows) => rows.map(([label, w]) => `<div class="bar" style="--w:${w}%"><span>${label}</span><b>${w}%</b></div>`).join('');
 
 const home = () => layout({
   path: '/',
   title: `${NAME}: interactive presentations your audience can answer`,
   description: 'Build slides with quizzes, polls and live questions. Present from your browser, let the audience join from their phones, and control the slides from yours. Free to start.',
   body: `
-<section class="hero"><div class="wrap">
-<span class="eyebrow">Free to start. No download.</span>
-<h1>Slides your audience can answer.</h1>
-<p class="lead">Build presentations with quizzes, polls and branching, run them live with the room on their phones, and share or export them when you are done.</p>
-<div class="cta"><a class="btn" href="/app/">Start building</a><a class="btn ghost" href="#demo">Try a slide first</a></div>
-<p class="note">No account needed to build and present. Sign in only to save online.</p>
-<div class="demo" id="demo"><div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
-<div class="frame" id="frame"><button type="button" id="load"><span>Play the interactive demo</span></button></div></div>
+<section class="hero"><div class="wrap hero__grid">
+<div class="hero__copy">
+<span class="pill"><i class="dot"></i>Live polls and quizzes in every deck</span>
+<h1>Slides your audience can <em>answer.</em></h1>
+<p class="lead">Build presentations with quizzes, polls and branching. Run them live with the room on their phones. Share or export when you are done.</p>
+<div class="cta"><a class="btn lg" href="/app/">Start building <span aria-hidden="true">&rarr;</span></a><a class="btn lg ghost" href="#demo">Try the demo</a></div>
+<p class="assure">${CHECK}Free to start. No download. No account needed to try it.</p>
+<dl class="stats">
+<div><dt>30</dt><dd>interactive and design blocks</dd></div>
+<div><dt>0</dt><dd>apps for your audience to install</dd></div>
+<div><dt>5</dt><dd>ways to export your deck</dd></div>
+</dl>
+</div>
+<div class="hero__art" aria-hidden="true">
+<div class="glow"></div>
+<div class="win"><div class="win__bar"><i></i><i></i><i></i><span>densight-slides.netlify.app/app</span></div>
+<div class="win__body"><div class="mini">
+<span class="mini__tag">Live poll</span>
+<p class="mini__q">Which block would you use first?</p>
+<div class="bars">${pollBars([['Quiz question', 46], ['Chart', 28], ['Diagram', 18], ['Calculator', 8]])}</div>
+<p class="mini__foot">38 responses</p></div></div></div>
+<div class="phone"><div class="phone__notch"></div>
+<p class="phone__brand">Densight Slides</p>
+<p class="phone__q">Which block would you use first?</p>
+<div class="opt"><i>A</i>Quiz question</div><div class="opt on"><i>B</i>Chart</div><div class="opt"><i>C</i>Diagram</div>
+<p class="phone__sent">${CHECK}Answer sent</p></div>
+<div class="chip chip--a"><i class="dot"></i>38 phones connected</div>
+<div class="chip chip--b">Join code <b>5F5BLZ</b></div>
+</div>
 </div></section>
 
+<section class="strip"><div class="wrap"><p class="strip__label">Made for</p>
+<ul class="tags"><li>Workshops</li><li>Training</li><li>Classrooms</li><li>Pitches</li><li>Team meetings</li><li>Webinars</li><li>Town halls</li></ul></div></section>
+
 <section id="features"><div class="wrap">
-<h2>Everything a live presentation needs</h2>
-<p class="sub">Made for workshops, classrooms, pitches and meetings where people should take part, not just watch.</p>
+<div class="head reveal"><span class="eyebrow">Features</span><h2>Everything a live presentation needs.</h2>
+<p class="sub">Made for rooms where people should take part, not just watch.</p></div>
 <div class="cards">
-<div class="card">${ico('quiz')}<h3>Interactive blocks</h3><p>Quizzes with instant feedback, polls, matching, ordering, flip cards, hotspots, timelines, charts, calculators and a live code lab, all inside your slides.</p></div>
-<div class="card">${ico('live')}<h3>Live audience</h3><p>Show a code or QR. People answer polls and quiz questions on their phones and watch the results build on your screen. No app for them to install.</p></div>
-<div class="card">${ico('remote')}<h3>Phone remote</h3><p>Move the slides from your phone and read your speaker notes and the next slide while you talk.</p></div>
-<div class="card">${ico('design')}<h3>Looks professional</h3><p>Themes, your own colours and logo, backgrounds, shapes, icons and diagrams. Text stays readable on any colour you pick.</p></div>
-<div class="card">${ico('export')}<h3>Present or export anywhere</h3><p>Present in the browser, even offline. Export to a standalone web page, PDF, images or PowerPoint.</p></div>
-<div class="card">${ico('share')}<h3>Save and share</h3><p>Decks save on your device automatically. Sign in to keep them online, open them anywhere, and share a link that anyone can view.</p></div>
+<div class="card reveal">${ico('quiz')}<h3>Interactive blocks</h3><p>Quizzes with instant feedback, polls, matching, ordering, flip cards, hotspots, timelines, charts, calculators and a live code lab, all inside your slides.</p></div>
+<div class="card reveal">${ico('live')}<h3>Live audience</h3><p>Show a code or QR. People answer on their phones and watch the results build on your screen. Nothing for them to install.</p></div>
+<div class="card reveal">${ico('remote')}<h3>Phone remote</h3><p>Move the slides from your phone and read your speaker notes and the next slide while you talk.</p></div>
+<div class="card reveal">${ico('design')}<h3>Looks professional</h3><p>Themes, your own colours and logo, backgrounds, shapes, icons and diagrams. Text stays readable on any colour you pick.</p></div>
+<div class="card reveal">${ico('export')}<h3>Present or export anywhere</h3><p>Present in the browser, even offline. Export to a standalone web page, PDF, images or PowerPoint.</p></div>
+<div class="card reveal">${ico('share')}<h3>Save and share</h3><p>Decks save on your device automatically. Sign in to keep them online, open them anywhere, and share a link anyone can view.</p></div>
 </div></div></section>
 
-<section id="how" class="alt"><div class="wrap">
-<h2>From idea to live in minutes</h2>
-<p class="sub">Three steps, and the first one takes a few seconds.</p>
+<section id="live" class="dark"><div class="wrap split">
+<div class="reveal"><span class="eyebrow on-dark">Live audience</span><h2>Your audience joins in seconds.</h2>
+<p class="sub">No sign-up, no app, no names. They scan, they answer, you see it happen.</p>
+<ul class="checks">
+<li>${CHECK}<span><b>Scan or type a code.</b> A QR code and a six-character code, shown on your screen.</span></li>
+<li>${CHECK}<span><b>Answers appear live.</b> Bars grow on your slide as votes arrive.</span></li>
+<li>${CHECK}<span><b>You stay in control.</b> Votes count for the slide you are showing, and the answer key never leaves your page.</span></li>
+<li>${CHECK}<span><b>Survives a refresh.</b> Reload your page mid-session and the same code carries on.</span></li>
+</ul>
+<a class="btn lg light" href="/app/">Try a live session <span aria-hidden="true">&rarr;</span></a></div>
+<div class="reveal live-art" aria-hidden="true">
+<div class="glow"></div>
+<div class="tile tile--qr"><svg viewBox="0 0 21 21" class="qr"><path d="M0 0h7v7H0zM14 0h7v7h-7zM0 14h7v7H0zM2 2v3h3V2zM16 2v3h3V2zM2 16v3h3v-3zM9 0h2v2H9zM9 3h3v2H9zM9 7h2v2H9zM12 9h3v2h-3zM8 11h2v3H8zM11 12h2v2h-2zM15 12h2v2h-2zM18 11h3v2h-3zM9 16h3v2H9zM13 15h2v3h-2zM16 17h2v3h-2zM19 15h2v2h-2zM12 19h2v2h-2zM9 19h2v2H9zM18 19h3v2h-3zM11 0h2v2h-2zM7 9H5v2h2zM3 9H1v2h2zM12 5h2v2h-2z"/></svg>
+<p>Join at <b>${esc(new URL(SITE).host)}</b></p><span class="code">5F5BLZ</span></div>
+<div class="tile tile--res"><p class="tile__h">Results <span>24 responses</span></p><div class="bars dark">${pollBars([['Agree', 58], ['Not sure', 29], ['Disagree', 13]])}</div></div>
+</div>
+</div></section>
+
+<section id="how"><div class="wrap">
+<div class="head reveal"><span class="eyebrow">How it works</span><h2>From idea to live in minutes.</h2><p class="sub">Three steps, and the first takes a few seconds.</p></div>
 <ol class="steps">
-<li><h3>Build</h3><p>Start from a blank deck or the demo. Add headings, text, images and interactive blocks. Everything saves as you go.</p></li>
-<li><h3>Present</h3><p>Press Present. Use the keyboard, a clicker, or your phone. Laser pointer, drawing and a timer are built in.</p></li>
-<li><h3>Engage</h3><p>Start a live session, show the code, and watch answers arrive. Download or share the deck afterwards.</p></li>
+<li class="reveal"><span class="num">1</span><h3>Build</h3><p>Start from a blank deck or the demo. Add headings, text, images and interactive blocks. It saves as you go.</p></li>
+<li class="reveal"><span class="num">2</span><h3>Present</h3><p>Press Present. Use the keyboard, a clicker or your phone. A laser pointer, drawing and a timer are built in.</p></li>
+<li class="reveal"><span class="num">3</span><h3>Engage</h3><p>Start a live session, show the code and watch answers arrive. Download or share the deck afterwards.</p></li>
 </ol></div></section>
 
+<section id="demo" class="alt"><div class="wrap">
+<div class="head reveal"><span class="eyebrow">Demo</span><h2>Try it right here.</h2><p class="sub">This is the real thing: click the quiz, open a tab, flip a card.</p></div>
+<div class="demo reveal"><div class="win__bar"><i></i><i></i><i></i><span>Interactive demo</span></div>
+<div class="frame" id="frame"><button type="button" id="load"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>Play the interactive demo</span></button></div></div>
+</div></section>
+
 <section><div class="wrap">
-<h2>Made for people who teach, train and pitch</h2>
-<p class="sub">Use it wherever a room should answer back.</p>
-<div class="cards">
-<div class="card"><h3>Workshops and training</h3><p>Check understanding with quick quizzes and see at a glance what the room knows.</p></div>
-<div class="card"><h3>Classrooms</h3><p>Run a poll to start a lesson, end with a quiz, and share the deck with students afterwards.</p></div>
-<div class="card"><h3>Pitches and meetings</h3><p>Branch to the part that matters to this audience with buttons, and keep your notes on your phone.</p></div>
-<div class="card"><h3>Events and talks</h3><p>Let hundreds vote from their seats while you stay in control of the screen.</p></div>
+<div class="head reveal"><span class="eyebrow">Use cases</span><h2>For people who teach, train and pitch.</h2></div>
+<div class="cards four">
+<div class="card reveal"><h3>Workshops and training</h3><p>Check understanding with quick quizzes and see at a glance what the room knows.</p></div>
+<div class="card reveal"><h3>Classrooms</h3><p>Start with a poll, end with a quiz, and share the deck with students afterwards.</p></div>
+<div class="card reveal"><h3>Pitches and meetings</h3><p>Branch to the part that matters to this audience with buttons, and keep notes on your phone.</p></div>
+<div class="card reveal"><h3>Events and talks</h3><p>Let a whole room vote from their seats while you stay in control of the screen.</p></div>
 </div></div></section>
 
-<section id="faq" class="alt"><div class="wrap">
-<h2>Questions</h2>
+<section id="faq" class="alt"><div class="wrap faq">
+<div class="reveal"><span class="eyebrow">FAQ</span><h2>Questions, answered.</h2><p class="sub">Anything else? Read the <a href="/learn/">guides</a>.</p></div>
+<div class="reveal">
 <details><summary>Is it free?</summary><p>You can build, present and export without paying or signing in. Saving online and sharing links need a free account.</p></details>
 <details><summary>Does my audience need an account or an app?</summary><p>No. They open a link or scan a QR code in their phone's browser and enter nothing else.</p></details>
 <details><summary>Where are my decks stored?</summary><p>On your device first. If you sign in they are also saved to your online account so you can open them on other devices. See the <a href="/privacy/">privacy policy</a>.</p></details>
 <details><summary>Does it work offline?</summary><p>After your first visit, yes: you can edit and present without a connection. Live audience features and online saving need one.</p></details>
 <details><summary>Can I get my slides out?</summary><p>Yes: a standalone web page, PDF, PNG images, PowerPoint, or the deck file itself. Your content is yours.</p></details>
 <details><summary>Which browsers work?</summary><p>Current Chrome, Edge, Firefox and Safari, on computers, tablets and phones. Audience pages work on phones from about 2022 onward.</p></details>
-</div></section>
+</div></div></section>
 
-<section class="final"><div class="wrap">
-<h2>Make your next presentation a conversation</h2>
-<p class="sub" style="margin-inline:auto">Open the app and have your first deck ready in minutes.</p>
-<a class="btn" href="/app/">Start building</a>
+<section class="cta-band"><div class="wrap reveal">
+<h2>Make your next presentation a conversation.</h2>
+<p>Open the app and have your first deck ready in minutes.</p>
+<a class="btn lg light" href="/app/">Start building <span aria-hidden="true">&rarr;</span></a>
 </div></section>
 <script>
 (function(){var b=document.getElementById('load');if(!b)return;b.addEventListener('click',function(){var f=document.createElement('iframe');f.src='/app/?play&deck=interactive';f.title='Interactive demo deck';f.loading='lazy';f.allow='fullscreen';document.getElementById('frame').replaceChildren(f);f.focus()})})();

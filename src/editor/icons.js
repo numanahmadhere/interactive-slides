@@ -21,6 +21,15 @@ const PATHS = {
   file: 'M14 3H6v18h12V7zM14 3v4h4',
   image: 'M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6',
   dots: 'M12 5.5v.01M12 12v.01M12 18.5v.01',
+  sun: 'M12 3v2M12 19v2M5 5l1.5 1.5M17.5 17.5L19 19M3 12h2M19 12h2M5 19l1.5-1.5M17.5 6.5 19 5M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
+  moon: 'M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z',
+  monitor: 'M3 5h18v11H3zM8 20h8M12 16v4',
+  search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.3-4.3',
+  arrow: 'M5 12h14M13 6l6 6-6 6',
+  blank: 'M14 3H6v18h12V7zM14 3v4h4M12 11v6M9 14h6',
+  demo: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM10 8.5l5.5 3.5-5.5 3.5z',
+  sample: 'M4 5h16v11H4zM8 20h8M12 16v4M8 9h8M8 12h5',
+  book: 'M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM19 19v2H6',
 };
 
 export function icon(name, size = 16) {

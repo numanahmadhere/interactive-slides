@@ -84,7 +84,7 @@ test('the public pages are complete, small and honest', () => {
   assert.ok(home.length < 30 * 1024, `home page is ${home.length} bytes`);
   assert.match(home, /<title>[^<]+<\/title>/);
   assert.match(home, /<meta name="description"/);
-  assert.match(home, /<h1>[^<]+<\/h1>/);
+  assert.match(home, /<h1>.+?<\/h1>/);
   assert.equal((home.match(/<h1>/g) ?? []).length, 1, 'one h1');
   assert.ok(!/<img[^>]+(?!alt)/.test(home) || !/<img(?![^>]*alt=)/.test(home), 'every image has alt text');
   assert.ok(!/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(Object.values(site).join('')), 'no emoji');

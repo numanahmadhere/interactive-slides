@@ -43,6 +43,13 @@ wide, in light and dark. The last run found and fixed: invalid roles on dashboar
 cards, focusable controls inside slide-list options, heading order, low-contrast
 build text, unstyled error pages, and a dark-mode link colour. All pages were clean after.
 
+## Visual and theme checks
+
+After any styling change: view the home page, `/app/`, an editor page and a Go live
+dialog in light and dark at desktop and 375 px width, and run the axe audit in both
+schemes. Known and accepted: an open editor menu is flagged by axe's "region" rule
+because pop-up menus sit outside page landmarks.
+
 ## What the automated suite covers (186+ tests)
 
 - Database rules: `supabase/schema.sql` runs on real Postgres (PGlite) with

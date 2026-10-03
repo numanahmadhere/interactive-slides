@@ -1,4 +1,5 @@
 import './styles/fonts.css';
+import './styles/tokens.css';
 import './styles/slides.css';
 import './player/player.css';
 import './editor/editor.css';

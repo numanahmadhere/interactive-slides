@@ -29,6 +29,7 @@ import { createTransport } from '../live/transport.js';
 import { newRoom, cleanSavedSession } from '../live/protocol.js';
 import { Exporter } from './exporter.js';
 import { slideToPng } from '../export/png.js';
+import { setThemePref, themePref } from '../styles/theme.js';
 import { deckPath, DASHBOARD_PATH } from '../shell/paths.js';
 import { setFlash } from '../shell/flash.js';
 
@@ -156,7 +157,8 @@ export class Editor {
     const presentGroup = h('div', { class: 'ed-split' }, this.presentBtn, this.presentMenuBtn);
 
     const top = h('header', { class: 'ed-top' },
-      h('div', { class: 'ed-logo', 'aria-hidden': 'true' }, svgIcon('M4 5h16v10H4zM8 19h8M12 15v4', { size: 16 })),
+      h('a', { class: 'ed-logo', href: DASHBOARD_PATH, title: 'Back to My decks', 'aria-label': 'Back to My decks' }, 'D'),
+      h('a', { class: 'ed-crumb', href: DASHBOARD_PATH, text: 'My decks' }),
       this.titleInput,
       h('div', { class: 'ed-top__group' }, this.undoBtn, this.redoBtn),
       h('div', { class: 'ed-top__spacer' }),
@@ -494,6 +496,7 @@ export class Editor {
         { label: 'Cloud: save, open, share...', value: 'cloud', hint: 'Account' },
         { label: 'Find and replace...', value: 'find', hint: 'Ctrl+H' },
         { label: 'Export...', value: 'export', hint: 'HTML, PDF, PNG, PPTX' },
+        { label: `Appearance: ${{ system: 'follows device', light: 'light', dark: 'dark' }[themePref()]}`, value: 'theme', hint: 'Change' },
       ],
       onPick: (value) => {
         if (value === 'decks') location.assign(DASHBOARD_PATH);
@@ -503,6 +506,7 @@ export class Editor {
         else if (value === 'import') this.#pickImportFile();
         else if (value === 'find') openFindDialog(this);
         else if (value === 'cloud') openCloudDialog(this);
+        else if (value === 'theme') { const next = { system: 'light', light: 'dark', dark: 'system' }[themePref()]; setThemePref(next); toast(`Appearance: ${{ system: 'follows your device', light: 'light', dark: 'dark' }[next]}.`); }
         else openExportDialog(this);
       },
     });

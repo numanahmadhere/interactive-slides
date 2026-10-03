@@ -4,6 +4,15 @@ A free platform for building and presenting interactive slide decks, with live
 audience polls and quizzes. Vanilla JS, no framework. A deck is plain JSON; one
 renderer draws it for the editor, the presenter and the exports.
 
+## Design
+
+One design system, `src/styles/tokens.css`, taken from densightlabs.com (`#2020E8` blue,
+`#0F1117` ink, white and `#F8F9FB` surfaces, Inter, 16-24px radii). The home page,
+dashboard, editor and phone pages all read it, in a light and a dark palette. It
+follows the device by default; the sun/moon button on the dashboard and File >
+Appearance in the editor switch it (remembered per browser). Tests check the
+contrast of every palette pair and that every CSS variable used is defined.
+
 ## The site
 
 | Address | What |
