@@ -21,7 +21,7 @@ const TRANSITION_LABELS = { fade: 'Fade', slide: 'Slide', zoom: 'Zoom', none: 'N
 const TABS = [['block', 'Block'], ['slide', 'Slide'], ['deck', 'Deck']];
 
 const section = (title, ...children) =>
-  h('div', { class: 'ed-section' }, title ? h('h3', { class: 'ed-section__title', text: title }) : null, ...children.filter(Boolean));
+  h('div', { class: 'ed-section' }, title ? h('h2', { class: 'ed-section__title', text: title }) : null, ...children.filter(Boolean));
 const empty = (text) => h('p', { class: 'ed-empty', text });
 
 export class Inspector {

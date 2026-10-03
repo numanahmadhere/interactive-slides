@@ -25,23 +25,3 @@ export function saveProject(project) {
     else localStorage.removeItem(KEY);
   } catch { /* lasts until the page closes */ }
 }
-
-// Which cloud deck the open deck was saved as, so Save updates it. The link also
-// remembers the deck's creation stamp: after an undo or a switch to another deck
-// the stamp no longer matches and the link is ignored, so Save can never overwrite
-// a cloud deck with a different one.
-const LINK = 'interactive-slides:cloud-link';
-export function getLink(deck) {
-  try {
-    const { id, createdAt } = JSON.parse(localStorage.getItem(LINK) ?? 'null') ?? {};
-    return id && createdAt === deck?.meta?.createdAt ? id : null;
-  } catch {
-    return null;
-  }
-}
-export function setLink(id, deck) {
-  try {
-    if (id && deck) localStorage.setItem(LINK, JSON.stringify({ id, createdAt: deck.meta.createdAt }));
-    else localStorage.removeItem(LINK);
-  } catch { /* nothing to do */ }
-}

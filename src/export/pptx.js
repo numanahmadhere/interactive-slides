@@ -110,7 +110,7 @@ export async function buildPptx(deck, { includeNotes = false, resolveAsset, onPr
   pptx.defineLayout({ name: 'DECK', width: toInches(size.width), height: toInches(size.height) });
   pptx.layout = 'DECK';
   pptx.title = deck.meta.title;
-  pptx.author = deck.meta.author || 'Interactive Slides';
+  pptx.author = deck.meta.author || 'Densight Slides';
 
   for (let i = 0; i < deck.slides.length; i++) {
     onProgress?.(i, deck.slides.length);

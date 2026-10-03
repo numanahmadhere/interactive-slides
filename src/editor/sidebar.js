@@ -95,11 +95,14 @@ export class SlideList {
   #createItem(id) {
     const num = h('div', { class: 'ed-thumb__num' });
     const stageEl = h('div', { class: 'ed-thumb__stage' });
-    const preview = h('div', { class: 'ed-thumb__preview', 'aria-hidden': 'true' }, stageEl);
-    const actions = h('div', { class: 'ed-thumb__actions' },
+    const preview = h('div', { class: 'ed-thumb__preview', 'aria-hidden': 'true', inert: true }, stageEl);
+    // Mouse shortcuts only: a listbox option may not contain focusable controls, and the
+    // keyboard has Ctrl+D (duplicate) and Delete on the list itself.
+    const actions = h('div', { class: 'ed-thumb__actions', 'aria-hidden': 'true' },
       button({ icon: 'copy', label: 'Duplicate slide', iconOnly: true, onClick: (e) => { e.stopPropagation(); this.editor.duplicateSlide(id); } }),
       button({ icon: 'trash', label: 'Delete slide', iconOnly: true, variant: 'danger', onClick: (e) => { e.stopPropagation(); this.editor.deleteSlide(id); } }),
     );
+    for (const b of actions.querySelectorAll('button')) b.tabIndex = -1; // reachable by mouse only, see above
     const el = h('div', { class: 'ed-thumb', role: 'option', id: `ed-slide-${id}`, 'data-id': id }, num, preview, actions);
     return { id, el, num, preview, stageEl, slide: null, theme: null, brand: null, aspect: null, assets: -1, width: 0 };
   }

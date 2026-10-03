@@ -88,7 +88,10 @@ export class Persistence {
               const id = uid('d_');
               decks.delete(LEGACY_DECK_ID);
               decks.put({ id, deck: old.result.deck });
-              meta.put(metaOf(id, old.result.deck));
+              const m = metaOf(id, old.result.deck);
+              m.updatedAt = Date.parse(old.result.deck?.meta?.updatedAt) || m.updatedAt; // keep the real edit date
+              m.createdAt = Date.parse(old.result.deck?.meta?.createdAt) || m.createdAt;
+              meta.put(m);
             };
           }
         };
@@ -121,7 +124,9 @@ export class Persistence {
       if (!legacy || localStorage.getItem(LS_LIBRARY)) return;
       const deck = JSON.parse(legacy);
       const id = uid('d_');
-      this.#writeLibrary({ metas: { [id]: metaOf(id, deck) }, decks: { [id]: deck } });
+      const m = metaOf(id, deck);
+      m.updatedAt = Date.parse(deck?.meta?.updatedAt) || m.updatedAt;
+      this.#writeLibrary({ metas: { [id]: m }, decks: { [id]: deck } });
       localStorage.removeItem(LS_LEGACY);
     } catch { /* an unreadable old deck is left alone */ }
   }

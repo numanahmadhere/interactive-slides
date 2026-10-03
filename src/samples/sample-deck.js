@@ -36,7 +36,7 @@ const artWide = svg(`
 
 export const sampleDeck = {
   version: 1,
-  meta: { title: 'Interactive Slides: sample deck', author: 'Densight Labs' },
+  meta: { title: 'Densight Slides: sample deck', author: 'Densight Labs' },
   theme: { id: 'densight-dark' },
   aspect: '16:9',
   transition: 'fade',
@@ -45,7 +45,7 @@ export const sampleDeck = {
       id: 's_title',
       layout: 'title',
       blocks: [
-        { id: 'b_t1', type: 'heading', slot: 'title', props: { text: 'Interactive Slides', level: 1 } },
+        { id: 'b_t1', type: 'heading', slot: 'title', props: { text: 'Densight Slides', level: 1 } },
         { id: 'b_t2', type: 'text', slot: 'subtitle', props: { text: 'Phase 1: renderer, themes, layouts and the player', size: 'lg', muted: true } },
       ],
       notes: 'Open with the one-sentence pitch.',

@@ -20,7 +20,10 @@ export function mountRemote(root, { key, config }) {
     b.addEventListener('click', () => { navigator.vibrate?.(15); send(op); });
     return b;
   };
-  const foot = h('footer', { class: 'lv-foot', role: 'status', 'aria-live': 'polite' });
+  const foot = h('footer', { class: 'lv-foot' });
+  const footStatus = h('div', { role: 'status', 'aria-live': 'polite' });
+  const buildLine = h('div', { class: 'lv-build', text: `build ${BUILD}  ·  ${config.kind === 'local' ? 'this browser only' : new URL(config.url).hostname}` });
+  foot.append(footStatus, buildLine);
   root.replaceChildren(h('div', { class: 'lv lv--remote' },
     h('header', { class: 'lv-head' }, h('div', { class: 'lv-brand', text: 'Remote' }), title, meta),
     h('main', { class: 'lv-body' }, next, notes),
@@ -54,7 +57,7 @@ export function mountRemote(root, { key, config }) {
       notes.textContent = status === 'live' ? 'Connected. Start presenting on the computer and this page follows it.' : 'Connecting...';
       next.textContent = '';
     }
-    foot.replaceChildren(status === 'error' ? 'Connection problem. Retrying...' : '', h('div', { class: 'lv-build', text: `build ${BUILD}  ·  ${config.kind === 'local' ? 'this browser only' : new URL(config.url).hostname}` }));
+    footStatus.textContent = status === 'error' ? 'Connection problem. Retrying...' : '';
   }
   paint();
   return { close: () => { channel.close(); transport.close(); } };

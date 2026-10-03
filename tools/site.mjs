@@ -50,6 +50,7 @@ ${index ? '' : '<meta name="robots" content="noindex">\n'}<link rel="canonical" 
 <span class="grow"></span>
 <a class="btn sm ghost" href="/app/account">Sign in</a><a class="btn sm" href="/app/">Open the app</a>
 </div></header>
+<div class="flash" id="flash" role="status" hidden>Your account and online decks were deleted. Decks on this device were kept.</div>
 <main id="main">
 ${body}
 </main>
@@ -57,6 +58,7 @@ ${body}
 <span>&copy; ${new Date().getFullYear()} Densight Labs</span>
 <a href="/learn/">Learn</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/app/">Open the app</a>
 </div></footer>
+<script>if(/[?&]account-deleted=1/.test(location.search))document.getElementById('flash').hidden=false;</script>
 </body>
 </html>
 `;

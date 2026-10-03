@@ -53,7 +53,7 @@ export function buildStandaloneHtml(deck, { js, css, includeNotes = false }) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="${CSP}">
-<meta name="generator" content="Interactive Slides">
+<meta name="generator" content="Densight Slides">
 <title>${escapeHtml(deck.meta.title)}</title>
 <style>html,body{margin:0;height:100%;background:#000}#app{position:fixed;inset:0}</style>
 <style>${css}</style>

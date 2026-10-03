@@ -32,7 +32,7 @@ export async function mountDashboard(root) {
   let items = [];
   let cloudError = '';
 
-  const grid = h('div', { class: 'sh-grid', role: 'list' });
+  const grid = h('ul', { class: 'sh-grid', 'aria-label': 'Your decks' });
   const status = h('p', { class: 'sh-status', role: 'status', 'aria-live': 'polite' });
   const search = textInput({ placeholder: 'Search decks', spellcheck: false, onInput: (v) => { query = v.trim().toLowerCase(); paint(); } });
   search.type = 'search';
@@ -204,7 +204,7 @@ export async function mountDashboard(root) {
     else if (item.cloudId) badges.push(h('span', { class: 'sh-badge sh-badge--ok', text: 'Online' }));
     if (item.shared) badges.push(h('span', { class: 'sh-badge sh-badge--share', text: 'Shared' }));
 
-    return h('article', { class: 'sh-card', role: 'listitem' }, link,
+    return h('li', { class: 'sh-card' }, link,
       h('div', { class: 'sh-card__body' },
         h('div', { class: 'sh-card__text' },
           h('a', { class: 'sh-card__title', href: open.href, text: item.title, onclick: open.onclick }),

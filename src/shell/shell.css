@@ -36,7 +36,7 @@ a:focus-visible, button:focus-visible, select:focus-visible { outline: 3px solid
 .sh-toolbar .ed-input { max-width: 340px; }
 .sh-sort { width: auto; }
 .sh-status { min-height: 1.4em; margin: 0 0 8px; color: #f0a05d; font-size: 13px; }
-.sh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+.sh-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
 .sh-grid[hidden], .sh-empty[hidden] { display: none; }
 .sh-card { border: 1px solid #1d2230; border-radius: 14px; background: #10131b; overflow: hidden; transition: border-color 0.15s; }
 .sh-card:hover, .sh-card:focus-within { border-color: #4a4aff; }
@@ -60,3 +60,11 @@ a:focus-visible, button:focus-visible, select:focus-visible { outline: 3px solid
   .sh-nav { display: none; }
   .sh-title { font-size: 24px; }
 }
+
+.sh-toolbar .ed-input, .sh-narrow .ed-input, .sh-main .ed-input { background: #10131b; border: 1px solid #343b52; border-radius: 10px; color: #e8eaf2; padding: 10px 12px; font: inherit; }
+.sh-toolbar .ed-input { flex: 1 1 240px; }
+.sh-toolbar .sh-sort { flex: 0 0 auto; }
+.sh-toolbar .ed-input::placeholder { color: #8b93a8; }
+.sh-section .ed-field { margin-bottom: 12px; }
+
+.sh-link { color: #a9a9ff; }

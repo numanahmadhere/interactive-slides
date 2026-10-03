@@ -25,6 +25,7 @@ import { parseAppPath, takeReturn, DASHBOARD_PATH } from './shell/paths.js';
 import { takeFlash } from './shell/flash.js';
 import { mountDashboard } from './shell/dashboard.js';
 import { mountAccount } from './shell/account.js';
+import { showMessage } from './shell/chrome.js';
 
 const mount = document.getElementById('app');
 const params = new URLSearchParams(location.search);
@@ -38,11 +39,11 @@ const remoteKey = normalizeKey(params.get('remote'));
 if (params.has('view')) {
   // A share link: ?view=TOKEN&rt=... (the project's address and public key)
   const token = normalizeKey(params.get('view'));
-  if (!token || liveConfig?.kind !== 'realtime') mount.textContent = 'This link is not valid. Ask the person who shared it for a new one.';
+  if (!token || liveConfig?.kind !== 'realtime') showMessage(mount, 'This link is not valid', 'Ask the person who shared it for a new one.');
   else mountViewer(mount, { token, config: liveConfig });
 } else if (params.has('join') || params.has('remote')) {
   const ok = liveConfig && (params.has('join') ? audienceCode : remoteKey);
-  if (!ok) mount.textContent = 'This link is not valid. Ask the presenter for a new one.';
+  if (!ok) showMessage(mount, 'This link is not valid', 'Ask the presenter for a new one.');
   else if (params.has('join')) mountAudience(mount, { code: audienceCode, config: liveConfig });
   else mountRemote(mount, { key: remoteKey, config: liveConfig });
 } else if (params.has('play')) {
@@ -83,10 +84,7 @@ if (params.has('view')) {
     return notice ?? null;
   };
 
-  const notFound = (text) => {
-    document.body.className = 'sh';
-    mount.replaceChildren(h('main', { class: 'sh-main sh-narrow' }, h('h1', { class: 'sh-title', text }), h('p', {}, h('a', { href: DASHBOARD_PATH, style: 'color:#a9a9ff', text: 'Go to My decks' }))));
-  };
+  const notFound = (text) => showMessage(mount, text, '', { href: DASHBOARD_PATH, label: 'Go to My decks' });
 
   finishSignIn().then(async (notice) => {
     if (notice === 'redirecting') return;
@@ -110,7 +108,7 @@ if (params.has('view')) {
     else notFound('Page not found');
   }).catch((err) => {
     console.error(err);
-    mount.textContent = 'Something went wrong starting the app. See the console for details.';
+    showMessage(mount, 'Something went wrong', 'The app could not start. Reload the page; if it keeps happening, your browser may be blocking storage.', { href: '/app/', label: 'Try again' });
   });
 }
 

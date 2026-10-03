@@ -33,6 +33,16 @@ If a phone shows "Waiting for the presenter...", read the small line at the bott
 (`Session CODE · build X · host`): a different build or host than the presenter's
 means one of them is on a stale page.
 
+## Accessibility audits (axe-core)
+
+`axe-core` is a dev dependency. To audit a page: build, serve `dist/` with
+`node tools/serve.mjs 5178`, copy `node_modules/axe-core/axe.min.js` to `dist/__axe.js`,
+load the page in a browser, inject the script and run `axe.run()`. Run it on `/`,
+`/learn/`, `/app/`, `/app/account`, an editor page, and the phone pages, at 375 px
+wide, in light and dark. The last run found and fixed: invalid roles on dashboard
+cards, focusable controls inside slide-list options, heading order, low-contrast
+build text, unstyled error pages, and a dark-mode link colour. All pages were clean after.
+
 ## What the automated suite covers (186+ tests)
 
 - Database rules: `supabase/schema.sql` runs on real Postgres (PGlite) with
@@ -61,6 +71,16 @@ a phone-sized viewport; presenter going silent (notice after 45 s, recovery);
 presenter reload with session resume; offline reload; and the real deployed site
 against real Supabase Realtime (join, vote, remote). Real Supabase broadcast was
 also measured: 51 of 51 messages in order, about 70 ms.
+
+## Platform flows exercised by hand (production build, stand-in Supabase)
+
+Upgrade of an old single-deck database into the library; creating, renaming,
+duplicating, deleting, searching and sorting decks; autosave and thumbnails; the
+online sign-in link arriving at the site root and being forwarded; return to the
+page you were on; a deck made on one device appearing as "online only" on another
+and opening with its images; "changed elsewhere" conflict handling (nothing is
+overwritten; three choices; the other version is kept); deleting an account (typed
+confirmation, decks removed online, kept on the device); old `/?join=` links.
 
 ## Known limits (not tested, or by design)
 

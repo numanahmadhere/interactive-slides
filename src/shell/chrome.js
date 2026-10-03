@@ -18,3 +18,12 @@ export function appHeader({ active }) {
       cloud?.user ? h('span', { class: 'sh-avatar', 'aria-hidden': 'true', text: (cloud.user.email[0] ?? '?').toUpperCase() }) : null,
       h('span', { text: cloud?.user ? 'Account' : 'Sign in' })));
 }
+
+// A full-page message in the app's own look (bad links, missing decks, errors).
+export function showMessage(root, title, text, link = { href: '/', label: 'Go to the home page' }) {
+  document.body.className = 'sh';
+  root.replaceChildren(h('main', { class: 'sh-main sh-narrow', id: 'main' },
+    h('h1', { class: 'sh-title', text: title }),
+    text ? h('p', { class: 'sh-lead', text }) : null,
+    link ? h('p', {}, h('a', { href: link.href, class: 'sh-link', text: link.label })) : null));
+}
