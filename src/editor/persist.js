@@ -10,7 +10,7 @@
 import { uid } from '../core/util.js';
 
 const DB_NAME = 'interactive-slides';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const LEGACY_DECK_ID = 'current'; // version 1 kept exactly one deck under this id
 const LS_LIBRARY = 'interactive-slides:library';
 const LS_LEGACY = 'interactive-slides:deck';
@@ -64,7 +64,7 @@ export class Persistence {
   constructor() {
     this.db = null;
     this.mode = 'memory'; // 'idb' | 'local' | 'memory'
-    this.memory = { metas: {}, decks: {} };
+    this.memory = { metas: {}, decks: {}, reports: {} };
   }
 
   async init() {
@@ -78,6 +78,7 @@ export class Persistence {
             db.createObjectStore('decks', { keyPath: 'id' });
             db.createObjectStore('assets', { keyPath: 'id' });
           }
+          if (event.oldVersion < 3) db.createObjectStore('reports', { keyPath: 'id' }); // saved live-session reports
           if (event.oldVersion < 2) {
             // The single deck of version 1 becomes the first deck in the library.
             const meta = db.createObjectStore('meta', { keyPath: 'id' });
@@ -227,6 +228,46 @@ export class Persistence {
     const ids = new Set();
     for (const meta of await this.listDecks()) for (const a of meta.assetIds ?? []) ids.add(a);
     return ids;
+  }
+
+  // ---- session reports -------------------------------------------------------------------
+  // Kept on this device only. A report is plain data (see src/live/report.js), saved once per session id.
+
+  async saveReport(report) {
+    const record = { ...report, savedAt: Date.now() };
+    if (this.mode === 'idb') {
+      const tx = this.db.transaction('reports', 'readwrite');
+      tx.objectStore('reports').put(record);
+      await done(tx);
+    } else {
+      const lib = this.#readLibrary();
+      lib.reports = { ...(lib.reports ?? {}), [record.id]: record };
+      this.#writeLibrary(lib);
+    }
+    return record;
+  }
+
+  // Newest first.
+  async listReports() {
+    const all = this.mode === 'idb' ? await wrap(this.db.transaction('reports').objectStore('reports').getAll()) : Object.values(this.#readLibrary().reports ?? {});
+    return all.sort((a, b) => (b.startedAt ?? 0) - (a.startedAt ?? 0));
+  }
+
+  async getReport(id) {
+    if (this.mode === 'idb') return (await wrap(this.db.transaction('reports').objectStore('reports').get(id))) ?? null;
+    return this.#readLibrary().reports?.[id] ?? null;
+  }
+
+  async deleteReport(id) {
+    if (this.mode === 'idb') {
+      const tx = this.db.transaction('reports', 'readwrite');
+      tx.objectStore('reports').delete(id);
+      await done(tx);
+    } else {
+      const lib = this.#readLibrary();
+      if (lib.reports) delete lib.reports[id];
+      this.#writeLibrary(lib);
+    }
   }
 
   // ---- images -------------------------------------------------------------------------

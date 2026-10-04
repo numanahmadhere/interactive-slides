@@ -26,6 +26,7 @@ import { parseAppPath, takeReturn, DASHBOARD_PATH } from './shell/paths.js';
 import { takeFlash } from './shell/flash.js';
 import { mountDashboard } from './shell/dashboard.js';
 import { mountAccount } from './shell/account.js';
+import { mountReports } from './shell/reports.js';
 import { showMessage } from './shell/chrome.js';
 
 const mount = document.getElementById('app');
@@ -106,6 +107,7 @@ if (params.has('view')) {
     if (notice) { const { setFlash } = await import('./shell/flash.js'); setFlash(notice.text, notice.kind); }
     if (route.page === 'dashboard') await mountDashboard(mount);
     else if (route.page === 'account') await mountAccount(mount);
+    else if (route.page === 'reports') await mountReports(mount);
     else notFound('Page not found');
   }).catch((err) => {
     console.error(err);

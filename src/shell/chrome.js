@@ -4,7 +4,7 @@ import { h } from '../core/dom.js';
 import { icon } from '../editor/icons.js';
 import { getCloud } from '../cloud/instance.js';
 import { isDarkNow, setThemePref, themePref } from '../styles/theme.js';
-import { ACCOUNT_PATH, DASHBOARD_PATH } from './paths.js';
+import { ACCOUNT_PATH, DASHBOARD_PATH, REPORTS_PATH } from './paths.js';
 import { COMPANY_NAME, COMPANY_URL, SUPPORT_EMAIL, supportHref } from './contact.js';
 
 // The logo, as two images; the stylesheet shows the one that suits the theme.
@@ -39,6 +39,7 @@ export function appHeader({ active, actions = [] }) {
         ...logoPair(), h('span', { class: 'sh-brand__name', text: 'Densight Slides' })),
       h('nav', { class: 'sh-nav', 'aria-label': 'Main' },
         link(DASHBOARD_PATH, 'My decks', 'decks'),
+        link(REPORTS_PATH, 'Reports', 'reports'),
         link('/learn/', 'Learn', 'learn')),
       h('div', { class: 'sh-spacer' }),
       ...actions,

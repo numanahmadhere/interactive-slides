@@ -85,6 +85,32 @@ export function openLiveDialog(editor) {
       h('div', { class: 'ed-live__actions' }, start));
   }
 
+  // Reports stay on this device. Saving one needs a plan that includes them.
+  async function saveReport() {
+    if (!editor.requirePlan((p) => p.reports, 'Saving session reports is not part of your plan.')) return false;
+    try {
+      await editor.persist.saveReport(editor.live.host.report());
+      toast('Report saved on this device.');
+      editor.live.reportSaved = true;
+      return true;
+    } catch (err) {
+      toast(err.message || 'Could not save the report.', { kind: 'error' });
+      return false;
+    }
+  }
+
+  // Ending a session that has answers offers to keep them first, because nothing else holds them once it ends.
+  function endSession() {
+    const live = editor.live;
+    if (!live.host.hasAnswers || live.reportSaved) { editor.stopLive(); render(); return; }
+    const ask = openDialog({ title: 'End this session?', content: h('div', null,
+      h('p', { text: 'The answers from this session are held only on this page. Once it ends they are gone, unless you save a report on this device.' }),
+      h('div', { class: 'ed-live__actions' },
+        button({ label: 'Cancel', onClick: () => ask.close() }),
+        button({ label: 'End without saving', variant: 'danger', onClick: () => { ask.close(); editor.stopLive(); render(); } }),
+        button({ label: 'Save report and end', variant: 'primary', onClick: async () => { if (await saveReport()) { ask.close(); editor.stopLive(); render(); } } }))) });
+  }
+
   function runningView() {
     const { host, room, config, base } = editor.live;
     const addr = baseAddress({ base });
@@ -148,7 +174,8 @@ export function openLiveDialog(editor) {
         } }),
         button({ label: 'Clear all votes', onClick: () => { host.resetVotes(); toast('Votes cleared.'); } }),
         button({ label: 'Present', variant: 'primary', onClick: () => { dialog.close(); editor.present(); } }),
-        button({ label: 'End session', variant: 'danger', onClick: () => { editor.stopLive(); render(); } })));
+        button({ label: 'Save report', onClick: () => saveReport() }),
+        button({ label: 'End session', variant: 'danger', onClick: endSession })));
   }
 
   const origClose = dialog.close;

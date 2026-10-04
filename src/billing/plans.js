@@ -13,22 +13,22 @@ export const PLANS = {
   free: {
     id: 'free', name: 'Free', blurb: 'Build, present and try live questions.',
     cloudDecks: 3, livePhones: 25, kinds: ['poll', 'quiz', 'rating'],
-    exports: ['json', 'png'], brand: false, csv: false, leaderboard: false, themes: ['densight-dark', 'densight-light'],
+    exports: ['json', 'png'], brand: false, csv: false, leaderboard: false, reports: false, themes: ['densight-dark', 'densight-light'],
   },
   starter: {
     id: 'starter', name: 'Starter', blurb: 'For regular workshops and talks.',
     cloudDecks: 25, livePhones: 100, kinds: ['poll', 'quiz', 'rating', ...PAID_KINDS],
-    exports: ['json', 'png', 'html', 'pdf'], brand: true, csv: true, leaderboard: true, themes: ['densight-dark', 'densight-light', 'paper', 'midnight'],
+    exports: ['json', 'png', 'html', 'pdf'], brand: true, csv: true, leaderboard: true, reports: true, themes: ['densight-dark', 'densight-light', 'paper', 'midnight'],
   },
   pro: {
     id: 'pro', name: 'Pro', blurb: 'For trainers and speakers who present every week.',
     cloudDecks: 100, livePhones: 500, kinds: ['poll', 'quiz', 'rating', ...PAID_KINDS],
-    exports: ['json', 'png', 'html', 'pdf', 'pptx'], brand: true, csv: true, leaderboard: true, themes: ['densight-dark', 'densight-light', 'paper', 'midnight'],
+    exports: ['json', 'png', 'html', 'pdf', 'pptx'], brand: true, csv: true, leaderboard: true, reports: true, themes: ['densight-dark', 'densight-light', 'paper', 'midnight'],
   },
   advanced: {
     id: 'advanced', name: 'Advanced', blurb: 'For large rooms and organisations.',
     cloudDecks: 1000, livePhones: 1000, kinds: ['poll', 'quiz', 'rating', ...PAID_KINDS],
-    exports: ['json', 'png', 'html', 'pdf', 'pptx'], brand: true, csv: true, leaderboard: true, themes: ['densight-dark', 'densight-light', 'paper', 'midnight'],
+    exports: ['json', 'png', 'html', 'pdf', 'pptx'], brand: true, csv: true, leaderboard: true, reports: true, themes: ['densight-dark', 'densight-light', 'paper', 'midnight'],
   },
 };
 
@@ -54,6 +54,7 @@ export const canUseTheme = (plan, theme) => getPlan(plan).themes.includes(theme)
 export const canBrand = (plan) => getPlan(plan).brand;
 export const canCsv = (plan) => getPlan(plan).csv;
 export const canLeaderboard = (plan) => getPlan(plan).leaderboard;
+export const canReports = (plan) => getPlan(plan).reports;
 export const livePhones = (plan) => getPlan(plan).livePhones;
 export const cloudDeckLimit = (plan) => getPlan(plan).cloudDecks;
 

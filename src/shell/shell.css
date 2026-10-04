@@ -161,3 +161,9 @@ body.sh a:focus-visible, body.sh button:focus-visible, body.sh select:focus-visi
 .sh-badge::before { content: '\00b7'; margin-right: 8px; color: var(--border-strong); font-weight: 400; }
 .sh-badge--ok { background: none; color: var(--success); }
 .sh-badge--share { background: none; color: var(--blue-text); }
+
+/* ---- saved session reports ---- */
+.sh-reports { display: grid; gap: 10px; margin: 20px 0 0; padding: 0; list-style: none; }
+.sh-report { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.sh-report__title { color: var(--ink); font-weight: 650; }
+.sh-report__meta { color: var(--muted); font-size: 13.5px; }

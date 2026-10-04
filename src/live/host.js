@@ -12,6 +12,7 @@ import {
 } from './protocol.js';
 import { Boards } from './boards.js';
 import { resultsCsv } from './results.js';
+import { buildReport } from './report.js';
 import { canUseKind, livePhones, canLeaderboard } from '../billing/plans.js';
 import { Scoreboard, isRight, pointsFor } from './scoring.js';
 
@@ -39,6 +40,8 @@ export class LiveHost {
   #locked;
   #board = new Scoreboard();
   #keys = new Map();      // quiz id -> answer key (stays on this page)
+  #everSeen = new Set();   // every phone that took part, for the report (a count, nothing else)
+  #startedAt = 0;
   #askedAt = new Map();   // quiz id -> when its question first appeared
   #full = new Map(); // phones turned away because the room is full -> when we last told them
 
@@ -105,6 +108,7 @@ export class LiveHost {
   }
 
   start() {
+    this.#startedAt = this.now();
     this.#setStatus('connecting');
     this.#heartbeat = setInterval(() => { if (this.#status === 'live') this.#publishNow(); }, HEARTBEAT_MS);
     const onStatus = (which) => (s) => {
@@ -234,6 +238,30 @@ export class LiveHost {
     if (this.#boards.moderate(id, qid, op)) this.#changed();
   };
 
+  // How many phones have answered or said hello so far.
+  get participants() { return this.#everSeen.size; }
+
+  // Has anyone answered anything yet? (Used to offer saving a report before the session ends.)
+  get hasAnswers() {
+    return [...this.#known.values()].some(({ prompt }) => this.#tally.voters(prompt.id) > 0 || this.#boards.words(prompt.id).length > 0 || this.#boards.responses(prompt.id).length > 0 || this.#boards.questions(prompt.id).length > 0);
+  }
+
+  // The whole session as a report object (see report.js).
+  report() {
+    return buildReport({
+      id: `r_${this.sessionId}`,
+      title: this.#player?.deck.meta.title ?? this.title,
+      startedAt: this.#startedAt || this.now(),
+      endedAt: this.now(),
+      participants: this.#everSeen.size,
+      known: [...this.#known.values()],
+      tally: this.#tally,
+      boards: this.#boards,
+      players: this.#board.players(),
+      teams: this.#board.teams(),
+    });
+  }
+
   // Everything answered so far, as a CSV the presenter can download. Nothing leaves this page.
   exportResults() {
     return resultsCsv([...this.#known.values()], this.#tally, this.#boards, this.title);
@@ -315,6 +343,7 @@ export class LiveHost {
   }
 
   #touch(cid) {
+    if (this.#everSeen.size < 20000) this.#everSeen.add(cid);
     if (this.#seen.size < 5000 || this.#seen.has(cid)) this.#seen.set(cid, this.now());
   }
 

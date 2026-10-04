@@ -3,6 +3,7 @@
 export const APP_ROOT = '/app/';
 export const DASHBOARD_PATH = '/app/';
 export const ACCOUNT_PATH = '/app/account';
+export const REPORTS_PATH = '/app/reports';
 export const deckPath = (id) => `/app/d/${encodeURIComponent(id)}`;
 
 // 'dashboard' | 'account' | 'editor' for a pathname; editor routes also return the deck id.
@@ -10,6 +11,7 @@ export function parseAppPath(pathname) {
   const path = pathname.replace(/\/+$/, '');
   if (path === '' || path === '/app') return { page: 'dashboard' };
   if (path === '/app/account') return { page: 'account' };
+  if (path === '/app/reports') return { page: 'reports' };
   const m = /^\/app\/d\/([^/]+)$/.exec(path);
   if (m) {
     try { return { page: 'editor', deckId: decodeURIComponent(m[1]) }; } catch { return { page: 'notfound' }; }
