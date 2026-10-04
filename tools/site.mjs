@@ -169,6 +169,17 @@ const home = () => layout({
 </dl>
 </div></section>
 
+<section id="clients" class="clients"><div class="wrap">
+<p class="clients__label reveal">Organisations our team at <a href="${COMPANY}">Densight Labs</a> has worked with</p>
+<ul class="clients__row reveal" aria-label="Client logos">
+<li><img src="/clients/agakhan.webp" alt="Aga Khan University Hospital" width="262" height="150" loading="lazy" style="height:40px"></li>
+<li><img src="/clients/loreal.webp" alt="L&rsquo;Or&eacute;al Pakistan" width="400" height="188" loading="lazy" style="height:34px"></li>
+<li><img src="/clients/alyousif.webp" alt="Al Yousif Group" width="300" height="129" loading="lazy" style="height:40px"></li>
+<li><img src="/clients/pseb.webp" alt="Pakistan Software Export Board" width="300" height="143" loading="lazy" style="height:40px"></li>
+<li><img src="/clients/vision2030.webp" alt="Vision 2030" width="200" height="150" loading="lazy" style="height:40px"></li>
+</ul>
+</div></section>
+
 <section id="compare"><div class="wrap">
 <header class="head reveal"><p class="label">How we compare</p><h2>Pick the right tool, not just ours.</h2>
 <p class="sub">Four well-known audience tools next to Densight Slides. Where we are missing something, it says so, and where a feature needs a paid plan, it says that too. Read from each vendor's public pages in ${CHECKED}; plans change, so confirm anything that decides a purchase.</p></header>

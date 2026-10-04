@@ -124,6 +124,8 @@ async function writeSite() {
   await copyFile('site/tutorial.js', 'dist/tutorial.js');
   await mkdir('dist/fonts', { recursive: true });
   for (const f of await readdir('site/fonts')) await copyFile(`site/fonts/${f}`, `dist/fonts/${f}`);
+  await mkdir('dist/clients', { recursive: true });
+  for (const f of await readdir('site/clients')) await copyFile(`site/clients/${f}`, `dist/clients/${f}`);
   await mkdir('dist/brand', { recursive: true });
   for (const f of await readdir('site/brand')) await copyFile(`site/brand/${f}`, `dist/brand/${f}`);
   await writeFile('dist/manifest.webmanifest', JSON.stringify({
