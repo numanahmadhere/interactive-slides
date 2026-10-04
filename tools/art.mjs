@@ -212,7 +212,39 @@ const spots = {
 <g class="float"><rect x="62" y="64" width="116" height="82" rx="30" fill="${C.pink}"/><path d="M148 142 l24 38 l-48 -28z" fill="${C.pink}"/><g transform="translate(120 105)"><circle class="dot" cx="-26" cy="0" r="8" fill="#fff"/><circle class="dot b" cx="0" cy="0" r="8" fill="#fff"/><circle class="dot c" cx="26" cy="0" r="8" fill="#fff"/></g></g>`),
 };
 
+
+// ---- home page: figures that stand beside the headline, and a cheering crowd for the closing band --------------------------
+
+const confetti = (n, w, h, cols) => Array.from({ length: n }, (_, i) => { const x = 20 + ((i * 97) % (w - 40)); const y = 20 + ((i * 61) % (h - 40)); const c = cols[i % cols.length]; return `<rect class="pop p${(i % 6) + 1}" x="${x}" y="${y}" width="${10 + (i % 3) * 4}" height="${6 + (i % 2) * 4}" rx="2" fill="${c}" transform="rotate(${(i * 37) % 180} ${x} ${y})"/>`; }).join('');
+
+const heroScenes = {
+  'hero-left': () => svg(280, 420,
+    `<ellipse cx="140" cy="402" rx="120" ry="12" fill="#17177F" opacity=".12"/>
+${bubble(4, 14, 112, 66, C.white, `<rect x="18" y="22" width="58" height="9" rx="4" fill="${C.ink}" opacity=".7"/><rect x="18" y="40" width="46" height="9" rx="4" fill="${C.ink}" opacity=".28"/><text x="86" y="50" font-size="28" font-weight="800" fill="${C.blue}">?</text>`, 'float')}
+${person(96, 300, { s: 1.0, skin: SKIN[2], shirt: C.coral, hair: C.ink, style: 'curly', pose: 'raise', legs: true, pants: C.indigo })}
+${person(196, 316, { s: 0.88, skin: SKIN[0], shirt: C.mint, hair: '#6B3A1E', style: 'long', pose: 'phone', legs: true, pants: C.ink, bob: 'b' })}
+${heart(200, 150, 1.3, C.pink)}${heart(60, 170, 1.1, C.amber, 'rise b')}${sparkle(240, 60, 12, C.blue)}${sparkle(20, 130, 9, C.violet, 'tw b')}`, null),
+  'hero-right': () => svg(280, 420,
+    `<ellipse cx="140" cy="402" rx="120" ry="12" fill="#17177F" opacity=".12"/>
+<g transform="translate(70 28)"><g class="float"><rect width="170" height="108" rx="14" fill="#fff"/><rect width="170" height="108" rx="14" fill="none" stroke="${C.ink}" stroke-opacity=".12" stroke-width="2"/><rect class="bar d1" x="16" y="20" width="110" height="14" rx="5" fill="${C.blue}"/><rect class="bar d2" x="16" y="44" width="78" height="14" rx="5" fill="${C.pink}"/><rect class="bar d3" x="16" y="68" width="46" height="14" rx="5" fill="${C.amber}"/></g></g>
+${person(176, 316, { s: 1.0, skin: SKIN[3], shirt: C.violet, hair: C.ink, style: 'short', pose: 'point', legs: true, pants: C.ink })}
+${person(70, 326, { s: 0.86, skin: SKIN[1], shirt: C.amber, hair: C.ink, style: 'bun', pose: 'cheer', legs: true, pants: C.indigo, bob: 'c' })}
+${sparkle(30, 90, 12, C.coral)}${sparkle(250, 280, 10, C.teal, 'tw b')}${heart(236, 170, 1.3, C.red, 'rise c')}`, null),
+  cta: () => svg(800, 420,
+    `<ellipse cx="400" cy="408" rx="380" ry="10" fill="#000" opacity=".15"/>
+${confetti(26, 800, 300, [C.amber, C.pink, C.mint, C.white, C.sky, C.coral])}
+${person(110, 330, { s: 0.95, skin: SKIN[2], shirt: C.pink, hair: C.ink, style: 'long', pose: 'cheer', legs: true, pants: C.ink })}
+${person(260, 340, { s: 0.85, skin: SKIN[0], shirt: C.white, hair: '#C26A2E', style: 'bun', pose: 'raise', legs: true, pants: C.indigo, bob: 'b' })}
+${person(410, 330, { s: 1.0, skin: SKIN[3], shirt: C.amber, hair: C.ink, style: 'curly', pose: 'cheer', legs: true, pants: C.ink, bob: 'c' })}
+${person(560, 340, { s: 0.85, skin: SKIN[1], shirt: C.mint, hair: C.ink, style: 'short', pose: 'raise', legs: true, pants: C.indigo, flip: true })}
+${person(700, 330, { s: 0.95, skin: SKIN[4], shirt: C.sky, hair: C.ink, style: 'cap', pose: 'cheer', legs: true, pants: C.ink, bob: 'b' })}
+${heart(180, 120, 1.5, C.pink)}${heart(480, 110, 1.3, C.white, 'rise b')}${heart(640, 130, 1.6, C.amber, 'rise c')}`, null),
+};
+
 export const ART_ALT = {
+  'hero-left': 'Two people holding up phones to answer a question, with hearts floating up',
+  'hero-right': 'A presenter pointing at a growing bar chart while a colleague cheers',
+  cta: 'A group cheering with confetti falling',
   training: 'People in a meeting room answering a poll on their phones while the results grow on the screen',
   education: 'Students in a lecture hall answering a quiz question on their phones while the lecturer points at the screen',
   events: 'A speaker on a conference stage next to a wall of audience questions, with the crowd holding up phones',
@@ -227,6 +259,7 @@ export const ART_ALT = {
 export function buildArt() {
   const out = {};
   for (const [name, fn] of Object.entries(scenes)) out[`art/${name}.svg`] = fn();
+  for (const [name, fn] of Object.entries(heroScenes)) out[`art/${name}.svg`] = fn();
   for (const [name, fn] of Object.entries(spots)) out[`art/spot-${name}.svg`] = fn();
   return out;
 }

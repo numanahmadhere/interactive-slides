@@ -389,3 +389,13 @@ test('illustrations: every use-case page has its own animated scene, the files a
   assert.ok(site['index.html'].includes('/art/training.svg') && site['index.html'].includes('/art/spot-quiz.svg'), 'the home page uses them too');
   assert.ok(site['use-cases/index.html'].includes('/art/community.svg'));
 });
+
+test('the home page has figures beside the headline and a crowd in the closing band', () => {
+  const site = buildSite();
+  const home = site['index.html'];
+  for (const n of ['hero-left', 'hero-right', 'cta']) {
+    assert.ok(home.includes(`/art/${n}.svg`), n);
+    const art = site[`art/${n}.svg`];
+    assert.ok(art && art.length < 30000 && !/<script|\son\w+=|javascript:|href="http/i.test(art) && art.includes('prefers-reduced-motion'), n);
+  }
+});

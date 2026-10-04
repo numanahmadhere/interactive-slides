@@ -204,7 +204,7 @@ const home = () => layout({
   title: `${NAME}: interactive presentations your audience can answer`,
   description: 'Build slides with quizzes, polls and live questions. Present from your browser, let the audience join from their phones, and control the slides from yours. Free to start.',
   body: `
-<section id="tutorial" class="hero tuthero"><div class="wrap">
+<section id="tutorial" class="hero tuthero"><img class="hero__fig hero__fig--l" src="/art/hero-left.svg" alt="" width="280" height="420"><img class="hero__fig hero__fig--r" src="/art/hero-right.svg" alt="" width="280" height="420"><div class="wrap">
 <header class="tuthero__head">
 <h1>Presentations your audience can <em>answer.</em></h1>
 <p class="lead">Add live polls, quizzes and questions to the presentations you already give. Pick a question type below and use it: answer on the phone and watch your own answer appear on the big screen.</p>
@@ -391,11 +391,11 @@ ${planCards()}
 <details><summary>Which browsers work?</summary><p>Current Chrome, Edge, Firefox and Safari, on computers, tablets and phones. Audience pages work on phones from about 2022 onward.</p></details>
 </div></div></section>
 
-<section class="cta-band"><div class="wrap reveal">
+<section class="cta-band"><div class="wrap cta-band__grid"><div class="reveal">
 <h2>Make your next presentation a conversation.</h2>
 <p>Open the app and have your first deck ready in minutes. Questions first? Write to <a class="plain" href="${mailto()}">${SUPPORT}</a>.</p>
-<a class="btn lg light" href="/app/">Start building</a>
-</div></section>
+<a class="btn lg light" href="/app/">Start building</a></div>
+<img class="cta-band__art" src="/art/cta.svg" alt="A group cheering with confetti falling" width="800" height="420" loading="lazy"></div></section>
 <script type="module" src="/tutorial.js"></script>
 <script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': [
   { '@type': 'Organization', '@id': COMPANY + '/#org', name: 'Densight Labs', url: COMPANY, logo: SITE + '/brand/icon-512.png', email: SUPPORT },

@@ -787,3 +787,16 @@ details.dd[open] .dd__panel { animation: ddin .22s var(--ease) both; }
 .uc__art, .uccard__art { display: block; width: 100%; height: auto; border-radius: 22px; margin-bottom: 18px; }
 .uccard__art { margin-bottom: 10px; }
 @media (max-width: 980px) { .seg__grid { grid-template-columns: 1fr; } .can__row { grid-template-columns: repeat(2, 1fr); } }
+
+
+/* ---- home page figures ---- */
+.tuthero > .hero__fig { position: absolute; z-index: 0; top: 24px; width: clamp(150px, 15vw, 230px); height: auto; pointer-events: none; display: none; }
+.hero__fig--l { left: max(8px, calc(50% - 640px)); }
+.hero__fig--r { right: max(8px, calc(50% - 640px)); }
+@media (min-width: 1180px) { .tuthero > .hero__fig { display: block; } }
+.cta-band__grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(24px, 4vw, 64px); align-items: center; }
+.cta-band__art { display: block; width: 100%; height: auto; }
+@media (max-width: 980px) { .cta-band__grid { grid-template-columns: 1fr; } .cta-band__art { max-width: 520px; margin-inline: auto; } }
+@media (min-width: 1180px) { .tuthero__head { max-width: 760px; } }
+.mk p, .mkp p, .mk b, .mkp b { color: inherit; }
+.mk small { color: #5B6475; }
