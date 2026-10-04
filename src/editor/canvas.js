@@ -343,6 +343,7 @@ export class CanvasView {
     const blockEl = target.closest('.sp-block');
     if (blockEl) {
       const id = blockEl.dataset.block;
+      this.#dragToFree(e, blockEl);
       const wasSelected = this.editor.selection.blockId === id;
       this.editor.select({ blockId: id });
       if (wasSelected && this.#isEditable(id)) this.startEdit(id, { event: e });
@@ -367,6 +368,29 @@ export class CanvasView {
     const id = top?.dataset.block ?? null;
     if (id && !this.editor.selectedIds.includes(id)) this.editor.select({ blockId: id });
     this.editor.openContextMenu({ x: e.clientX, y: e.clientY }, { onBlock: !!id, point: this.free.active ? this.free.pointOf(e) : null });
+  }
+
+  // Dragging a block on a fixed-layout slide frees the slide (one undo step) and carries on dragging.
+  #dragToFree(e, blockEl) {
+    if (this.free.active || this.editing) return;
+    const top = blockEl.parentElement?.closest('.sp-block') ? null : blockEl;
+    if (!top) return; // blocks inside columns and tabs stay put
+    const id = top.dataset.block;
+    const start = { x: e.clientX, y: e.clientY };
+    const stop = () => {
+      this.stage.removeEventListener('pointermove', move);
+      this.stage.removeEventListener('pointerup', stop);
+      this.stage.removeEventListener('pointercancel', stop);
+    };
+    const move = (ev) => {
+      if (ev.pointerId !== e.pointerId || Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 6) return;
+      stop();
+      this.editor.convertSlideToFree();
+      if (this.free.active) this.free.adoptDrag(id, e);
+    };
+    this.stage.addEventListener('pointermove', move);
+    this.stage.addEventListener('pointerup', stop);
+    this.stage.addEventListener('pointercancel', stop);
   }
 
   #onDoubleClick(e) {

@@ -152,6 +152,11 @@ export class FreeLayer {
     return true;
   }
 
+  // Continue a drag that began before the slide became free-form.
+  adoptDrag(id, startEvent) {
+    this.#startMove(startEvent, id);
+  }
+
   pointOf(e) {
     return this.#point(e);
   }
