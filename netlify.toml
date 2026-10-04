@@ -10,6 +10,14 @@
   # the secrets scanner fail the build over it.
   SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,SUPABASE_ANON_KEY,PADDLE_CLIENT_TOKEN"
 
+# Local testing with `netlify dev`: serves the built site in dist/ together with the billing functions on one port.
+# Build first (`npm run build`), then `netlify dev`, then open http://localhost:8888.
+[dev]
+  framework = "#static"
+  publish = "dist"
+  port = 8888
+  autoLaunch = false
+
 # Billing: the Paddle webhook (netlify/functions/paddle-webhook.mjs).
 [functions]
   directory = "netlify/functions"
