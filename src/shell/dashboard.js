@@ -11,6 +11,7 @@ import { getCloud } from '../cloud/instance.js';
 import { slugify } from '../core/util.js';
 import { slideToPng } from '../export/png.js';
 import { blankDeck, demoDeckCopy, duplicateDeck, sampleDeckCopy } from '../library/starters.js';
+import { getTemplate } from '../library/templates.js';
 import { appFooter, appHeader } from './chrome.js';
 import { deckPath } from './paths.js';
 import { setFlash, takeFlash } from './flash.js';
@@ -300,6 +301,15 @@ export async function mountDashboard(root) {
 
   const flash = takeFlash();
   if (flash) toast(flash.text, { kind: flash.kind });
+  // /app/?template=ID (from the public templates page): start a new deck from that ready-made slide.
+  const wanted = getTemplate(new URLSearchParams(location.search).get('template') ?? '');
+  if (wanted) {
+    const deck = blankDeck();
+    deck.slides = [wanted.make()];
+    deck.meta.title = wanted.name;
+    await newDeck(deck);
+    return;
+  }
   await load();
   drawMissingThumbs();
   if (!persist.durable) toast('Browser storage is unavailable here, so decks will not be kept after you close this page.', { kind: 'error', timeout: 9000 });

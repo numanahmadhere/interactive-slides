@@ -3,15 +3,16 @@
 // engines and link previews see real content.
 
 import { renderTable, CHECKED } from './compare.mjs';
-import { listBlocks } from '../src/core/blocks/index.js';
+import { listBlocks, getBlock } from '../src/core/blocks/index.js';
 import { PLANS, PLAN_ORDER, PRICES, TRIAL_DAYS } from '../src/billing/plans.js';
 import { highlights } from '../src/billing/features.js';
+import { TEMPLATES } from '../src/library/templates.js';
 
 const planCards = () => PLAN_ORDER.map((id) => {
   const plan = PLANS[id];
   const price = PRICES[id];
   return `<article class="bp__card${id === 'pro' ? ' is-highlight' : ''}">
-<h3 class="bp__name">${plan.name}</h3><p class="bp__blurb">${plan.blurb}</p>
+${id === 'pro' ? '<span class="bp__tag">Recommended</span>' : ''}<h3 class="bp__name">${plan.name}</h3><p class="bp__blurb">${plan.blurb}</p>
 <p class="bp__price"><b>${price ? `$${price.month}` : '$0'}</b><span>${price ? ' a month' : ' forever'}</span></p>
 <p class="bp__save">${price ? `or $${price.year.toLocaleString('en-US')} a year, two months free` : ''}</p>
 <ul class="bp__list">${highlights(id).map((t) => `<li>${t}</li>`).join('')}</ul>
@@ -86,11 +87,13 @@ ${index ? '' : '<meta name="robots" content="noindex">\n'}<link rel="canonical" 
 <a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
 <a class="brand" href="/">${LOGO}<span>${NAME}</span></a>
-<nav class="main" aria-label="Main"><a href="/#tutorial">Tutorial</a><a href="/#pricing">Pricing</a><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/learn/">Guides</a><a href="/#faq">FAQ</a></nav>
+<nav class="main" aria-label="Main"><a href="/#features">Features</a>
+<details class="dd"><summary>Solutions</summary><div class="dd__panel"><a href="/training/"><b>Training and meetings</b><small>Workshops, town halls, briefings</small></a><a href="/education/"><b>Education</b><small>Lectures, lessons, assessments</small></a></div></details>
+<a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/learn/">Guides</a></nav>
 <span class="grow"></span>
 <a class="link-quiet" href="/app/account">Sign in</a><a class="btn sm" href="/app/">Start building</a>
 <details class="menu"><summary aria-label="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
-<div class="menu__panel"><a href="/#tutorial">Tutorial</a><a href="/#pricing">Pricing</a><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/learn/">Guides</a><a href="/#faq">FAQ</a><a href="/app/account">Sign in</a></div></details>
+<div class="menu__panel"><a href="/#features">Features</a><a href="/training/">Training and meetings</a><a href="/education/">Education</a><a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/security/">Security</a><a href="/learn/">Guides</a><a href="/app/account">Sign in</a></div></details>
 </div></header>
 <div class="flash" id="flash" role="status" hidden>Your account and online decks were deleted. Decks on this device were kept.</div>
 <main id="main">
@@ -99,11 +102,15 @@ ${body}
 <footer class="site"><div class="wrap">
 <div class="foot-brand"><a class="brand" href="/">${LOGO_DARK_BG}<span>${NAME}</span></a>
 <p>Interactive presentations your audience can answer. A product of <a href="${COMPANY}">Densight Labs</a>, an applied AI firm.</p></div>
-<div><h3 class="foot-h">Product</h3><a href="/#tutorial">Tutorial</a><a href="/#pricing">Pricing</a><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/#how">How it works</a><a href="/app/">Open the app</a></div>
-<div><h3 class="foot-h">Learn</h3><a href="/learn/">Guides</a><a href="/#faq">FAQ</a></div>
+<div><h3 class="foot-h">Product</h3><a href="/#features">Features</a><a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/#live">Live audience</a><a href="/app/">Open the app</a></div>
+<div><h3 class="foot-h">Solutions</h3><a href="/training/">Training and meetings</a><a href="/education/">Education</a></div>
+<div><h3 class="foot-h">Resources</h3><a href="/learn/">Guides</a><a href="/#faq">FAQ</a><a href="/security/">Security</a></div>
 <div><h3 class="foot-h">Company</h3><a href="${COMPANY}">Densight Labs</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="${mailto()}">Support: ${SUPPORT}</a></div>
 </div><div class="wrap foot-end"><span>&copy; ${new Date().getFullYear()} <a href="${COMPANY}">Densight Labs</a>. All rights reserved.</span><a href="${mailto()}">${SUPPORT}</a></div></footer>
+<a class="stickycta" id="stickycta" href="/app/" hidden>Start building free</a>
 <script>
+(function(){var b=document.getElementById('stickycta');if(!b||!document.getElementById('tutorial'))return;function f(){b.hidden=scrollY<700}f();addEventListener('scroll',f,{passive:true})})();
+document.addEventListener('click',function(e){document.querySelectorAll('details.dd[open]').forEach(function(d){if(!d.contains(e.target))d.open=false})});
 if(/[?&]account-deleted=1/.test(location.search))document.getElementById('flash').hidden=false;
 (function(){var els=document.querySelectorAll('.reveal');if(!('IntersectionObserver' in window)||matchMedia('(prefers-reduced-motion: reduce)').matches){els.forEach(function(e){e.classList.add('in')});return}
 var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{rootMargin:'0px 0px -8% 0px'});els.forEach(function(e){io.observe(e)})})();
@@ -141,6 +148,7 @@ const home = () => layout({
 <header class="tuthero__head">
 <h1>Presentations your audience can <em>answer.</em></h1>
 <p class="lead">Add live polls, quizzes and questions to the presentations you already give. Pick a question type below and use it: answer on the phone and watch your own answer appear on the big screen.</p>
+<p class="cta tuthero__cta"><a class="btn lg" href="/app/">Start building free</a><span class="assure">No account or card needed to try it.</span></p>
 </header>
 <div class="show reveal" id="show">
 <ul class="show__cards" aria-label="Question types">
@@ -173,6 +181,24 @@ const home = () => layout({
 </ul>
 </div></section>
 
+<section id="loop"><div class="wrap">
+<header class="head reveal"><p class="label">Why it works</p><h2>Good questions, great <em>insights.</em></h2>
+<p class="sub">Start with a question. See the answers arrive. Act on what the room just told you.</p></header>
+<ol class="steps">
+<li class="reveal"><span class="num">1</span><h3>Ask</h3><p>Put a poll, quiz, word cloud or open question on any slide, between the slides you already have.</p></li>
+<li class="reveal"><span class="num">2</span><h3>See</h3><p>People answer from their phones and the results build on your screen as they arrive. No app, no sign-up.</p></li>
+<li class="reveal"><span class="num">3</span><h3>Act</h3><p>Change direction on the spot, answer the top questions, then save a report or share the deck afterwards.</p></li>
+</ol></div></section>
+
+<section id="products" class="alt"><div class="wrap">
+<header class="head reveal"><p class="label">One account</p><h2>Three ways to <em>engage.</em></h2>
+<p class="sub">The same slides work in the room, on their own, and across a team.</p></header>
+<div class="rules">
+<article class="item prod reveal"><h3>Present live</h3><p>Polls, quizzes, word clouds, open answers and audience Q&amp;A, in the room or online. Works on any phone, with no app and no login for the audience.</p><a class="prod__go" href="/learn/#live-session">Discover live sessions <span aria-hidden="true">&rarr;</span></a></article>
+<article class="item prod reveal"><h3>Run a course</h3><p>Share a deck as a self-paced course. Learners go through it in their own time, you see who finished, and they can print a certificate. Starter plan and above.</p><a class="prod__go" href="/learn/#course">Discover courses <span aria-hidden="true">&rarr;</span></a></article>
+<article class="item prod reveal"><h3>Work as a team</h3><p>Share decks with colleagues, comment on slides, and keep one logo and colour set for everyone. People join with a link. Pro plan and above.</p><a class="prod__go" href="/learn/#team">Discover teams <span aria-hidden="true">&rarr;</span></a></article>
+</div></div></section>
+
 <section id="compare"><div class="wrap">
 <header class="head reveal"><p class="label">How we compare</p><h2>Pick the right tool, not just ours.</h2>
 <p class="sub">Four well-known audience tools next to Densight Slides. Where we are missing something, it says so, and where a feature needs a paid plan, it says that too. Read from each vendor's public pages in ${CHECKED}; plans change, so confirm anything that decides a purchase.</p></header>
@@ -189,7 +215,7 @@ ${renderTable()}
 <div class="reveal"><div class="bp__grid">
 ${planCards()}
 </div>
-<p class="bp__fine">Prices are in US dollars. Checkout shows your local price and any tax. Questions about plans? <a href="${mailto('Plans and pricing')}">${SUPPORT}</a>.</p></div>
+<p class="bp__fine">Prices are in US dollars. Checkout shows your local price and any tax. Questions about plans? <a href="${mailto('Plans and pricing')}">${SUPPORT}</a>. <a href="/pricing/">Monthly or yearly, and common questions</a>.</p></div>
 </div></section>
 
 <section id="features"><div class="wrap">
@@ -242,14 +268,6 @@ ${planCards()}
 ${FIGS.map(([t, d, svg]) => `<figure class="fig reveal">${svg}<figcaption><b>${t}</b><span>${d}</span></figcaption></figure>`).join('\n')}
 </div></div></section>
 
-<section id="how"><div class="wrap">
-<header class="head reveal"><p class="label">How it works</p><h2>From idea to live in minutes.</h2></header>
-<ol class="steps">
-<li class="reveal"><span class="num">1</span><h3>Build</h3><p>Start from a template or a blank slide. Drag in text, images and interactive blocks and place them where you want. It saves as you go.</p></li>
-<li class="reveal"><span class="num">2</span><h3>Present</h3><p>Press Present. Use the keyboard, a clicker or your phone. A laser pointer, drawing and a timer are built in.</p></li>
-<li class="reveal"><span class="num">3</span><h3>Engage</h3><p>Start a live session, show the code and watch answers arrive. Download or share the deck afterwards.</p></li>
-</ol></div></section>
-
 <section id="trust" class="alt"><div class="wrap">
 <header class="head reveal"><p class="label">Security and privacy</p><h2>Built with confidential material in mind.</h2>
 <p class="sub">Presentations often carry sensitive content. These are the choices we made, stated plainly.</p></header>
@@ -258,16 +276,43 @@ ${FIGS.map(([t, d, svg]) => `<figure class="fig reveal">${svg}<figcaption><b>${t
 <article class="item reveal"><h3>No tracking</h3><p>No advertising, no tracking cookies and no sale of data. See the <a href="/privacy/">privacy policy</a>.</p></article>
 <article class="item reveal"><h3>Answers stay with you</h3><p>Audience responses are held in the presenter's browser and are not stored on our servers.</p></article>
 <article class="item reveal"><h3>You stay in control</h3><p>Export any deck, revoke a share link instantly, and delete your account and online data at any time.</p></article>
+</div><p class="reveal" style="margin-top:8px"><a href="/security/">Read the full security and privacy summary</a></p></div></section>
+
+<section id="usecases"><div class="wrap">
+<header class="head reveal"><p class="label">Use cases</p><h2>More <em>engagement,</em> every day.</h2>
+<p class="sub">Easily add participation to more of the moments where you talk and others listen.</p></header>
+<div class="uc">
+<div class="uc__col reveal"><h3>At work</h3>
+<ul>
+<li><b>Anonymous feedback.</b> Ask how a talk or briefing landed, and get honest answers.</li>
+<li><b>Training that sticks.</b> A short quiz after each section shows what was understood.</li>
+<li><b>Brainstorming.</b> Word clouds and open answers turn a quiet room into a loud one.</li>
+<li><b>Alignment and decisions.</b> Rank priorities together and place ideas on a 2x2.</li>
+<li><b>Town halls.</b> Let people send questions, upvote the best, and hold them for approval.</li>
+<li><b>Client sessions.</b> Present with your own logo, from your phone, and leave a shareable deck.</li>
+</ul><a class="btn ghost" href="/training/">See training and meeting uses</a></div>
+<div class="uc__col reveal"><h3>In education</h3>
+<ul>
+<li><b>Lecture feedback.</b> Quick reactions and polls show where the room is lost.</li>
+<li><b>Check understanding.</b> Anonymous quizzes with no accounts for students.</li>
+<li><b>Assessments and games.</b> Timed questions, points for speed, teams and a leaderboard.</li>
+<li><b>Seminar starters.</b> One open question and the room has something to discuss.</li>
+<li><b>Hands-on lessons.</b> Matching, ordering, fill-in-the-blank, flip cards and hotspots.</li>
+<li><b>Independent study.</b> Share a self-paced course with a completion list and certificate.</li>
+</ul><a class="btn ghost" href="/education/">See classroom uses</a></div>
 </div></div></section>
 
-<section><div class="wrap">
-<header class="head reveal"><p class="label">Use cases</p><h2>For people who lead the room.</h2></header>
-<div class="rules four">
-<article class="item reveal"><h3>Executive briefings</h3><p>Take the temperature of the room before you decide, and branch to the topics that matter to this audience.</p></article>
-<article class="item reveal"><h3>Training and workshops</h3><p>Check understanding with short quizzes and see at a glance what the room knows.</p></article>
-<article class="item reveal"><h3>Client presentations</h3><p>Keep your notes on your phone, move the slides from anywhere in the room, and leave behind a shareable deck.</p></article>
-<article class="item reveal"><h3>Town halls and events</h3><p>Let a whole room respond from their seats while you stay in control of the screen.</p></article>
-</div></div></section>
+<section id="start" class="alt"><div class="wrap">
+<header class="head reveal"><p class="label">Getting started</p><h2>Easy to start. Simple to <em>connect.</em></h2>
+<p class="sub">Choose a ready-made slide, start from a blank one, or bring the slides you already have.</p></header>
+<div class="rules">
+<article class="item prod reveal"><h3>Pick a ready-made slide</h3><p>${TEMPLATES.length} slides for icebreakers, quizzes, feedback, tables and matrices. Every part can be edited or removed.</p><a class="prod__go" href="/templates/">Browse the slides <span aria-hidden="true">&rarr;</span></a></article>
+<article class="item prod reveal"><h3>Start from a blank slide</h3><p>Drag text, pictures and interactive blocks anywhere, with guides that snap them into line. It saves as you go.</p><a class="prod__go" href="/app/">Open the editor <span aria-hidden="true">&rarr;</span></a></article>
+<article class="item prod reveal"><h3>Bring your PowerPoint</h3><p>Import a .pptx file, or a Google Slides deck downloaded as PowerPoint. Text, pictures and notes come across.</p><a class="prod__go" href="/learn/#import">How importing works <span aria-hidden="true">&rarr;</span></a></article>
+</div>
+<div class="easy reveal"><h3>New tools? No trouble.</h3>
+<ul><li><b>Nothing for the audience to install.</b> A link or a QR code is enough.</li><li><b>Take your slides with you.</b> Export to a web page, PDF, images or PowerPoint.</li><li><b>Works offline.</b> Build and present without a connection.</li><li><b>A person answers.</b> Write to <a href="${mailto()}">${SUPPORT}</a>.</li></ul></div>
+</div></section>
 
 <section id="faq" class="alt"><div class="wrap faq">
 <div class="reveal"><p class="label">FAQ</p><h2>Questions, answered.</h2><p class="sub">Anything else? Read the <a href="/learn/">guides</a>.</p></div>
@@ -313,11 +358,15 @@ const welcome = () => layout({
 <script>setTimeout(function(){location.replace('/app/account?welcome=1')},2500)</script>`,
 });
 
-const guides = [
+const guides = [ // [title, body, anchor]
   ['Make your first deck', '<ol><li>Open <a href="/app/">My decks</a> and choose <strong>Blank deck</strong>.</li><li>Click the title text on the slide and type. Click it again to edit in place.</li><li>Press <strong>Insert</strong> above the slide (or type <kbd>/</kbd>) to add text, images, quizzes and more, then drag them where you want. Double-click empty space to type there.</li><li>Your deck saves on your device as you work. Rename it with the title box at the top.</li></ol>'],
   ['Add a quiz or poll', '<p>Press <strong>Insert</strong> or type <kbd>/</kbd>, then choose <em>Quiz question</em> or <em>Live poll</em>. Type the question, edit the choices, and tick which choice is correct for a quiz. Add a <em>Score summary</em> block on a later slide to total every quiz.</p>'],
   ['Present your deck', '<p>Press <strong>Present</strong> or <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Enter</kbd>. Move with the arrow keys or space. <kbd>O</kbd> opens an overview, <kbd>L</kbd> is a laser pointer, <kbd>D</kbd> draws, <kbd>F</kbd> is full screen and <kbd>?</kbd> lists every shortcut. Choose <em>With presenter view</em> for notes and a timer on a second screen.</p>'],
-  ['Run a live session with phones', '<ol><li>Open a slide that has a poll or quiz, then choose <strong>Present &gt; Go live &gt; Start session</strong>.</li><li>Show the code or QR to the room. Phones open the link and see the question when you reach that slide.</li><li>Votes appear on your slide as they arrive. Scan the second QR code with your own phone to use it as a remote with your notes.</li></ol><p>If you reload your page mid-session, the same code resumes and phones send their answers again.</p>'],
+  ['Run a live session with phones', '<ol><li>Open a slide that has a poll or quiz, then choose <strong>Present &gt; Go live &gt; Start session</strong>.</li><li>Show the code or QR to the room. Phones open the link and see the question when you reach that slide.</li><li>Votes appear on your slide as they arrive. Scan the second QR code with your own phone to use it as a remote with your notes.</li></ol><p>If you reload your page mid-session, the same code resumes and phones send their answers again.</p>', 'live-session'],
+  ['Run a self-paced course', '<p>Save the deck online (<strong>File &gt; Cloud</strong>), press <em>Share</em>, then turn on <em>Self-paced course</em>. Anyone with the link goes through the slides in their own time; the page remembers which they have seen. When they have seen every slide they can type their name to be recorded as finished and print a certificate. You see the list under the same dialog and can download it as a spreadsheet. Starter plan and above. &ldquo;Finished&rdquo; means every slide was viewed; quizzes are not graded.</p>', 'course'],
+  ['Work as a team', '<p>On the Pro and Advanced plans, open <strong>Account &gt; Team</strong> and create a team, then <em>Invite someone</em> to get a link that works once and expires in seven days. People join by opening it while signed in; they do not need a plan of their own. In the editor, <strong>File &gt; Cloud</strong> lets you put a deck in the team, apply or save the team&rsquo;s logo and colours, and <strong>File &gt; Comments</strong> opens comments on the slide you are looking at. Pro includes 5 people, Advanced 25.</p>', 'team'],
+  ['Import a PowerPoint or Google Slides deck', '<p>On <a href="/app/">My decks</a> choose <strong>Import a deck</strong> and pick a .pptx file. For Google Slides use <em>File &gt; Download &gt; Microsoft PowerPoint (.pptx)</em> first. Titles, text, bullet lists, pictures, speaker notes and positions come across. Tables become plain text. Charts, SmartArt, video, animations and master styling do not, and the app tells you what it left out. You get a new deck; your original is untouched.</p>', 'import'],
+  ['Keep answers moderated and private', '<p>Word clouds, open answers and Q&amp;A hide swearing by default; choose <em>Approve first</em> in the block&rsquo;s panel to hold every answer until you let it through. In the live dialog, <em>Private session</em> keeps nothing: no names or teams, no report and no spreadsheet, and answers disappear when you end the session.</p>', 'moderation'],
   ['Save online and share', '<p>Choose <strong>Sign in</strong>, enter your email, and open the link we send. From then on your decks also save online. In the editor open <strong>File &gt; Cloud</strong> and press <em>Share</em> to get a link anyone can view. <em>Stop sharing</em> ends it immediately.</p>'],
   ['Export', '<p>Open <strong>File &gt; Export</strong> for a standalone web page (every interaction works), a PDF, PNG images, PowerPoint, or the deck file to reopen later.</p>'],
 ];
@@ -327,7 +376,7 @@ const learn = () => layout({
   title: `Learn ${NAME}`,
   description: 'Short guides: make a deck, add quizzes and polls, present, run a live session with phones, save and share, export.',
   body: `<div class="doc"><h1>Learn ${NAME}</h1><p class="meta">Short guides. The app also has an optional guided tour that you can skip.</p>
-${guides.map(([t, b]) => `<div class="guide"><h2>${esc(t)}</h2>${b}</div>`).join('\n')}
+${guides.map(([t, b, id]) => `<div class="guide"${id ? ` id="${id}"` : ''}><h2>${esc(t)}</h2>${b}</div>`).join('\n')}
 <p style="margin-top:32px"><a class="btn" href="/app/">Open the app</a> &nbsp; Need a hand? <a href="${mailto()}">${SUPPORT}</a></p></div>`,
 });
 
@@ -370,6 +419,211 @@ const notFound = () => layout({
   body: `<div class="doc"><h1>Page not found</h1><p>That address does not exist. <a href="/">Go to the home page</a> or <a href="/app/">open the app</a>.</p></div>`,
 });
 
+// ---- template previews: a flat sketch of each ready-made slide, drawn from its real block positions ----------
+
+const plain = (html) => String(html ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+const pct = (n, of) => `${Math.round((n / of) * 1000) / 10}%`;
+const SIZES = { 1: 4.6, 2: 3.3, 3: 2.4 };
+
+function sketch(block) {
+  const f = block.frame ?? { x: 128, y: 128, w: 800 };
+  const t = block.type;
+  const p = block.props;
+  const label = getBlock(t)?.label ?? t;
+  let h = f.h;
+  let cls = 'tp__b';
+  let inner = '';
+  let style = '';
+  if (t === 'heading') {
+    cls += ' tp__text';
+    style = `font-size:${SIZES[p.level] ?? 3.3}cqw;font-weight:650;text-align:${p.align === 'center' ? 'center' : p.align === 'end' ? 'right' : 'left'}`;
+    inner = esc(plain(p.text));
+    h = h ?? (SIZES[p.level] ?? 3.3) * 19.2 * 1.6;
+  } else if (t === 'text' || t === 'quote') {
+    cls += ' tp__text tp__muted';
+    style = `font-size:${p.size === 'lg' ? 2.6 : 2.1}cqw;text-align:${p.align === 'center' ? 'center' : 'left'}${t === 'quote' ? ';font-style:italic' : ''}`;
+    inner = esc(plain(p.text));
+    h = h ?? 160;
+  } else if (t === 'list') {
+    cls += ' tp__text';
+    style = `font-size:${p.size === 'lg' ? 2.5 : 2.2}cqw`;
+    inner = `<ul>${(p.items ?? []).slice(0, 5).map((i) => `<li>${esc(plain(i))}</li>`).join('')}</ul>`;
+    h = h ?? 380;
+  } else if (t === 'shape') {
+    cls += ` tp__shape tp__shape--${p.fill ?? 'accent'}`;
+    inner = esc(plain(p.text));
+    h = h ?? 60;
+  } else if (t === 'image') {
+    cls += ' tp__img';
+    inner = '<i></i>';
+    h = h ?? 400;
+  } else if (t === 'icon') {
+    cls += ' tp__icon';
+    h = h ?? 200;
+  } else if (t === 'matrix') {
+    cls += ' tp__panel tp__matrix';
+    inner = [p.tl, p.tr, p.bl, p.br].map((x) => `<span>${esc(plain(x))}</span>`).join('');
+    h = h ?? 600;
+  } else if (t === 'table') {
+    cls += ' tp__panel tp__table';
+    inner = '<span></span>'.repeat(9);
+    h = h ?? 300;
+  } else {
+    cls += ' tp__panel';
+    const q = plain(p.question ?? p.text ?? '');
+    inner = `<em>${esc(label)}</em>${q ? `<span class="tp__q">${esc(q)}</span>` : ''}<i style="width:78%"></i><i style="width:54%"></i><i style="width:32%"></i>`;
+    h = h ?? 420;
+  }
+  return `<div class="${cls}" style="left:${pct(f.x, 1920)};top:${pct(f.y, 1080)};width:${pct(f.w, 1920)};height:${pct(h, 1080)};${style}">${inner}</div>`;
+}
+
+const thumb = (slide) => `<div class="tp" aria-hidden="true">${slide.blocks.map(sketch).join('')}</div>`;
+
+const templatesPage = () => {
+  const groups = [...new Set(TEMPLATES.map((t) => t.group))];
+  return layout({
+    path: '/templates/',
+    title: `Ready-made slides | ${NAME}`,
+    description: `${TEMPLATES.length} ready-made slides for icebreakers, quizzes, polls, feedback, tables and matrices. Pick one and edit it in your browser. Free to use.`,
+    body: `<div class="doc doc--wide"><p class="label">Ready-made slides</p><h1>${TEMPLATES.length} slides to start from</h1>
+<p class="meta">Icebreakers, quizzes, polls, feedback, tables and matrices. Choose one and it opens in the editor as a new deck, ready to change. No sign-up needed. The pictures below are sketches; the real slides use your theme.</p>
+${groups.map((g) => `<h2 class="tpg">${esc(g)}</h2><ul class="tpl">${TEMPLATES.filter((t) => t.group === g).map((t) => `<li class="tpl__card">${thumb(t.make())}<div class="tpl__row"><b>${esc(t.name)}</b><a class="btn sm" href="/app/?template=${t.id}" aria-label="Use the ${esc(t.name)} slide">Use this slide</a></div></li>`).join('')}</ul>`).join('\n')}
+<p style="margin-top:36px"><a class="btn" href="/app/">Start from a blank deck</a></p></div>`,
+  });
+};
+
+// ---- segment pages (education, training) ----------------------------------------------------------------------
+
+function segmentPage({ path, title, description, eyebrow, h1, lead, cases, trust, closing }) {
+  return layout({
+    path, title, description,
+    body: `<section class="seg"><div class="wrap">
+<p class="label">${eyebrow}</p><h1>${h1}</h1><p class="lead">${lead}</p>
+<p class="cta"><a class="btn lg" href="/app/">Start building free</a><a class="textlink" href="/templates/">Browse ready-made slides <span aria-hidden="true">&rarr;</span></a></p>
+</div></section>
+<section><div class="wrap"><header class="head"><h2>How people use it</h2></header>
+<div class="cases">${cases.map(([t, text, how]) => `<article class="case"><h3>${t}</h3><p>${text}</p><p class="case__how"><b>Use:</b> ${how}</p></article>`).join('')}</div></div></section>
+<section class="alt"><div class="wrap"><header class="head"><h2>What you can count on</h2></header>
+<ul class="checks seg__checks">${trust.map(([b, t]) => `<li>${CHECK}<span><b>${b}</b> ${t}</span></li>`).join('')}</ul>
+<p class="seg__fine">${closing}</p></div></section>
+<section class="cta-band"><div class="wrap"><h2>Try it with your next session.</h2><p>Free to start. Nothing for your audience to install.</p><a class="btn lg light" href="/app/">Start building free</a></div></section>`,
+  });
+}
+
+const educationPage = () => segmentPage({
+  path: '/education/',
+  title: `${NAME} for education: keep every student answering`,
+  description: 'Live polls, quizzes, word clouds and questions for lectures, seminars and classrooms. Students join from their phones with no account. Free to start.',
+  eyebrow: 'For education',
+  h1: 'Keep every student <em>answering.</em>',
+  lead: 'Ask a question in the middle of a lecture and see what the whole room thinks, in seconds. Students join from any phone with a code. They do not need an account, and answers are not stored on our servers.',
+  cases: [
+    ['Large lectures', 'Everyone answers and nobody is put on the spot. Ask a quick question, or let students tell you when they are lost.', 'Live poll, reactions and hand raise, audience Q&amp;A with upvotes.'],
+    ['Assessments', 'Timed questions with points for speed, optional names and teams, and a leaderboard. Save a report of the whole session afterwards.', 'Quiz with a time limit, leaderboard, session report (Starter plan and above).'],
+    ['Seminars', 'Start a discussion with one open question and put the best answers on screen. Hold answers for your approval first if you want.', 'Open answers, word cloud, approve-first moderation (Starter plan and above).'],
+    ['Student events', 'Break the ice with a one-word question, or let people drop a pin on a map or floor plan.', 'Word cloud, pin on an image, ranking.'],
+    ['Classroom lessons', 'Interactive exercises sit right inside the slides: pair things up, put steps in order, fill the gap, flip a card, explore a picture.', 'Matching, ordering, fill-in-the-blank, flip cards, hotspots.'],
+    ['Independent study', 'Share a deck as a self-paced course. Students work through it in their own time and print a certificate at the end; you see who finished.', 'Self-paced course (Starter plan and above). Decks also present offline.'],
+  ],
+  trust: [
+    ['Students never need an account.', 'They open a link or scan a code on their phone.'],
+    ['No tracking and no advertising.', 'We do not use tracking cookies or sell data. See the <a href="/privacy/">privacy policy</a>.'],
+    ['Answers stay with you.', 'Audience responses are held in the presenter&rsquo;s browser, not saved on our servers. Choose a private session and nothing is kept at all.'],
+    ['Swearing is hidden by default.', 'Or hold every answer until you approve it.'],
+    ['Works for everyone.', 'Slides can be driven from the keyboard and the interactive blocks have text versions for screen readers.'],
+  ],
+  closing: `The free plan covers building, presenting, polls and quizzes with rooms of up to ${PLANS.free.livePhones} phones. Teaching in an institution and need something different? Write to <a href="${mailto('Education use')}">${SUPPORT}</a> and a person will reply.`,
+});
+
+const trainingPage = () => segmentPage({
+  path: '/training/',
+  title: `${NAME} for training, workshops and meetings`,
+  description: 'Run workshops, town halls and client briefings where the room answers. Live polls, quizzes, word clouds, ranked priorities and Q&A, from your browser.',
+  eyebrow: 'For training and meetings',
+  h1: 'Make the room part of <em>the meeting.</em>',
+  lead: 'Put questions between your slides, show the code, and watch what the room thinks. Present from your browser, move the slides from your phone, and leave behind a deck people can open.',
+  cases: [
+    ['Workshops and training', 'A short quiz after each section shows what landed. Re-teach only what the room missed.', 'Quiz, score summary, session report (Starter plan and above).'],
+    ['Courses and onboarding', 'Share a deck as a self-paced course. New starters go through it in their own time, and you get a list of who finished plus certificates.', 'Self-paced course (Starter plan and above).'],
+    ['Brainstorming', 'One question, one word each, and the cloud shows the pattern. Or collect longer answers and put the best on screen.', 'Word cloud, open answers, moderation (Starter plan and above).'],
+    ['Alignment and decisions', 'Have the room rank priorities together, or place ideas on an impact and effort grid.', 'Ranking, 2x2 matrix, live poll.'],
+    ['Town halls and Q&amp;A', 'People send questions, the room upvotes, you answer the top ones. Hold questions for approval first when the topic is sensitive.', 'Audience Q&amp;A, approve-first moderation (Starter plan and above).'],
+    ['Client sessions and briefings', 'Present with your own logo and colours, keep your notes on your phone, and share the deck afterwards. For confidential sessions, nothing is kept.', 'Brand colours and logo, phone remote, private session, share link.'],
+  ],
+  trust: [
+    ['Nothing for the audience to install.', 'A link or QR code is enough, on any phone.'],
+    ['Confidential material stays yours.', 'Decks live in your browser first; answers are not stored on our servers; a private session keeps nothing. See <a href="/security/">security</a>.'],
+    ['Bring what you have.', 'Import a PowerPoint or Google Slides deck, and export to PowerPoint, PDF, images or a web page.'],
+    ['Work together.', 'On Pro and Advanced, share decks with your team, comment on slides and keep one brand kit.'],
+    ['Works offline.', 'Build and present without a connection; live answers need one.'],
+  ],
+  closing: `Paid plans add bigger rooms (up to ${PLANS.advanced.livePhones.toLocaleString('en-US')} phones), more question types, your own branding and team workspaces, each with a ${TRIAL_DAYS}-day free trial. See <a href="/pricing/">pricing</a>.`,
+});
+
+// ---- pricing --------------------------------------------------------------------------------------------------
+
+const money = (n) => `$${n.toLocaleString('en-US')}`;
+
+const pricingCards = () => PLAN_ORDER.map((id) => {
+  const plan = PLANS[id];
+  const price = PRICES[id];
+  const cta = price ? `<a class="btn${id === 'pro' ? '' : ' ghost'}" data-plan="${id}" href="/app/account?plan=${id}">Start ${TRIAL_DAYS}-day free trial</a>` : '<a class="btn ghost" href="/app/">Start building</a>';
+  return `<article class="bp__card${id === 'pro' ? ' is-highlight' : ''}">${id === 'pro' ? '<span class="bp__tag">Recommended</span>' : ''}
+<h3 class="bp__name">${plan.name}</h3><p class="bp__blurb">${plan.blurb}</p>
+<p class="bp__price">${price ? `<b data-m="${money(price.month)}" data-y="${money(price.year)}">${money(price.month)}</b><span data-m=" a month" data-y=" a year"> a month</span>` : '<b>$0</b><span> forever</span>'}</p>
+<p class="bp__save" data-note="${price ? `Two months free when billed yearly` : ''}">${price ? `or ${money(price.year)} a year, two months free` : ''}</p>
+<ul class="bp__list">${highlights(id).map((t) => `<li>${t}</li>`).join('')}</ul>${cta}</article>`;
+}).join('\n');
+
+const pricingFaq = () => [
+  ['Is there a free plan?', `Yes. You can build, present, run polls and quizzes, and export your deck as a file or images without paying. The free plan keeps ${PLANS.free.cloudDecks} decks online and rooms of up to ${PLANS.free.livePhones} phones.`],
+  ['How does the free trial work?', `Every paid plan starts with a ${TRIAL_DAYS}-day free trial. A card is needed to start it. Cancel before the trial ends and you pay nothing.`],
+  ['Can I switch plans or cancel?', 'Yes, any time, from Account &gt; Manage billing. You keep your plan until the period you paid for ends.'],
+  ['What happens to my decks if I downgrade?', 'Nothing is deleted. You can still open, edit and present every deck. The new plan limits only apply to what you add next, such as new decks online or paid question types in a live room.'],
+  ['Do my participants pay or sign up?', 'No. Participants join with a code or QR on their phone and never create an account.'],
+  ['How many people can answer at once?', `Rooms hold up to ${PLANS.free.livePhones} phones on Free, ${PLANS.starter.livePhones} on Starter, ${PLANS.pro.livePhones} on Pro and ${PLANS.advanced.livePhones.toLocaleString('en-US')} on Advanced.`],
+  ['Which plan do I need for teams?', `Team workspaces come with Pro (up to ${PLANS.pro.teamSeats} people) and Advanced (up to ${PLANS.advanced.teamSeats}). People you invite join with a link and do not need a plan.`],
+  ['How do you handle payment and tax?', 'Payments are handled by Paddle. We never see or store your card details. Checkout shows the price in your currency with any tax included, and Paddle sends your receipt.'],
+  ['Is there an education or non-profit price?', `Write to <a href="${mailto('Education or non-profit pricing')}">${SUPPORT}</a> and tell us how you would use it. A person will reply.`],
+  ['What if something goes wrong with a charge?', `Write to <a href="${mailto('A charge on my account')}">${SUPPORT}</a> and we will sort it out. Refunds are processed through Paddle.`],
+];
+
+const pricingPage = () => layout({
+  path: '/pricing/',
+  title: `Pricing | ${NAME}`,
+  description: `Start free. Paid plans from ${money(PRICES.starter.month)} a month add bigger rooms, more question types, branding and team workspaces, each with a ${TRIAL_DAYS}-day free trial.`,
+  body: `<section class="seg"><div class="wrap"><p class="label">Pricing</p><h1>Start free. Pay when you <em>outgrow it.</em></h1>
+<p class="lead">Building and presenting are free. Paid plans add bigger rooms, more question types, your own branding and team workspaces. Every paid plan starts with a ${TRIAL_DAYS}-day free trial.</p>
+<div class="bp__toggle" role="group" aria-label="Billing period"><button type="button" class="bp__tab" data-interval="month" aria-pressed="true">Pay monthly</button><button type="button" class="bp__tab" data-interval="year" aria-pressed="false">Pay yearly <small>2 months free</small></button></div></div></section>
+<section><div class="wrap"><h2 class="sr">Plans</h2><div class="bp__grid">${pricingCards()}</div>
+<p class="bp__fine">Prices are in US dollars. Checkout shows your local price and any tax. Payments are handled by Paddle; we never see your card.</p></div></section>
+<section class="alt"><div class="wrap faq"><div><p class="label">FAQ</p><h2>Pricing questions, answered.</h2><p class="sub">Something else? Write to <a href="${mailto('Plans and pricing')}">${SUPPORT}</a>.</p></div>
+<div>${pricingFaq().map(([q, a]) => `<details><summary>${q}</summary><p>${a}</p></details>`).join('')}</div></div></section>
+<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: pricingFaq().map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a.replace(/<[^>]*>/g, '').replace(/&gt;/g, '>') } })) })}</script>
+<script>
+(function(){var tabs=document.querySelectorAll('.bp__tab'),cards=document.querySelectorAll('.bp__card');function set(v){tabs.forEach(function(t){t.setAttribute('aria-pressed',String(t.dataset.interval===v))});cards.forEach(function(c){c.querySelectorAll('[data-m]').forEach(function(e){e.textContent=e.dataset[v==='year'?'y':'m']});var s=c.querySelector('.bp__save');if(s&&s.dataset.note)s.textContent=v==='year'?s.dataset.note:'or pay yearly and get two months free';var a=c.querySelector('a[data-plan]');if(a)a.href='/app/account?plan='+a.dataset.plan+'&interval='+v})}tabs.forEach(function(t){t.addEventListener('click',function(){set(t.dataset.interval)})})})();
+</script>`,
+});
+
+// ---- security -------------------------------------------------------------------------------------------------
+
+const securityPage = () => layout({
+  path: '/security/',
+  title: `Security and privacy | ${NAME}`,
+  description: 'What Densight Slides stores, where it is kept, who handles payments, and how to delete everything. Plain statements, no certifications we do not hold.',
+  body: `<div class="doc"><p class="label">Security and privacy</p><h1>What we keep, and what we do not</h1>
+<p class="meta">Last updated ${UPDATED}. Written for people who have to decide whether it is safe to put their material here. The <a href="/privacy/">privacy policy</a> has the legal wording.</p>
+<h2>Your decks</h2><p>Decks are stored in your browser first. Nothing is uploaded unless you sign in to save online or choose to share. Signed-in decks are kept in our database, provided by Supabase, and every account can read and change only its own decks; that rule is enforced inside the database, not just in the app. Decks can be moved into a team workspace only by their owner.</p>
+<h2>Live sessions</h2><p>Audience answers pass through a realtime messaging service between your page and the phones. They are held in your browser while the session runs and are not saved on our servers. Answer keys for quizzes never leave your page. Names are only collected if you turn them on. A private session turns names, reports and downloads off entirely.</p>
+<h2>Sharing</h2><p>A share link is a long random token. Anyone with it can view that deck; turning sharing off stops it at once. Self-paced courses record only the name a learner types, for decks that are being shared.</p>
+<h2>Payments</h2><p>Payments are handled by Paddle. We never see or store card details. Our server confirms each payment event using a signature before changing anyone&rsquo;s plan.</p>
+<h2>Tracking</h2><p>No advertising, no tracking cookies and no sale of data. The site is hosted on Netlify, which may keep standard server logs.</p>
+<h2>Deleting everything</h2><p>You can delete a deck, all decks on your device, or your whole account and every online deck at any time from the Account page. You can also export any deck as a file.</p>
+<h2>What we do not claim</h2><p>We do not currently hold security certifications such as SOC 2 or ISO 27001, and we do not offer single sign-on yet. If your organisation needs a security review, a data-processing agreement or another document, write to us and we will tell you plainly what we can and cannot provide.</p>
+<h2>Report a problem</h2><p>If you find a security problem, write to <a href="${mailto('Security report')}">${SUPPORT}</a>. A person at <a href="${COMPANY}">Densight Labs</a> will read it.</p>
+<p style="margin-top:28px"><a class="btn" href="${mailto('Security review')}">Ask a security question</a></p></div>`,
+});
+
 // path (relative to dist/) -> file contents
 export function buildSite() {
   const pages = {
@@ -378,9 +632,14 @@ export function buildSite() {
     'privacy/index.html': privacy(),
     'terms/index.html': terms(),
     'welcome/index.html': welcome(),
+    'templates/index.html': templatesPage(),
+    'education/index.html': educationPage(),
+    'training/index.html': trainingPage(),
+    'pricing/index.html': pricingPage(),
+    'security/index.html': securityPage(),
     '404.html': notFound(),
     'robots.txt': `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /welcome/\n\nSitemap: ${SITE}/sitemap.xml\n`,
-    'sitemap.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', '/learn/', '/privacy/', '/terms/'].map((p) => `<url><loc>${SITE}${p}</loc></url>`).join('\n')}\n</urlset>\n`,
+    'sitemap.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', '/templates/', '/education/', '/training/', '/pricing/', '/security/', '/learn/', '/privacy/', '/terms/'].map((p) => `<url><loc>${SITE}${p}</loc></url>`).join('\n')}\n</urlset>\n`,
   };
   return pages;
 }

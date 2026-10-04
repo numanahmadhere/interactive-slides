@@ -490,3 +490,7 @@ All of these are in the code and covered by tests. None needs a new server; the 
 ### Not built (and marked "Not yet" on the home page)
 
 Add-ins for PowerPoint and Google Slides (they need store review), single sign-on (needs an identity provider and a paid Supabase feature), and editing the same deck at the same moment in real time (a different architecture: conflict-free editing over a server).
+
+### The public site as a sales funnel
+
+`tools/site.mjs` builds every public page. The home page follows a funnel: one main action ("Start building free") repeated, the live demo, a logo strip, the ask-see-act loop, three ways to use the product, the comparison table, pricing, features, use cases split into work and education, "easy to start", FAQ. Separate pages: `/templates/` (flat sketches of every ready-made slide, each opening a new deck through `/app/?template=ID`), `/education/`, `/training/`, `/pricing/` (monthly or yearly toggle and ten questions), `/security/`. Tests check that every internal link and anchor exists, that prices on the page are the real plan numbers, and that no testimonial, user count or certification is claimed. Add real testimonials, case studies or numbers only when they are true and you have permission.

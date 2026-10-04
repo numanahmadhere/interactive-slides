@@ -63,7 +63,7 @@ export async function mountAccount(root) {
       ...lines.map((t) => h('p', { text: t })),
       manage.length ? h('div', { class: 'ed-live__actions' }, ...manage) : null,
       planPicker({
-        billing, cloud, highlight: PLANS[wanted] ? wanted : null,
+        billing, cloud, highlight: PLANS[wanted] ? wanted : null, interval: new URLSearchParams(location.search).get('interval'),
         onSignIn: () => document.querySelector('.sh-main')?.scrollIntoView(),
         onActivated: () => render(),
       }));

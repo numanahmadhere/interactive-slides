@@ -84,7 +84,7 @@ test('the public pages are complete, small and honest', () => {
   const site = buildSite();
   for (const f of ['index.html', 'learn/index.html', 'privacy/index.html', 'terms/index.html', '404.html', 'sitemap.xml', 'robots.txt']) assert.ok(site[f], f);
   const home = site['index.html'];
-  assert.ok(home.length < 56 * 1024, `home page is ${home.length} bytes`);
+  assert.ok(home.length < 72 * 1024, `home page is ${home.length} bytes`);
   assert.match(home, /<title>[^<]+<\/title>/);
   assert.match(home, /<meta name="description"/);
   assert.match(home, /<h1>.+?<\/h1>/);
@@ -237,7 +237,7 @@ test('the comparison table is complete and every claim about us is backed by the
 test('the tutorial is the first thing on the home page and the table comes right after it', () => {
   const home = buildSite()['index.html'];
   const order = [...home.matchAll(/<section[^>]*?(?:id="([a-z]+)"|class="(hero)")/g)].map((m) => m[1] ?? m[2]);
-  assert.deepEqual(order.slice(0, 3), ['tutorial', 'clients', 'compare']);
+  assert.deepEqual(order.slice(0, 5), ['tutorial', 'clients', 'loop', 'products', 'compare']);
   assert.ok(home.includes('Not yet') && home.includes('Paid plan'), 'it admits what we lack');
   assert.ok(home.includes('<caption'), 'the table has a caption');
 });
@@ -275,4 +275,76 @@ test('the client logos are real files, and the SVGs carry no scripts', () => {
     if (f.endsWith('.svg')) assert.ok(!/<script|\son\w+=|javascript:/i.test(readFileSync(new URL(`../site/clients/${f}`, import.meta.url), 'utf8')), f);
   }
   assert.ok(home.includes('>Trusted by<'));
+});
+
+// ---- the funnel pages -----------------------------------------------------------------------------------------
+
+import { TEMPLATES, getTemplate } from '../src/library/templates.js';
+
+test('every internal link on the public pages goes somewhere that exists', () => {
+  const site = buildSite();
+  const pages = new Set(Object.keys(site).filter((f) => f.endsWith('index.html')).map((f) => '/' + f.replace('index.html', '')));
+  pages.add('/');
+  const appPaths = /^\/app\/(\?[\w=&.:%-]*|account(\?[\w=&.:%-]*)?)?$/;
+  for (const [file, html] of Object.entries(site)) {
+    if (!file.endsWith('.html')) continue;
+    for (const m of html.matchAll(/<a\b[^>]*?href="(\/[^"#]*)(#([^"]*))?"/g)) {
+      const [, path, , hash] = m;
+      if (/\.(png|ico|css|webmanifest|svg)$/.test(path)) continue;
+      const ok = pages.has(path) || appPaths.test(path);
+      assert.ok(ok, `${file}: ${path} does not exist`);
+      if (hash && pages.has(path)) assert.ok(site[path === '/' ? 'index.html' : path.slice(1) + 'index.html'].includes(`id="${hash}"`), `${file}: ${path}#${hash} has no such section`);
+    }
+  }
+});
+
+test('the new pages exist, are in the sitemap, and the nav leads to them', () => {
+  const site = buildSite();
+  for (const dir of ['templates', 'education', 'training', 'pricing', 'security']) {
+    assert.ok(site[`${dir}/index.html`], dir);
+    assert.ok(site['sitemap.xml'].includes(`/${dir}/`), `${dir} in the sitemap`);
+    assert.ok(site['index.html'].includes(`href="/${dir}/"`) || dir === 'security', `${dir} linked from home`);
+    assert.ok(site[`${dir}/index.html`].includes('mailto:hello@densight.com') && site[`${dir}/index.html`].includes('https://densightlabs.com'), `${dir} links support and company`);
+  }
+  assert.ok(site['index.html'].includes('href="/security/"'));
+});
+
+test('the funnel sections are on the home page in order, with one repeated main action', () => {
+  const home = buildSite()['index.html'];
+  const order = ['id="tutorial"', 'id="clients"', 'id="loop"', 'id="products"', 'id="compare"', 'id="pricing"', 'id="features"', 'id="usecases"', 'id="start"', 'id="faq"'];
+  let at = -1;
+  for (const marker of order) { const i = home.indexOf(marker); assert.ok(i > at, `${marker} out of order`); at = i; }
+  assert.ok((home.match(/Start building free/g) ?? []).length >= 2);
+  assert.ok(home.includes('No account or card needed'));
+  assert.ok(home.includes('Recommended'));
+});
+
+test('the templates page shows every ready-made slide and each button opens a real one', () => {
+  const page = buildSite()['templates/index.html'];
+  const ids = [...page.matchAll(/href="\/app\/\?template=([\w-]+)"/g)].map((m) => m[1]);
+  assert.equal(ids.length, TEMPLATES.length);
+  for (const id of ids) assert.ok(getTemplate(id), id);
+  assert.equal((page.match(/class="tp"/g) ?? []).length, TEMPLATES.length);
+});
+
+test('pricing page numbers are the real plan numbers, and nothing is claimed that we do not have', () => {
+  const site = buildSite();
+  const page = site['pricing/index.html'];
+  for (const id of ['starter', 'pro', 'advanced']) {
+    assert.ok(page.includes(`data-m="$${PRICES[id].month}"`) && page.includes(`data-y="$${PRICES[id].year.toLocaleString('en-US')}"`), id);
+    assert.ok(page.includes(`data-plan="${id}"`));
+  }
+  assert.ok(page.includes(`${TRIAL_DAYS}-day free trial`));
+  assert.ok(page.includes(`up to ${PLANS.pro.teamSeats} people`) && page.includes(`${PLANS.advanced.teamSeats}`));
+  assert.doesNotThrow(() => JSON.parse(/<script type="application\/ld\+json">(.*?)<\/script>/s.exec(page)[1]));
+  const everything = Object.values(site).join(' ');
+  assert.ok(!/we are (SOC 2|ISO 27001|GDPR)[- ]compliant|certified/i.test(everything), 'no certification claims');
+  assert.ok(!/testimonial|million users|trusted by [0-9]/i.test(site['index.html']), 'no invented proof');
+  assert.ok(site['security/index.html'].includes('do not currently hold security certifications'));
+});
+
+test('the sticky call to action and dropdown are only on pages that need them', () => {
+  const site = buildSite();
+  assert.ok(site['index.html'].includes('id="stickycta"'));
+  assert.ok(site['index.html'].includes('class="dd"'));
 });
