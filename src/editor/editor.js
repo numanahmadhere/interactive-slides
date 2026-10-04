@@ -30,6 +30,7 @@ import { LiveHost } from '../live/host.js';
 import { createTransport } from '../live/transport.js';
 import { newRoom, cleanSavedSession } from '../live/protocol.js';
 import { Exporter } from './exporter.js';
+import { GridView } from './grid.js';
 import { openInsertPanel, openPalette, openLayoutPicker, QUICK_TYPES } from './insert.js';
 import { slideToPng } from '../export/png.js';
 import { setThemePref, themePref } from '../styles/theme.js';
@@ -51,7 +52,7 @@ export class Editor {
     this.meta = null; // this deck's library summary: title, thumbnail, cloud link
     this.persist = new Persistence();
     this.assets = new AssetStore(this.persist);
-    this.selection = { slideId: null, blockId: null, slotId: null, blockIds: [] };
+    this.selection = { slideId: null, blockId: null, slotId: null, blockIds: [], slideIds: [] };
     this.presenter = null;
     this.live = null; // { host, room, config, base } while a live session is open
     this.sync = null; // saves the deck to the cloud by itself when signed in
@@ -180,6 +181,8 @@ export class Editor {
 
     this.sidebar = new SlideList(side, this);
     this.canvas = new CanvasView(canvasHost, this);
+    this.grid = new GridView(main, this);
+    this.grid.onToggle = (open) => this.gridBtn.setAttribute('aria-pressed', String(open));
     this.canvas.onZoom = (z) => { this.zoomLabel.querySelector('span').textContent = `${Math.round(z * 100)}%`; };
     this.inspector = new Inspector(insp, this);
   }
@@ -192,6 +195,9 @@ export class Editor {
       bar.append(button({ label: labels[type], variant: 'ghost', title: `Add ${labels[type].toLowerCase()} (or press / and type)`, onClick: () => this.addBlockQuick(type) }));
     }
     bar.append(h('div', { class: 'ed-quick__spacer' }));
+    this.gridBtn = button({ label: 'All slides', variant: 'ghost', title: 'See every slide at once', onClick: () => this.grid.toggle() });
+    this.gridBtn.setAttribute('aria-pressed', 'false');
+    bar.append(this.gridBtn);
     this.zoomLabel = button({ label: '100%', variant: 'ghost', title: 'Fit slide to window (Ctrl+0)', onClick: () => this.canvas.zoomFit() });
     this.zoomLabel.classList.add('ed-zoom__label');
     bar.append(
@@ -238,6 +244,28 @@ export class Editor {
     return this.store.commit(next, opts);
   }
 
+  // Every selected slide id (one, or several picked in the slide strip).
+  get selectedSlideIds() {
+    const { slideId, slideIds } = this.selection;
+    return slideIds.length ? slideIds : slideId ? [slideId] : [];
+  }
+
+  // Pick several slides; the last one is the one shown on the canvas.
+  selectSlides(ids) {
+    const valid = ids.filter((id) => this.deck.slides.some((s) => s.id === id));
+    if (!valid.length) return;
+    const primary = valid.at(-1);
+    this.select({ slideId: primary });
+    const same = this.selection.slideIds.length === valid.length && this.selection.slideIds.every((id, i) => id === valid[i]);
+    if (valid.length > 1 && !same) {
+      this.selection = { ...this.selection, slideIds: valid };
+      this.#syncAll({ selectionChanged: false });
+    } else if (valid.length === 1 && this.selection.slideIds.length) {
+      this.selection = { ...this.selection, slideIds: [] };
+      this.#syncAll({ selectionChanged: false });
+    }
+  }
+
   // Every selected block id (one, or several for a multi-selection).
   get selectedIds() {
     const { blockId, blockIds } = this.selection;
@@ -271,7 +299,7 @@ export class Editor {
     if (prev.slideId === slideId && prev.blockId === blockId && prev.slotId === slotId && sameIds) return;
     if (this.canvas.isEditing && (slideId !== prev.slideId || blockId !== this.canvas.editing.blockId)) this.canvas.finishEdit();
     this.store.endCoalesce();
-    this.selection = { slideId, blockId, slotId, blockIds };
+    this.selection = { slideId, blockId, slotId, blockIds, slideIds: slideId === prev.slideId ? prev.slideIds : [] };
     this.#syncAll({ selectionChanged: true });
   }
 
@@ -290,7 +318,9 @@ export class Editor {
 
   #repairSelection(prevDeck) {
     const deck = this.deck;
-    let { slideId, blockId, slotId, blockIds } = this.selection;
+    let { slideId, blockId, slotId, blockIds, slideIds } = this.selection;
+    slideIds = slideIds.filter((id) => deck.slides.some((s) => s.id === id));
+    if (slideIds.length < 2) slideIds = [];
     if (!deck.slides.some((s) => s.id === slideId)) {
       const prevIndex = prevDeck.slides.findIndex((s) => s.id === slideId);
       slideId = deck.slides[Math.min(Math.max(prevIndex, 0), deck.slides.length - 1)].id;
@@ -312,7 +342,7 @@ export class Editor {
       const layout = getLayout(deck.slides.find((s) => s.id === slideId).layout);
       if (!layout.slots.some((s) => s.id === slotId)) slotId = null;
     }
-    this.selection = { slideId, blockId, slotId, blockIds };
+    this.selection = { slideId, blockId, slotId, blockIds, slideIds };
   }
 
   #onChange({ prev, source }) {
@@ -334,6 +364,7 @@ export class Editor {
     this.sidebar.sync();
     this.inspector.sync({ rebuild: rebuildInspector, selectionChanged });
     this.#syncNotes();
+    this.grid?.sync();
     this.undoBtn.disabled = !this.store.canUndo;
     this.redoBtn.disabled = !this.store.canRedo;
     if (document.activeElement !== this.titleInput) this.titleInput.value = this.deck.meta.title;
@@ -434,6 +465,30 @@ export class Editor {
     const copy = ops.cloneSlide(hit.slide);
     this.commit(ops.insertSlide(this.deck, hit.index + 1, copy));
     this.select({ slideId: copy.id });
+  }
+
+  deleteSelectedSlides() {
+    const ids = this.selectedSlideIds;
+    if (ids.length >= this.deck.slides.length) {
+      toast('A deck needs at least one slide.');
+      return;
+    }
+    if (ids.length > 1) this.commit(ops.deleteSlides(this.deck, ids));
+    else this.deleteSlide(ids[0]);
+  }
+
+  duplicateSelectedSlides() {
+    const ids = this.selectedSlideIds;
+    if (ids.length < 2) return this.duplicateSlide(ids[0]);
+    const { deck, copies } = ops.duplicateSlides(this.deck, ids);
+    if (!copies.length) return toast('That would be more slides than a deck can hold.');
+    this.commit(deck);
+    this.selectSlides(copies.map((c) => c.id));
+    return undefined;
+  }
+
+  moveSlides(ids, toIndex) {
+    if (this.commit(ops.moveSlides(this.deck, ids, toIndex))) this.selectSlides(ids);
   }
 
   deleteSlide(id) {

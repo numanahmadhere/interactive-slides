@@ -153,3 +153,38 @@ test('block colour overrides keep only theme tokens and hex colours', async () =
   const bad = normalizeBlock({ type: 'text', style: { color: 'url(javascript:x)', fill: 'red;background:url(x)' }, props: {} }, { warn() {}, seen: new Set() }, 'x');
   assert.equal(bad.style, undefined);
 });
+
+const deckOfSlides = (n) => {
+  const deck = createDeck();
+  deck.slides = Array.from({ length: n }, () => createSlide('free'));
+  return deck;
+};
+const order = (d) => d.slides.map((s) => s.id);
+
+test('several slides move together and keep their order', () => {
+  const deck = deckOfSlides(5);
+  const [a, b, c, d, e] = order(deck);
+  assert.deepEqual(order(ops.moveSlides(deck, [b, d], 0)), [b, d, a, c, e]);
+  assert.deepEqual(order(ops.moveSlides(deck, [b, d], 3)), [a, c, e, b, d]);
+  assert.deepEqual(order(ops.moveSlides(deck, [d, b], 1)), [a, b, d, c, e]);
+  assert.equal(ops.moveSlides(deck, [a], 0), deck);
+});
+
+test('deleting several slides always leaves one', () => {
+  const deck = deckOfSlides(3);
+  const ids = order(deck);
+  assert.deepEqual(order(ops.deleteSlides(deck, ids.slice(0, 2))), [ids[2]]);
+  assert.equal(ops.deleteSlides(deck, ids), deck);
+});
+
+test('duplicating several slides puts the copies after the last original', () => {
+  const deck = deckOfSlides(4);
+  const [a, b, c, d] = order(deck);
+  const out = ops.duplicateSlides(deck, [a, c]);
+  assert.equal(out.deck.slides.length, 6);
+  assert.deepEqual(order(out.deck).slice(0, 3), [a, b, c]);
+  assert.equal(out.deck.slides[3].id, out.copies[0].id);
+  assert.equal(out.deck.slides[4].id, out.copies[1].id);
+  assert.equal(out.deck.slides[5].id, d);
+  assert.notEqual(out.copies[0].id, a);
+});

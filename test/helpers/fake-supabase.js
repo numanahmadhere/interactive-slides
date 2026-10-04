@@ -16,7 +16,12 @@ export async function startFakeSupabase(options = {}) {
   const decks = []; // { id, owner, title, data, share_token, created_at, updated_at }
   const state = { clock: () => Date.now() / 1000, requests: [], ttl: 3600, googleEnabled: false, otpRequests: [] };
 
-  const iso = () => new Date(state.clock() * 1000).toISOString(); // Postgres timestamps come back as ISO strings
+  // Postgres timestamps come back as ISO strings and never repeat; keep them strictly increasing here too.
+  let lastMs = 0;
+  const iso = () => {
+    lastMs = Math.max(lastMs + 1, Math.round(state.clock() * 1000));
+    return new Date(lastMs).toISOString();
+  };
 
   const issue = (user) => {
     const access = `at_${randomUUID()}`;

@@ -601,3 +601,37 @@ export function ungroupBlock(deck, slideId, groupId) {
     return { ...slide, blocks };
   });
 }
+
+// ---- several slides at once -------------------------------------------------------
+
+// Never empties the deck: at least one slide is kept.
+export function deleteSlides(deck, ids) {
+  const drop = new Set(ids);
+  const slides = deck.slides.filter((s) => !drop.has(s.id));
+  if (slides.length === deck.slides.length) return deck;
+  return slides.length ? { ...deck, slides } : deck;
+}
+
+// Move the chosen slides (kept in their current order) so the first lands at `toIndex`,
+// counted among the slides that are not moving.
+export function moveSlides(deck, ids, toIndex) {
+  const pick = new Set(ids);
+  const moving = deck.slides.filter((s) => pick.has(s.id));
+  if (!moving.length) return deck;
+  const rest = deck.slides.filter((s) => !pick.has(s.id));
+  const at = Math.min(Math.max(toIndex, 0), rest.length);
+  const slides = [...rest.slice(0, at), ...moving, ...rest.slice(at)];
+  return slides.every((s, i) => s === deck.slides[i]) ? deck : { ...deck, slides };
+}
+
+// Copies of the chosen slides go right after the last of them.
+export function duplicateSlides(deck, ids) {
+  const pick = new Set(ids);
+  const originals = deck.slides.filter((s) => pick.has(s.id));
+  if (!originals.length || deck.slides.length + originals.length > MAX_SLIDES) return { deck, copies: [] };
+  const copies = originals.map(cloneSlide);
+  const last = deck.slides.indexOf(originals.at(-1));
+  const slides = deck.slides.slice();
+  slides.splice(last + 1, 0, ...copies);
+  return { deck: { ...deck, slides }, copies };
+}

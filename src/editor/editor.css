@@ -607,3 +607,21 @@ a.ed-logo .logo { width: 28px; height: 28px; }
 .ed-stage .sp-block.is-cropping { cursor: grab; }
 .ed-range { width: 100%; accent-color: var(--ed-accent); }
 .ed-grid2 .ed-field { margin: 0; }
+
+/* ---- all-slides grid ---- */
+.ed-grid { position: absolute; z-index: 7; inset: 52px 0 0 0; display: flex; flex-direction: column; background: var(--ed-canvas); }
+.ed-grid[hidden] { display: none; }
+.ed-grid__head { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px 4px; }
+.ed-grid__title { margin: 0; font: 600 16px var(--ed-font); }
+.ed-grid__tools { display: flex; gap: 6px; }
+.ed-grid__hint { margin: 0; padding: 0 24px 12px; color: var(--ed-muted); font-size: 12px; }
+.ed-gridlist { flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 20px; align-content: start; padding: 8px 24px 32px; outline: none; }
+.ed-gtile { position: relative; padding: 6px; border: 2px solid transparent; border-radius: 12px; cursor: pointer; user-select: none; }
+.ed-gtile:hover { background: var(--ed-hover); }
+.ed-gtile[aria-selected='true'] { border-color: var(--ed-focus); background: var(--ed-hover-2); }
+.ed-gtile.is-dragging { opacity: 0.4; }
+.ed-gtile.drop-before { box-shadow: -6px 0 0 -2px var(--ed-accent); }
+.ed-gtile.drop-after { box-shadow: 6px 0 0 -2px var(--ed-accent); }
+.ed-gtile__preview { position: relative; overflow: hidden; border-radius: 6px; box-shadow: 0 0 0 1px var(--ed-border-strong); pointer-events: none; }
+.ed-gtile__num { display: block; margin-top: 6px; color: var(--ed-muted); font: 500 12px var(--ed-font); }
+.ed-gridlist:focus-visible { box-shadow: inset 0 0 0 2px var(--ed-focus); }

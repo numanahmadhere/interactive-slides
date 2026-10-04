@@ -27,6 +27,7 @@ export class SlideList {
     this.list = h('div', {
       class: 'ed-slides',
       role: 'listbox',
+      'aria-multiselectable': 'true',
       tabindex: '0',
       'aria-label': 'Slides',
     }, this.itemsEl, this.dropLine);
@@ -50,6 +51,7 @@ export class SlideList {
     const { deck } = this.editor;
     if (!deck) return;
     const selected = this.editor.selection.slideId;
+    const selectedSet = new Set(this.editor.selectedSlideIds);
     const width = this.#previewWidth();
     const { assets } = { assets: this.editor.assets.version };
     const seen = new Set();
@@ -68,7 +70,7 @@ export class SlideList {
       prev = rec.el;
 
       rec.num.textContent = String(i + 1);
-      rec.el.setAttribute('aria-selected', String(slide.id === selected));
+      rec.el.setAttribute('aria-selected', String(selectedSet.has(slide.id)));
       rec.el.setAttribute('aria-label', `Slide ${i + 1}: ${slideTitle(slide, i)}`);
       if (rec.slide !== slide || rec.theme !== deck.theme || rec.brand !== deck.brand || rec.aspect !== deck.aspect || rec.assets !== assets || rec.width !== width) {
         this.#renderThumb(rec, deck, slide, i, width);
@@ -135,9 +137,28 @@ export class SlideList {
     const item = e.target.closest('.ed-thumb');
     if (!item) return;
     this.list.focus({ preventScroll: true });
-    this.editor.select({ slideId: item.dataset.id });
-    const from = this.editor.deck.slides.findIndex((s) => s.id === item.dataset.id);
-    this.drag = { id: item.dataset.id, from, to: from, startY: e.clientY, active: false, pointerId: e.pointerId, y: e.clientY };
+    const id = item.dataset.id;
+    const slides = this.editor.deck.slides;
+    const chosen = this.editor.selectedSlideIds;
+    if (e.shiftKey && this.anchor) { // a range from the last plain click
+      const a = slides.findIndex((s) => s.id === this.anchor);
+      const b = slides.findIndex((s) => s.id === id);
+      this.editor.selectSlides(slides.slice(Math.min(a, b), Math.max(a, b) + 1).map((s) => s.id));
+      return;
+    }
+    if (e.metaKey || e.ctrlKey) {
+      this.anchor = id;
+      this.editor.selectSlides(chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id]);
+      return;
+    }
+    // Pressing a slide that is already part of a multi-selection keeps it, so it can be dragged as a group.
+    if (!chosen.includes(id) || chosen.length < 2) {
+      this.anchor = id;
+      this.editor.select({ slideId: id });
+      this.editor.selectSlides([id]);
+    }
+    const from = slides.findIndex((s) => s.id === id);
+    this.drag = { id, from, to: from, startY: e.clientY, active: false, pointerId: e.pointerId, y: e.clientY, ids: this.editor.selectedSlideIds };
     try {
       this.list.setPointerCapture(e.pointerId);
     } catch { /* pointer already gone; the drag simply will not start */ }
@@ -150,7 +171,7 @@ export class SlideList {
     if (!d.active) {
       if (Math.abs(e.clientY - d.startY) < DRAG_THRESHOLD) return;
       d.active = true;
-      this.items.get(d.id)?.el.classList.add('is-dragging');
+      for (const id of d.ids) this.items.get(id)?.el.classList.add('is-dragging');
     }
     this.#updateDropTarget();
     this.#autoScroll(e.clientY);
@@ -168,7 +189,8 @@ export class SlideList {
         break;
       }
     }
-    d.to = insertBefore > d.from ? insertBefore - 1 : insertBefore;
+    // Position among the slides that stay put.
+    d.to = slides.slice(0, insertBefore).filter((s) => !d.ids.includes(s.id)).length;
     const refEl = insertBefore < slides.length
       ? this.items.get(slides[insertBefore].id).el
       : this.items.get(slides[slides.length - 1].id).el;
@@ -188,12 +210,9 @@ export class SlideList {
     const d = this.drag;
     if (!d || e.pointerId !== d.pointerId) return;
     const wasActive = d.active;
-    const { id, from, to } = d;
+    const { ids, to } = d;
     this.#cancelDrag();
-    if (wasActive && to !== from) {
-      this.editor.moveSlide(from, to);
-      this.editor.select({ slideId: id });
-    }
+    if (wasActive) this.editor.moveSlides(ids, to);
   }
 
   #cancelDrag() {
@@ -201,10 +220,19 @@ export class SlideList {
     this.drag = null;
     this.dropLine.hidden = true;
     if (!d) return;
-    this.items.get(d.id)?.el.classList.remove('is-dragging');
+    for (const id of d.ids ?? [d.id]) this.items.get(id)?.el.classList.remove('is-dragging');
     try {
       if (this.list.hasPointerCapture?.(d.pointerId)) this.list.releasePointerCapture(d.pointerId);
     } catch { /* nothing to release */ }
+  }
+
+  // Shift+Arrow grows the selection a slide at a time.
+  #extend(to) {
+    const slides = this.editor.deck.slides;
+    const clamped = Math.min(Math.max(to, 0), slides.length - 1);
+    const a = slides.findIndex((s) => s.id === (this.anchor ?? this.editor.selection.slideId));
+    const range = slides.slice(Math.min(a, clamped), Math.max(a, clamped) + 1).map((s) => s.id);
+    this.editor.selectSlides(clamped < a ? range.reverse() : range);
   }
 
   // ---- keyboard ----------------------------------------------------------
@@ -222,20 +250,26 @@ export class SlideList {
       return;
     }
     switch (e.key) {
-      case 'ArrowUp': case 'PageUp': e.preventDefault(); go(i - 1); break;
-      case 'ArrowDown': case 'PageDown': e.preventDefault(); go(i + 1); break;
+      case 'ArrowUp': case 'PageUp': e.preventDefault(); if (e.shiftKey) this.#extend(i - 1); else go(i - 1); break;
+      case 'ArrowDown': case 'PageDown': e.preventDefault(); if (e.shiftKey) this.#extend(i + 1); else go(i + 1); break;
       case 'Home': e.preventDefault(); go(0); break;
       case 'End': e.preventDefault(); go(deck.slides.length - 1); break;
       case 'Delete': case 'Backspace':
         e.preventDefault();
         e.stopPropagation();
-        this.editor.deleteSlide(selection.slideId);
+        this.editor.deleteSelectedSlides();
+        break;
+      case 'a': case 'A':
+        if (!mod) return;
+        e.preventDefault();
+        e.stopPropagation();
+        this.editor.selectSlides(deck.slides.map((s) => s.id));
         break;
       case 'd': case 'D':
         if (!mod) return;
         e.preventDefault();
         e.stopPropagation();
-        this.editor.duplicateSlide(selection.slideId);
+        this.editor.duplicateSelectedSlides();
         break;
       default:
     }
