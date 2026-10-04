@@ -502,3 +502,42 @@ export function convertToFree(deck, slideId, frames) {
     return { ...slide, layout: 'free', blocks };
   });
 }
+
+// patch: { color?, fill? }; an empty string clears that override.
+export function setBlockStyle(deck, ids, patch) {
+  const set = new Set(ids);
+  let changed = false;
+  const slides = deck.slides.map((slide) => {
+    if (!slide.blocks.some((b) => set.has(b.id))) return slide;
+    const blocks = slide.blocks.map((b) => {
+      if (!set.has(b.id)) return b;
+      const style = { ...b.style };
+      for (const [k, v] of Object.entries(patch)) {
+        if (v) style[k] = v;
+        else delete style[k];
+      }
+      const next = { ...b };
+      if (Object.keys(style).length) next.style = style;
+      else delete next.style;
+      if (JSON.stringify(next.style) === JSON.stringify(b.style)) return b;
+      changed = true;
+      return next;
+    });
+    return { ...slide, blocks };
+  });
+  return changed ? { ...deck, slides } : deck;
+}
+
+// Move one top-level block to an exact position in the slide's block order.
+export function moveBlockTo(deck, slideId, blockId, toIndex) {
+  return replaceSlide(deck, slideId, (slide) => {
+    const from = slide.blocks.findIndex((b) => b.id === blockId);
+    if (from < 0) return slide;
+    const to = Math.min(Math.max(toIndex, 0), slide.blocks.length - 1);
+    if (to === from) return slide;
+    const blocks = slide.blocks.slice();
+    const [moved] = blocks.splice(from, 1);
+    blocks.splice(to, 0, moved);
+    return { ...slide, blocks };
+  });
+}

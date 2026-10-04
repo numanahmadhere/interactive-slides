@@ -4,6 +4,7 @@ const PATHS = {
   undo: 'M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
   redo: 'm15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13',
   plus: 'M12 5v14M5 12h14',
+  minus: 'M5 12h14',
   trash: 'M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6',
   copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
   up: 'M12 19V5M5 12l7-7 7 7',

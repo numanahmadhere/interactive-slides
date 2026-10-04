@@ -172,7 +172,7 @@ export class Editor {
     const side = h('aside', { class: 'ed-side', 'aria-label': 'Slides panel' });
     const canvasHost = h('div', { class: 'ed-canvas' });
     this.quickbar = this.#buildQuickbar();
-    const main = h('main', { class: 'ed-main' }, this.quickbar, canvasHost);
+    const main = h('main', { class: 'ed-main' }, this.quickbar, canvasHost, this.#buildNotes());
     const insp = h('aside', { class: 'ed-insp', 'aria-label': 'Inspector panel' });
 
     this.el = h('div', { class: 'ed' }, top, side, main, insp);
@@ -180,6 +180,7 @@ export class Editor {
 
     this.sidebar = new SlideList(side, this);
     this.canvas = new CanvasView(canvasHost, this);
+    this.canvas.onZoom = (z) => { this.zoomLabel.querySelector('span').textContent = `${Math.round(z * 100)}%`; };
     this.inspector = new Inspector(insp, this);
   }
 
@@ -190,7 +191,45 @@ export class Editor {
     for (const type of QUICK_TYPES) {
       bar.append(button({ label: labels[type], variant: 'ghost', title: `Add ${labels[type].toLowerCase()} (or press / and type)`, onClick: () => this.addBlockQuick(type) }));
     }
+    bar.append(h('div', { class: 'ed-quick__spacer' }));
+    this.zoomLabel = button({ label: '100%', variant: 'ghost', title: 'Fit slide to window (Ctrl+0)', onClick: () => this.canvas.zoomFit() });
+    this.zoomLabel.classList.add('ed-zoom__label');
+    bar.append(
+      button({ icon: 'minus', label: 'Zoom out', iconOnly: true, variant: 'ghost', onClick: () => this.canvas.zoomBy(1 / 1.25) }),
+      this.zoomLabel,
+      button({ icon: 'plus', label: 'Zoom in', iconOnly: true, variant: 'ghost', onClick: () => this.canvas.zoomBy(1.25) }));
+    this.notesBtn = button({ label: 'Notes', variant: 'ghost', title: 'Speaker notes under the slide', onClick: () => this.toggleNotes() });
+    this.notesBtn.setAttribute('aria-pressed', 'false');
+    bar.append(this.notesBtn);
     return bar;
+  }
+
+  // ---- speaker notes under the slide ----------------------------------------
+
+  #buildNotes() {
+    this.notesArea = h('textarea', { class: 'ed-input ed-notes__text', 'aria-label': 'Speaker notes', placeholder: 'Notes only you see while presenting', rows: 3, spellcheck: 'true' });
+    this.notesArea.addEventListener('input', () => {
+      const slide = this.slide;
+      this.commit(ops.patchSlide(this.deck, slide.id, { notes: this.notesArea.value }), { source: 'notes', coalesce: `notes:${slide.id}` });
+    });
+    this.notesArea.addEventListener('blur', () => this.store.endCoalesce());
+    this.notesEl = h('section', { class: 'ed-notes', 'aria-label': 'Speaker notes', hidden: true }, this.notesArea);
+    return this.notesEl;
+  }
+
+  toggleNotes(force) {
+    const open = force ?? this.notesEl.hidden;
+    this.notesEl.hidden = !open;
+    this.el.querySelector('.ed-main').classList.toggle('has-notes', open);
+    this.notesBtn.setAttribute('aria-pressed', String(open));
+    if (open) this.notesArea.focus();
+    this.#syncNotes();
+  }
+
+  #syncNotes() {
+    if (this.notesEl.hidden || document.activeElement === this.notesArea) return;
+    const notes = this.slide?.notes ?? '';
+    if (this.notesArea.value !== notes) this.notesArea.value = notes;
   }
 
   // ---- state -------------------------------------------------------------
@@ -294,6 +333,7 @@ export class Editor {
     this.canvas.sync({ source });
     this.sidebar.sync();
     this.inspector.sync({ rebuild: rebuildInspector, selectionChanged });
+    this.#syncNotes();
     this.undoBtn.disabled = !this.store.canUndo;
     this.redoBtn.disabled = !this.store.canRedo;
     if (document.activeElement !== this.titleInput) this.titleInput.value = this.deck.meta.title;
@@ -534,6 +574,58 @@ export class Editor {
     if (!this.commit(ops.insertBlock(this.deck, this.slide.id, { slot: 'free' }, { ...block, frame }))) return;
     this.select({ blockId: block.id });
     this.canvas.startEdit(block.id, { selectAll: true });
+  }
+
+  copyDirect(cut = false) {
+    const blocks = this.#blocksForClip();
+    if (!blocks.length) return;
+    clip.remember(blocks);
+    navigator.clipboard?.writeText?.(clip.textOf(blocks)).catch(() => {});
+    this.pasteCount = 0;
+    if (cut) this.commit(ops.removeBlocks(this.deck, blocks.map((b) => b.id)));
+  }
+
+  pasteDirect() {
+    const blocks = clip.rememberedBlocks();
+    if (blocks) this.pasteBlocks(blocks);
+    else toast('Nothing to paste yet. Copy a block first.', { timeout: 2500 });
+  }
+
+  openContextMenu(anchor, { onBlock, point }) {
+    const free = this.isFree;
+    const many = this.selectedIds.length > 1;
+    const items = onBlock
+      ? [
+        { label: 'Cut', value: 'cut', hint: 'Ctrl+X' }, { label: 'Copy', value: 'copy', hint: 'Ctrl+C' }, { label: 'Paste', value: 'paste', hint: 'Ctrl+V' },
+        { label: 'Duplicate', value: 'duplicate', hint: 'Ctrl+D' }, { label: 'Delete', value: 'delete', hint: 'Del' },
+        ...(free ? [
+          { heading: 'Arrange' },
+          { label: 'Bring to front', value: 'front', hint: 'Ctrl+Shift+]' }, { label: 'Send to back', value: 'back', hint: 'Ctrl+Shift+[' },
+          { label: 'Lock position', value: 'lock' }, { label: 'Hide on slide', value: 'hide' },
+          ...(many ? [{ label: 'Group', value: 'group', hint: 'Ctrl+G' }] : []),
+          ...(this.selectedGroup?.() ? [{ label: 'Ungroup', value: 'ungroup', hint: 'Ctrl+Shift+G' }] : []),
+        ] : []),
+      ]
+      : [
+        { label: 'Paste', value: 'paste', hint: 'Ctrl+V' },
+        ...(free ? [{ label: 'Add text here', value: 'text-here' }] : []),
+        { label: 'Insert block...', value: 'insert' },
+        ...(free ? [{ label: 'Select all', value: 'all', hint: 'Ctrl+A' }] : []),
+      ];
+    openMenu({
+      anchor, label: onBlock ? 'Block actions' : 'Slide actions', items,
+      onPick: (v) => {
+        const acts = {
+          cut: () => this.copyDirect(true), copy: () => this.copyDirect(), paste: () => this.pasteDirect(),
+          duplicate: () => this.duplicateSelection(), delete: () => this.deleteSelection(),
+          front: () => this.arrangeSelection('front'), back: () => this.arrangeSelection('back'),
+          lock: () => this.setLocked(true), hide: () => this.setHidden(true),
+          group: () => this.groupSelection?.(), ungroup: () => this.ungroupSelection?.(),
+          'text-here': () => this.addTextAt(point), insert: () => this.openInsert(anchor), all: () => this.selectAllBlocks(),
+        };
+        acts[v]?.();
+      },
+    });
   }
 
   // ---- clipboard -----------------------------------------------------------
@@ -941,6 +1033,15 @@ export class Editor {
         e.preventDefault();
         if (this.selectedIds.length) this.duplicateSelection();
         else this.duplicateSlide(this.selection.slideId);
+      } else if (e.key === '=' || e.key === '+') {
+        e.preventDefault();
+        this.canvas.zoomBy(1.25);
+      } else if (e.key === '-') {
+        e.preventDefault();
+        this.canvas.zoomBy(1 / 1.25);
+      } else if (e.key === '0') {
+        e.preventDefault();
+        this.canvas.zoomFit();
       } else if (key === 'a' && this.isFree && (e.target === document.body || e.target.closest?.('.ed-main'))) {
         e.preventDefault();
         this.selectAllBlocks();

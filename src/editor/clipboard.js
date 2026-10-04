@@ -88,3 +88,9 @@ export function readPaste(event) {
 }
 
 export const textHtml = (text) => escapeHtml(text).replace(/\n/g, '<br>');
+
+// Blocks last copied in this browser (used by the right-click menu, which has no paste event).
+export function rememberedBlocks() {
+  const last = remembered();
+  return last ? parse(last.json) : null;
+}

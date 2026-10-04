@@ -307,3 +307,121 @@ export function colorInput({ value = '#000000', onInput, label }) {
   el.addEventListener('input', () => onInput(el.value.toUpperCase()));
   return el;
 }
+
+// ---- popovers --------------------------------------------------------------------
+
+let current = null;
+
+export function closePopover() {
+  current?.close();
+}
+
+export function openPopover({ anchor, content, label, className = '', onClose, focus }) {
+  closePopover();
+  const el = h('div', { class: `ed-pop ${className}`, role: 'dialog', 'aria-label': label }, content);
+  document.body.append(el);
+  const place = () => {
+    const pad = 12;
+    const r = anchor instanceof Element ? anchor.getBoundingClientRect() : { left: anchor.x, right: anchor.x, top: anchor.y, bottom: anchor.y, width: 0 };
+    const w = el.offsetWidth;
+    const hgt = el.offsetHeight;
+    let left = Math.min(Math.max(pad, r.left), window.innerWidth - w - pad);
+    let top = r.bottom + 8;
+    if (top + hgt > window.innerHeight - pad) top = Math.max(pad, Math.min(r.top - hgt - 8, window.innerHeight - hgt - pad));
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
+  };
+  place();
+  const handle = {
+    el,
+    close() {
+      if (current !== handle) return;
+      current = null;
+      document.removeEventListener('pointerdown', outside, true);
+      document.removeEventListener('keydown', onKey, true);
+      el.remove();
+      onClose?.();
+    },
+    place,
+  };
+  const outside = (e) => {
+    if (!el.contains(e.target) && !(anchor instanceof Element && anchor.contains(e.target))) handle.close();
+  };
+  const onKey = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      handle.close();
+      if (anchor instanceof Element) anchor.focus?.();
+    }
+  };
+  document.addEventListener('pointerdown', outside, true);
+  document.addEventListener('keydown', onKey, true);
+  current = handle;
+  focus?.focus();
+  return handle;
+}
+
+
+// ---- colour swatches ---------------------------------------------------------
+
+const RECENT_KEY = 'densight:recent-colors';
+const HEX = /^#[0-9a-f]{6}$/i;
+
+export function recentColors() {
+  try {
+    const list = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
+    return Array.isArray(list) ? list.filter((c) => HEX.test(c)).slice(0, 8) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberColor(hex) {
+  if (!HEX.test(hex)) return;
+  try {
+    const next = [hex.toUpperCase(), ...recentColors().filter((c) => c.toUpperCase() !== hex.toUpperCase())].slice(0, 8);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+  } catch { /* recents are a convenience */ }
+}
+
+// A swatch button that opens the theme's colours, recent custom colours and a free picker.
+// `swatches` is [{ value, label, css }] where value is what gets stored (a token or hex).
+export function colorPicker({ label, value, swatches, onPick, allowReset = true, resetLabel = 'Theme default' }) {
+  const css = (v) => swatches.find((s) => s.value === v)?.css ?? v;
+  const btn = h('button', { type: 'button', class: 'ed-swatch-btn', 'aria-label': `${label}: ${value ? swatches.find((s) => s.value === value)?.label ?? value : resetLabel}`, title: label, 'aria-haspopup': 'dialog' });
+  const chip = h('span', { class: `ed-swatch${value ? '' : ' is-auto'}` });
+  if (value) chip.style.background = css(value);
+  btn.append(chip, h('span', { class: 'ed-swatch-btn__label', text: label }));
+  btn.addEventListener('click', () => {
+    const pick = (v) => {
+      if (v && HEX.test(v)) rememberColor(v);
+      handle.close();
+      onPick(v);
+    };
+    const grid = h('div', { class: 'ed-swatches', role: 'group', 'aria-label': 'Theme colours' });
+    for (const s of swatches) {
+      const b = h('button', { type: 'button', class: 'ed-swatch ed-swatch--pick', title: s.label, 'aria-label': s.label, 'aria-pressed': String(s.value === value) });
+      b.style.background = s.css;
+      b.addEventListener('click', () => pick(s.value));
+      grid.append(b);
+    }
+    const recents = recentColors();
+    const recentRow = recents.length ? h('div', { class: 'ed-swatches', role: 'group', 'aria-label': 'Recent colours' }, ...recents.map((c) => {
+      const b = h('button', { type: 'button', class: 'ed-swatch ed-swatch--pick', title: c, 'aria-label': c });
+      b.style.background = c;
+      b.addEventListener('click', () => pick(c));
+      return b;
+    })) : null;
+    const custom = colorInput({ value: HEX.test(value ?? '') ? value : '#2020E8', label: 'Custom colour', onInput: () => {} });
+    custom.addEventListener('change', () => pick(custom.value.toUpperCase()));
+    const content = h('div', { class: 'ed-colorpop' },
+      h('div', { class: 'ed-colorpop__title', text: label }),
+      grid,
+      recentRow ? h('div', { class: 'ed-colorpop__sub', text: 'Recent' }) : null, recentRow,
+      h('div', { class: 'ed-colorpop__custom' }, h('span', { text: 'Custom' }), custom),
+      allowReset ? button({ label: resetLabel, variant: 'wide', onClick: () => pick('') }) : null);
+    const handle = openPopover({ anchor: btn, content, label, className: 'ed-pop--color', focus: grid.querySelector('button') });
+  });
+  return btn;
+}

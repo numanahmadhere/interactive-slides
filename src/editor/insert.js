@@ -9,6 +9,7 @@ import { renderSlide } from '../core/render.js';
 import { applyTheme } from '../core/theme.js';
 import { createSlide, ASPECTS } from '../core/schema.js';
 import { defaultFrame } from './ops.js';
+import { openPopover } from './ui.js';
 
 export const INSERT_MIME = 'application/x-densight-insert';
 
@@ -98,60 +99,6 @@ function blockPreview(editor, type, width) {
 function layoutPreview(editor, layoutId, width) {
   const slide = createSlide(layoutId);
   return stageThumb(editor, slide, width);
-}
-
-// ---- popovers --------------------------------------------------------------------
-
-let current = null;
-
-export function closePopover() {
-  current?.close();
-}
-
-function openPopover({ anchor, content, label, className = '', onClose, focus }) {
-  closePopover();
-  const el = h('div', { class: `ed-pop ${className}`, role: 'dialog', 'aria-label': label }, content);
-  document.body.append(el);
-  const place = () => {
-    const pad = 12;
-    const r = anchor instanceof Element ? anchor.getBoundingClientRect() : { left: anchor.x, right: anchor.x, top: anchor.y, bottom: anchor.y, width: 0 };
-    const w = el.offsetWidth;
-    const hgt = el.offsetHeight;
-    let left = Math.min(Math.max(pad, r.left), window.innerWidth - w - pad);
-    let top = r.bottom + 8;
-    if (top + hgt > window.innerHeight - pad) top = Math.max(pad, Math.min(r.top - hgt - 8, window.innerHeight - hgt - pad));
-    el.style.left = `${left}px`;
-    el.style.top = `${top}px`;
-  };
-  place();
-  const handle = {
-    el,
-    close() {
-      if (current !== handle) return;
-      current = null;
-      document.removeEventListener('pointerdown', outside, true);
-      document.removeEventListener('keydown', onKey, true);
-      el.remove();
-      onClose?.();
-    },
-    place,
-  };
-  const outside = (e) => {
-    if (!el.contains(e.target) && !(anchor instanceof Element && anchor.contains(e.target))) handle.close();
-  };
-  const onKey = (e) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
-      handle.close();
-      if (anchor instanceof Element) anchor.focus?.();
-    }
-  };
-  document.addEventListener('pointerdown', outside, true);
-  document.addEventListener('keydown', onKey, true);
-  current = handle;
-  focus?.focus();
-  return handle;
 }
 
 // ---- the Insert panel ----------------------------------------------------------------

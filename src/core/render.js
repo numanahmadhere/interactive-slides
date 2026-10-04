@@ -11,7 +11,7 @@ import { h } from './dom.js';
 import { getLayout } from './layouts.js';
 import { getBlock } from './blocks/index.js';
 import { slideTitle } from './schema.js';
-import { backgroundVars, IMAGE_BACKGROUND_VARS } from './theme.js';
+import { backgroundVars, IMAGE_BACKGROUND_VARS, STYLE_TOKENS, tokenVar, resolveStyleColor, onColor } from './theme.js';
 import { safeImageUrl } from './sanitize.js';
 
 const V_ALIGN = { start: 'flex-start', center: 'center', end: 'flex-end' };
@@ -39,6 +39,19 @@ export function makeContext({ deck, slide, mode = 'present', resolveAsset, sessi
   return ctx;
 }
 
+// Per-block colour overrides work by re-pointing the theme variables inside the block.
+function applyStyle(el, style, deck) {
+  const css = (v) => (STYLE_TOKENS.includes(v) ? tokenVar(v) : v);
+  if (style.color) {
+    el.style.setProperty('--sp-fg', css(style.color));
+    el.style.color = 'var(--sp-fg)';
+  }
+  if (style.fill) {
+    el.style.setProperty('--sp-accent', css(style.fill));
+    el.style.setProperty('--sp-accent-fg', onColor(resolveStyleColor(deck?.theme, style.fill)));
+  }
+}
+
 // Free-form placement: absolute on the canvas, in slide pixels.
 export function applyFrame(el, f) {
   const st = el.style;
@@ -64,6 +77,7 @@ export function renderBlock(block, ctx, { reveal = true } = {}) {
   if (block.hidden) wrap.dataset.hidden = 'true';
   if (block.locked) wrap.dataset.locked = 'true';
   if (block.frame) applyFrame(wrap, block.frame);
+  if (block.style) applyStyle(wrap, block.style, ctx.deck);
   if (!def) {
     wrap.append(h('div', { class: 'sp-block__unknown', text: `Unsupported block: ${block.type}` }));
     return wrap;

@@ -46,6 +46,28 @@ export const THEMES = {
   },
 };
 
+// Colours a block may use besides a hex value: names of the theme's own tokens, so they
+// follow the theme when it changes.
+export const STYLE_TOKENS = ['fg', 'muted', 'accent', 'accentText', 'good', 'bad', 'bg', 'surface'];
+export const tokenVar = (token) => `var(${cssVarName(token)})`;
+
+export function isStyleColor(v) {
+  return typeof v === 'string' && (STYLE_TOKENS.includes(v) || COLOR_RE.test(v));
+}
+
+// The concrete colour behind a token or hex, for contrast sums.
+export function resolveStyleColor(ref, value) {
+  if (!STYLE_TOKENS.includes(value)) return value;
+  return themeVars(ref)[cssVarName(value)] ?? value;
+}
+
+// Black or white, whichever reads better on the colour.
+export function onColor(color) {
+  const rgb = parseColor(color);
+  if (!rgb) return '#FFFFFF';
+  return contrastRatio(rgb, [255, 255, 255]) >= contrastRatio(rgb, [15, 17, 23]) ? '#FFFFFF' : '#0F1117';
+}
+
 export const DEFAULT_THEME = 'densight-dark';
 
 const COLOR_KEYS = ['bg', 'surface', 'fg', 'muted', 'accent', 'accentFg', 'accentText', 'border', 'codeBg', 'codeFg', 'good', 'bad'];

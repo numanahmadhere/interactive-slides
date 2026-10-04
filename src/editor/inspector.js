@@ -18,7 +18,7 @@ import * as ops from './ops.js';
 import { button, field, segmented, toggle, select, textInput, numberInput, listEditor, colorInput } from './ui.js';
 
 const TRANSITION_LABELS = { fade: 'Fade', slide: 'Slide', zoom: 'Zoom', none: 'None' };
-const TABS = [['block', 'Block'], ['slide', 'Slide'], ['deck', 'Deck']];
+const TABS = [['block', 'Block'], ['layers', 'Layers'], ['slide', 'Slide'], ['deck', 'Deck']];
 
 const section = (title, ...children) =>
   h('div', { class: 'ed-section' }, title ? h('h2', { class: 'ed-section__title', text: title }) : null, ...children.filter(Boolean));
@@ -59,7 +59,7 @@ export class Inspector {
   sync({ rebuild = true, selectionChanged = false } = {}) {
     const blockId = this.editor.selectedIds.length > 0;
     if (selectionChanged) {
-      if (blockId) this.tab = 'block';
+      if (blockId && this.tab !== 'layers') this.tab = 'block';
       else if (this.tab === 'block') this.tab = 'slide';
     }
     if (!blockId && this.tab === 'block') this.tab = 'slide';
@@ -75,7 +75,7 @@ export class Inspector {
 
   #build() {
     const scroll = this.body.scrollTop;
-    const nodes = this.tab === 'block' ? this.#blockTab() : this.tab === 'slide' ? this.#slideTab() : this.#deckTab();
+    const nodes = this.tab === 'block' ? this.#blockTab() : this.tab === 'layers' ? this.#layersTab() : this.tab === 'slide' ? this.#slideTab() : this.#deckTab();
     this.body.replaceChildren(...nodes);
     this.body.scrollTop = scroll;
   }
@@ -89,6 +89,62 @@ export class Inspector {
   #rebuilding(next) {
     this.editor.commit(next, { source: 'inspector' });
     this.#build();
+  }
+
+  // ---- layers tab --------------------------------------------------------
+
+  // Every block on the slide, top-most first: select, hide, lock and reorder.
+  #layersTab() {
+    const ed = this.editor;
+    const slide = ed.slide;
+    const selected = new Set(ed.selectedIds);
+    const list = h('ul', { class: 'ed-layers', 'aria-label': 'Layers, top first' });
+    const blocks = slide.blocks.slice().reverse();
+    if (!blocks.length) return [section('Layers', empty('Nothing on this slide yet.'))];
+    const snippet = (b) => {
+      const raw = b.props.text ?? b.props.items?.[0] ?? b.props.question ?? b.props.title ?? '';
+      const text = String(raw).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      return text.length > 34 ? `${text.slice(0, 34)}...` : text;
+    };
+    let dragId = null;
+    blocks.forEach((b) => {
+      const label = getBlock(b.type)?.label ?? b.type;
+      const row = h('li', { class: `ed-layer${selected.has(b.id) ? ' is-selected' : ''}${b.hidden ? ' is-hidden' : ''}`, draggable: 'true', 'data-id': b.id });
+      const name = h('button', { type: 'button', class: 'ed-layer__name', 'aria-pressed': String(selected.has(b.id)) },
+        h('span', { class: 'ed-layer__type', text: label }),
+        h('span', { class: 'ed-layer__text', text: snippet(b) }));
+      name.addEventListener('click', (e) => {
+        if (e.shiftKey || e.metaKey || e.ctrlKey) ed.toggleSelected(b.id);
+        else ed.select({ blockId: b.id });
+      });
+      const tool = (iconName, text, on) => button({ icon: iconName, label: text, iconOnly: true, variant: 'ghost', onClick: on });
+      row.append(
+        name,
+        tool(b.hidden ? 'eye-off' : 'eye', b.hidden ? `Show ${label}` : `Hide ${label}`, () => ed.setHidden(!b.hidden, [b.id])),
+        tool(b.locked ? 'lock' : 'unlock', b.locked ? `Unlock ${label}` : `Lock ${label}`, () => ed.setLocked(!b.locked, [b.id])));
+      row.addEventListener('dragstart', (e) => {
+        dragId = b.id;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', label);
+      });
+      row.addEventListener('dragover', (e) => {
+        if (!dragId || dragId === b.id) return;
+        e.preventDefault();
+        row.classList.add('is-over');
+      });
+      row.addEventListener('dragleave', () => row.classList.remove('is-over'));
+      row.addEventListener('drop', (e) => {
+        e.preventDefault();
+        row.classList.remove('is-over');
+        if (!dragId || dragId === b.id) return;
+        const target = slide.blocks.findIndex((x) => x.id === b.id);
+        ed.commit(ops.moveBlockTo(ed.deck, slide.id, dragId, target));
+        dragId = null;
+      });
+      row.addEventListener('dragend', () => { dragId = null; });
+      list.append(row);
+    });
+    return [section('Layers', list, h('p', { class: 'ed-hint', text: 'Drag to reorder. The top of the list is in front.' }))];
   }
 
   // ---- block tab ---------------------------------------------------------

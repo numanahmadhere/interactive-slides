@@ -17,6 +17,7 @@ import { escapeHtml } from '../core/util.js';
 import * as ops from './ops.js';
 import { button } from './ui.js';
 import { FreeLayer } from './free.js';
+import { BlockToolbar } from './toolbar.js';
 import { INSERT_MIME } from './insert.js';
 
 const STAGE_MARGIN = 40;
@@ -66,9 +67,17 @@ export class CanvasView {
     this.onSelectionChange = () => this.#syncFormatState();
 
     this.free = new FreeLayer(this, editor);
+    this.toolbar = new BlockToolbar(this, editor);
+    this.zoom = 1;
+    this.pan = { x: 0, y: 0 };
+    this.fitScale = 1;
     this.#bind();
     this.resizeObserver = new ResizeObserver(() => this.#fit());
     this.resizeObserver.observe(host);
+  }
+
+  get gesturing() {
+    return this.stage.classList.contains('is-gesture');
   }
 
   get isEditing() {
@@ -191,6 +200,7 @@ export class CanvasView {
     const { blockId, slotId } = this.editor.selection;
     for (const id of this.editor.selectedIds) this.blockEl(id)?.classList.add('ed-selected');
     this.free.update();
+    this.toolbar.update();
     if (!blockId && slotId) this.stage.querySelector(`.sp-slot[data-slot="${CSS.escape(slotId)}"]`)?.classList.add('ed-slot-selected');
   }
 
@@ -199,14 +209,62 @@ export class CanvasView {
     if (!deck) return;
     const { width, height } = ASPECTS[deck.aspect];
     const rect = this.host.getBoundingClientRect();
-    const scale = Math.max(
+    this.fitScale = Math.max(
       0.05,
       Math.min((rect.width - STAGE_MARGIN * 2) / width, (rect.height - STAGE_MARGIN * 2) / height),
     );
-    this.scale = scale;
-    this.stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
-    this.free?.update();
+    this.#applyScale();
     if (this.editing) this.#positionFormatBar();
+  }
+
+  #applyScale() {
+    const scale = this.fitScale * this.zoom;
+    this.scale = scale;
+    this.stage.style.transform = `translate(calc(-50% + ${this.pan.x}px), calc(-50% + ${this.pan.y}px)) scale(${scale})`;
+    this.free?.update();
+    this.toolbar?.update();
+    this.onZoom?.(this.zoom);
+  }
+
+  // Zoom is a multiple of the fit-to-window size; (cx, cy) keeps the point under the pointer still.
+  setZoom(next, cx, cy) {
+    const zoom = Math.min(4, Math.max(0.25, next));
+    if (Math.abs(zoom - this.zoom) < 0.001) return;
+    const box = this.stage.getBoundingClientRect();
+    const host = this.host.getBoundingClientRect();
+    const px = cx ?? host.left + host.width / 2;
+    const py = cy ?? host.top + host.height / 2;
+    const sx = (px - box.left) / this.scale;
+    const sy = (py - box.top) / this.scale;
+    this.zoom = zoom;
+    if (zoom <= 1) this.pan = { x: 0, y: 0 };
+    this.#applyScale();
+    if (zoom > 1) {
+      const after = this.stage.getBoundingClientRect();
+      this.pan = { x: this.pan.x + px - (after.left + sx * this.scale), y: this.pan.y + py - (after.top + sy * this.scale) };
+      this.#applyScale();
+    }
+  }
+
+  zoomBy(factor) {
+    this.setZoom(this.zoom * factor);
+  }
+
+  zoomFit() {
+    this.zoom = 1;
+    this.pan = { x: 0, y: 0 };
+    this.#applyScale();
+  }
+
+  #onWheel(e) {
+    if (e.ctrlKey || e.metaKey) { // pinch or Ctrl+scroll zooms
+      e.preventDefault();
+      this.setZoom(this.zoom * Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY);
+    } else if (this.zoom > 1) { // scroll pans a zoomed-in slide
+      e.preventDefault();
+      this.pan = { x: this.pan.x - e.deltaX, y: this.pan.y - e.deltaY };
+      this.#applyScale();
+    }
   }
 
   // ---- pointer input -----------------------------------------------------
@@ -216,6 +274,8 @@ export class CanvasView {
     this.stage.addEventListener('pointermove', (e) => this.#setHover(e.target.closest?.('.sp-block') ?? null));
     this.stage.addEventListener('pointerleave', () => this.#setHover(null));
     this.stage.addEventListener('dblclick', (e) => this.#onDoubleClick(e));
+    this.stage.addEventListener('contextmenu', (e) => this.#onContextMenu(e));
+    this.host.addEventListener('wheel', (e) => this.#onWheel(e), { passive: false });
     this.host.addEventListener('pointerdown', (e) => {
       if (e.target !== this.host) return;
       if (this.editing) this.finishEdit();
@@ -278,6 +338,15 @@ export class CanvasView {
       return;
     }
     this.editor.select({});
+  }
+
+  #onContextMenu(e) {
+    e.preventDefault();
+    if (this.editing) return;
+    const top = this.free.active ? this.free.topLevelEl(e.target) : e.target.closest('.sp-block');
+    const id = top?.dataset.block ?? null;
+    if (id && !this.editor.selectedIds.includes(id)) this.editor.select({ blockId: id });
+    this.editor.openContextMenu({ x: e.clientX, y: e.clientY }, { onBlock: !!id, point: this.free.active ? this.free.pointOf(e) : null });
   }
 
   #onDoubleClick(e) {
@@ -378,6 +447,7 @@ export class CanvasView {
       listeners: [],
     };
     this.editing = session;
+    this.toolbar.hide();
     const on = (type, fn) => {
       el.addEventListener(type, fn);
       session.listeners.push([type, fn]);
@@ -456,6 +526,7 @@ export class CanvasView {
       this.rendered = null; // drop contenteditable and show normalised content
       this.sync();
     }
+    this.toolbar.update();
   }
 
   #onEditKey(e) {

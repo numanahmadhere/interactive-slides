@@ -182,6 +182,7 @@ export class FreeLayer {
     const group = origin.size ? boundsOf([...origin.values()]) : null;
     let moved = false;
     this.stage.classList.add('is-gesture');
+    this.canvas.toolbar.hide();
 
     this.#track(e, (ev) => {
       if (!group) return;
@@ -213,6 +214,7 @@ export class FreeLayer {
       this.#drawGuides(guides);
     }, (ev, cancelled) => {
       this.stage.classList.remove('is-gesture');
+      this.canvas.toolbar.update();
       this.#drawGuides([]);
       if (!moved || cancelled) {
         if (moved) this.canvas.sync({});
@@ -263,6 +265,7 @@ export class FreeLayer {
     const min = allAuto ? 80 : MIN_SIZE;
     let next = null;
     this.stage.classList.add('is-gesture');
+    this.canvas.toolbar.hide();
 
     this.#track(e, (ev) => {
       const dx = (ev.clientX - start.x) / this.scale;
@@ -286,6 +289,7 @@ export class FreeLayer {
       this.#drawGuides(guides);
     }, (ev, cancelled) => {
       this.stage.classList.remove('is-gesture');
+      this.canvas.toolbar.update();
       this.#drawGuides([]);
       if (!next || cancelled) {
         this.canvas.sync({});

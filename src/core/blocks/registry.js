@@ -11,6 +11,7 @@
 //                     editor (for purely visual toggles like switching tabs).
 
 import { uid, isObject, str, clamp } from '../util.js';
+import { isStyleColor } from '../theme.js';
 
 const defs = new Map();
 
@@ -100,6 +101,15 @@ export function normalizeFrame(raw) {
   return frame;
 }
 
+// Optional look overrides for one block: text colour and fill, each a theme token or hex.
+function normalizeStyle(raw) {
+  if (!isObject(raw)) return null;
+  const style = {};
+  if (isStyleColor(raw.color)) style.color = raw.color;
+  if (isStyleColor(raw.fill)) style.fill = raw.fill;
+  return Object.keys(style).length ? style : null;
+}
+
 // state: { warn(msg), seen: Set<string> } shared across one normalizeDeck run.
 export function normalizeBlock(raw, state, path, depth = 0) {
   if (!isObject(raw)) {
@@ -118,6 +128,8 @@ export function normalizeBlock(raw, state, path, depth = 0) {
 
   const frame = normalizeFrame(raw.frame);
   if (frame) block.frame = frame;
+  const style = normalizeStyle(raw.style);
+  if (style) block.style = style;
   if (raw.locked === true) block.locked = true;
   if (raw.hidden === true) block.hidden = true;
 

@@ -557,3 +557,47 @@ a.ed-logo .logo { width: 28px; height: 28px; }
 .ed-thumb__add { position: absolute; left: 50%; bottom: -12px; z-index: 3; display: none; place-items: center; width: 24px; height: 24px; margin-left: -2px; border: 1px solid var(--ed-border-strong); border-radius: 999px; background: var(--ed-raised); color: var(--ed-text); cursor: pointer; box-shadow: var(--ed-shadow); }
 .ed-thumb:hover .ed-thumb__add { display: grid; }
 .ed-thumb__add:hover { background: var(--ed-accent); border-color: var(--ed-accent); color: #fff; }
+
+/* ---- quick bar extras, zoom, notes ---- */
+.ed-quick__spacer { flex: 1; }
+.ed-zoom__label { min-width: 56px; font-variant-numeric: tabular-nums; }
+.ed-quick .ed-btn[aria-pressed='true'] { background: var(--ed-hover-2); border-color: var(--ed-border-strong); }
+.ed-main.has-notes .ed-canvas { bottom: 150px; }
+.ed-notes { position: absolute; inset: auto 0 0 0; height: 150px; padding: 10px 14px 14px; background: var(--ed-panel); border-top: 1px solid var(--ed-border); }
+.ed-notes[hidden] { display: none; }
+.ed-notes__text { width: 100%; height: 100%; resize: none; }
+
+/* ---- floating block toolbar ---- */
+.ed-ftb { position: absolute; z-index: 8; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; max-width: calc(100% - 16px); padding: 5px; border: 1px solid var(--ed-border-strong); border-radius: 12px; background: var(--ed-raised); box-shadow: var(--ed-shadow); white-space: nowrap; }
+.ed-ftb[hidden] { display: none; }
+.ed-ftb .ed-btn { height: 30px; min-width: 30px; }
+.ed-ftb .ed-seg { transform: scale(0.92); transform-origin: left center; margin-right: -4px; }
+.ed-ftb__sep { width: 1px; height: 20px; margin: 0 4px; background: var(--ed-border-strong); }
+.ed-ftb__count { padding: 0 8px; color: var(--ed-muted); font: 500 12px var(--ed-font); }
+
+/* ---- colour swatches ---- */
+.ed-swatch-btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--ed-text); font: 500 12px var(--ed-font); cursor: pointer; }
+.ed-swatch-btn:hover { background: var(--ed-hover); border-color: var(--ed-border-hover); }
+.ed-swatch { display: inline-block; width: 18px; height: 18px; border: 1px solid var(--ed-border-strong); border-radius: 50%; }
+.ed-swatch.is-auto { background: conic-gradient(var(--ed-border-strong) 0 25%, transparent 0 50%, var(--ed-border-strong) 0 75%, transparent 0) 0 0 / 8px 8px; }
+.ed-swatch--pick { width: 26px; height: 26px; padding: 0; cursor: pointer; }
+.ed-swatch--pick:hover, .ed-swatch--pick:focus-visible { outline: 2px solid var(--ed-focus); outline-offset: 2px; }
+.ed-swatch--pick[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--ed-raised), 0 0 0 4px var(--ed-focus); }
+.ed-pop--color { width: 252px; }
+.ed-colorpop { display: grid; gap: 10px; padding: 14px; }
+.ed-colorpop__title { font: 600 13px var(--ed-font); }
+.ed-colorpop__sub { color: var(--ed-muted); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.ed-colorpop__custom { display: flex; align-items: center; justify-content: space-between; }
+.ed-swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---- layers ---- */
+.ed-layers { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.ed-layer { display: flex; align-items: center; gap: 2px; padding: 2px 2px 2px 4px; border: 1px solid transparent; border-radius: 10px; }
+.ed-layer:hover { background: var(--ed-hover); }
+.ed-layer.is-selected { border-color: var(--ed-focus); background: var(--ed-hover-2); }
+.ed-layer.is-hidden .ed-layer__name { opacity: 0.5; }
+.ed-layer.is-over { border-color: var(--ed-accent); border-style: dashed; }
+.ed-layer__name { flex: 1; min-width: 0; display: grid; gap: 1px; padding: 6px 6px; border: 0; background: transparent; color: var(--ed-text); text-align: left; cursor: pointer; font: inherit; }
+.ed-layer__type { font: 600 12px var(--ed-font); }
+.ed-layer__text { overflow: hidden; color: var(--ed-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.ed-layer .ed-btn { width: 28px; height: 28px; }
