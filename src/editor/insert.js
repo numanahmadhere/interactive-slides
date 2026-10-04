@@ -46,6 +46,11 @@ const SYNONYMS = {
   shape: 'rectangle circle box arrow line',
   icon: 'symbol glyph',
   diagram: 'flow chart boxes arrows process',
+  wordcloud: 'words tags cloud brainstorm one word',
+  'open-answers': 'free text responses feedback comments wall brainstorm',
+  rating: 'scale stars score nps satisfaction survey likert',
+  ranking: 'order prioritise priorities sort rank vote',
+  qna: 'questions ask upvote moderated town hall',
 };
 
 export const QUICK_TYPES = ['text', 'image', 'shape', 'quiz', 'poll'];

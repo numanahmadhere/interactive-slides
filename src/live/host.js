@@ -8,8 +8,10 @@ import { uid } from '../core/util.js';
 import { stripTags } from '../core/util.js';
 import { collectPrompts } from './prompts.js';
 import {
-  Tally, audienceChannel, remoteChannel, parseVote, parseCommand, parseHello,
+  Tally, audienceChannel, remoteChannel, parseVote, parseCommand, parseHello, parseText, parseAsk, CHOICE_KINDS,
 } from './protocol.js';
+import { Boards } from './boards.js';
+import { resultsCsv } from './results.js';
 
 const HOST_CID = 'host';
 const PUBLISH_DELAY_MS = 250;
@@ -23,6 +25,8 @@ export class LiveHost {
   #detach = null;
   #prompts = [];
   #tally = new Tally();
+  #boards = new Boards();
+  #known = new Map(); // every prompt shown during the session, for the results export
   #seen = new Map(); // cid -> last time we heard from that phone
   #subs = new Set();
   #timer = 0;
@@ -109,6 +113,7 @@ export class LiveHost {
   #refreshPrompts() {
     const p = this.#player;
     this.#prompts = p ? collectPrompts(p.deck.slides[p.state.slide]) : [];
+    for (const prompt of this.#prompts) this.#known.set(prompt.id, { prompt, slide: p.state.slide + 1 });
     for (const fn of [...this.#subs]) fn();
   }
 
@@ -129,7 +134,44 @@ export class LiveHost {
 
   resetVotes(id) {
     this.#tally.reset(id);
+    this.#boards.reset(id);
     this.#changed();
+  }
+
+  // What the typed-answer blocks draw: the cloud's words, recent responses, the open questions.
+  words = (id) => this.#boards.words(id);
+  responses = (id) => this.#boards.responses(id);
+  questions = (id, opts) => this.#boards.questions(id, opts);
+  ranking = (id, n) => this.#tally.scores(id, n);
+
+  // The presenter taking part from their own screen counts as one person.
+  submitText = (id, text) => {
+    const prompt = this.#prompts.find((p) => p.id === id);
+    if (!prompt) return false;
+    const ok = prompt.kind === 'cloud' ? this.#boards.addEntry(id, HOST_CID, text, prompt.limit)
+      : prompt.kind === 'open' ? this.#boards.addResponse(id, HOST_CID, text, prompt.limit) : false;
+    if (ok) this.#changed();
+    return ok;
+  };
+
+  ask = (id, text) => {
+    const qid = this.#prompts.some((p) => p.id === id && p.kind === 'qna') ? this.#boards.ask(id, HOST_CID, text, this.now()) : null;
+    if (qid) this.#changed();
+    return qid;
+  };
+
+  upvote = (id, qid) => {
+    if (this.#boards.upvote(id, HOST_CID, qid)) this.#changed();
+  };
+
+  // The presenter's own moderation of the audience's questions.
+  moderate = (id, qid, op) => {
+    if (this.#boards.moderate(id, qid, op)) this.#changed();
+  };
+
+  // Everything answered so far, as a CSV the presenter can download. Nothing leaves this page.
+  exportResults() {
+    return resultsCsv([...this.#known.values()], this.#tally, this.#boards, this.title);
   }
 
   get audienceSize() {
@@ -150,6 +192,20 @@ export class LiveHost {
     if (hello) {
       this.#touch(hello.cid);
       this.#publishSoon();
+      return;
+    }
+    const text = parseText(raw, this.#prompts);
+    if (text) {
+      this.#touch(text.cid);
+      const ok = text.kind === 'cloud' ? this.#boards.addEntry(text.id, text.cid, text.text, text.limit) : this.#boards.addResponse(text.id, text.cid, text.text, text.limit);
+      if (ok) this.#changed();
+      return;
+    }
+    const ask = parseAsk(raw, this.#prompts);
+    if (ask) {
+      this.#touch(ask.cid);
+      const ok = ask.op === 'ask' ? !!this.#boards.ask(ask.id, ask.cid, ask.text, this.now()) : this.#boards.upvote(ask.id, ask.cid, ask.q);
+      if (ok) this.#changed();
       return;
     }
     const vote = parseVote(raw, this.#prompts);
@@ -186,8 +242,15 @@ export class LiveHost {
     this.#timer = 0;
     if (!this.#audience) return;
     const counts = {};
-    for (const p of this.#prompts) counts[p.id] = this.#tally.counts(p.id, p.options.length);
-    this.#audience.send({ t: 'state', session: this.sessionId, title: this.#player?.deck.meta.title ?? this.title, prompts: this.#prompts, counts });
+    const data = {};
+    for (const p of this.#prompts) {
+      if (p.kind === 'ranking') counts[p.id] = this.#tally.scores(p.id, p.options.length);
+      else if (CHOICE_KINDS.has(p.kind)) counts[p.id] = this.#tally.counts(p.id, p.options.length);
+      else if (p.kind === 'cloud') data[p.id] = this.#boards.words(p.id);
+      else if (p.kind === 'open') data[p.id] = this.#boards.responses(p.id);
+      else if (p.kind === 'qna') data[p.id] = this.#boards.questions(p.id).slice(0, 100);
+    }
+    this.#audience.send({ t: 'state', session: this.sessionId, title: this.#player?.deck.meta.title ?? this.title, prompts: this.#prompts, counts, data });
     this.#publishRemote();
   }
 

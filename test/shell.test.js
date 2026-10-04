@@ -4,6 +4,8 @@ import { parseAppPath, deckPath } from '../src/shell/paths.js';
 import { Persistence, metaOf } from '../src/editor/persist.js';
 import { blankDeck, duplicateDeck, demoDeckCopy } from '../src/library/starters.js';
 import { buildSite } from '../tools/site.mjs';
+import { LiveHost } from '../src/live/host.js';
+import { getLayout } from '../src/core/layouts.js';
 import { existsSync, readFileSync } from 'node:fs';
 
 test('app routes', () => {
@@ -82,7 +84,7 @@ test('the public pages are complete, small and honest', () => {
   const site = buildSite();
   for (const f of ['index.html', 'learn/index.html', 'privacy/index.html', 'terms/index.html', '404.html', 'sitemap.xml', 'robots.txt']) assert.ok(site[f], f);
   const home = site['index.html'];
-  assert.ok(home.length < 30 * 1024, `home page is ${home.length} bytes`);
+  assert.ok(home.length < 48 * 1024, `home page is ${home.length} bytes`);
   assert.match(home, /<title>[^<]+<\/title>/);
   assert.match(home, /<meta name="description"/);
   assert.match(home, /<h1>.+?<\/h1>/);
@@ -96,7 +98,7 @@ test('the public pages are complete, small and honest', () => {
   assert.ok(site['404.html'].includes('noindex'));
   // claims on the page must be features that exist
   for (const promised of ['Interactive blocks', 'Live audience', 'Phone remote']) assert.ok(home.includes(promised));
-  for (const unbuilt of ['word cloud', 'Word cloud', 'AI-powered', 'AI assistant', 'with AI', 'AI features', 'slide library']) assert.ok(!home.includes(unbuilt), `home mentions something not built: ${unbuilt}`);
+  for (const unbuilt of ['AI-powered', 'AI assistant', 'with AI', 'AI features', 'slide library']) assert.ok(!home.includes(unbuilt), `home mentions something not built: ${unbuilt}`);
 });
 
 test('brand: the logo, icons and sharing image exist and every page uses them', () => {
@@ -168,4 +170,42 @@ test('the interactive tutorial is on the home page and wired up', () => {
   assert.equal((home.match(/data-go="/g) ?? []).length, 4, 'four steps');
   assert.ok(home.includes('<noscript>'), 'a text fallback without JavaScript');
   assert.ok((home.match(/<svg[^>]+role="img"[^>]+aria-label=/g) ?? []).length >= 6, 'block drawings are labelled');
+});
+
+// ---- the comparison table must tell the truth about us ---------------------------------
+
+import { GROUPS, VENDORS } from '../tools/compare.mjs';
+import { getBlock } from '../src/core/blocks/index.js';
+
+test('the comparison table is complete and every claim about us is backed by the product', () => {
+  const rows = GROUPS.flatMap((g) => g.rows);
+  const valid = /^(yes|no|paid|part|soon|check|text:.+)$/;
+  assert.equal(VENDORS.length, 5, 'us and four others');
+  assert.ok(VENDORS[0].us);
+  for (const row of rows) {
+    assert.equal(row.cells.length, VENDORS.length, row.name);
+    for (const c of row.cells) assert.match(c, valid, `${row.name}: ${c}`);
+    assert.ok(!['paid', 'check'].includes(row.cells[0]), `${row.name}: we have no paid plans and never "check" ourselves`);
+    assert.ok(row.cells[0] !== 'soon' || !row.needs, `${row.name}: marked not yet but claims support`);
+  }
+  // every "yes" in our column that names a capability must exist in the code
+  const proof = {
+    wordcloud: () => getBlock('wordcloud'), 'open-answers': () => getBlock('open-answers'), rating: () => getBlock('rating'),
+    ranking: () => getBlock('ranking'), qna: () => getBlock('qna'),
+    csv: () => typeof LiveHost.prototype.exportResults === 'function',
+    'free-form': () => getBlock('shape') && getLayout('free'),
+    offline: () => readFileSync(new URL('../src/sw-template.js', import.meta.url), 'utf8').includes('fetch'),
+    'no-storage': () => !/\.insert\(|from\('decks'\)/.test(readFileSync(new URL('../src/live/host.js', import.meta.url), 'utf8')),
+  };
+  for (const row of rows.filter((r) => r.needs && r.cells[0] === 'yes')) {
+    for (const need of row.needs) assert.ok(proof[need]?.(), `"${row.name}" says yes but "${need}" is not in the product`);
+  }
+});
+
+test('the table is on the home page, third after the hero and tutorial', () => {
+  const home = buildSite()['index.html'];
+  const order = [...home.matchAll(/<section[^>]*?(?:id="([a-z]+)"|class="(hero)")/g)].map((m) => m[1] ?? m[2]);
+  assert.deepEqual(order.slice(0, 3), ['hero', 'tutorial', 'compare']);
+  assert.ok(home.includes('Not yet') && home.includes('Paid plan'), 'it admits what we lack');
+  assert.ok(home.includes('<caption'), 'the table has a caption');
 });

@@ -16,6 +16,11 @@ export const LIMITS = {
 
 const COMMANDS = new Set(['next', 'prev', 'first', 'last']);
 
+// What the audience can be asked. Choice kinds have options; the rest take typed answers.
+export const PROMPT_KINDS = ['poll', 'quiz', 'rating', 'ranking', 'cloud', 'open', 'qna'];
+export const CHOICE_KINDS = new Set(['poll', 'quiz', 'rating', 'ranking']);
+export const TEXT_KINDS = new Set(['cloud', 'open']);
+
 function randomString(alphabet, length, rand = defaultRandom) {
   let out = '';
   for (const n of rand(length)) out += alphabet[n % alphabet.length];
@@ -54,19 +59,28 @@ const text = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
 const cidOf = (v) => (typeof v === 'string' && v.length > 0 && v.length <= LIMITS.cid && /^[\w-]+$/.test(v) ? v : null);
 const int = (v, lo, hi) => (Number.isInteger(v) && v >= lo && v <= hi ? v : null);
 
-// A prompt is something the audience can answer: a poll or a quiz question.
+// A prompt is something the audience can answer: a poll, quiz, rating, ranking, word
+// cloud, open question or a Q&A.
 export function cleanPrompt(raw) {
   if (!isObj(raw) || typeof raw.id !== 'string' || raw.id.length > 40) return null;
-  const options = Array.isArray(raw.options) ? raw.options.slice(0, LIMITS.options).map((o) => text(o, LIMITS.text)) : [];
-  if (options.length < 2) return null;
-  return {
-    id: raw.id,
-    kind: raw.kind === 'quiz' ? 'quiz' : 'poll',
-    question: text(raw.question, LIMITS.text),
-    options,
-    multi: raw.multi === true,
-  };
+  const kind = PROMPT_KINDS.includes(raw.kind) ? raw.kind : 'poll';
+  const options = CHOICE_KINDS.has(kind) && Array.isArray(raw.options) ? raw.options.slice(0, LIMITS.options).map((o) => text(o, LIMITS.text)) : [];
+  if (CHOICE_KINDS.has(kind) && options.length < 2) return null;
+  const prompt = { id: raw.id, kind, question: text(raw.question, LIMITS.text), options, multi: kind !== 'ranking' && raw.multi === true };
+  if (kind === 'rating') {
+    prompt.low = text(raw.low, 60);
+    prompt.high = text(raw.high, 60);
+  }
+  if (TEXT_KINDS.has(kind)) prompt.limit = int(raw.limit, 1, 5) ?? (kind === 'cloud' ? 3 : 1);
+  return prompt;
 }
+
+const cleanWords = (v) => (Array.isArray(v) ? v.slice(0, 80).flatMap((e) => (Array.isArray(e) && typeof e[0] === 'string' && int(e[1], 1, 1_000_000) ? [[e[0].slice(0, 40), e[1]]] : [])) : []);
+const cleanResponses = (v) => (Array.isArray(v) ? v.slice(0, 60).filter((t) => typeof t === 'string').map((t) => t.slice(0, 280)) : []);
+const cleanQuestions = (v) => (Array.isArray(v)
+  ? v.slice(0, 100).flatMap((q) => (isObj(q) && typeof q.id === 'string' && q.id.length <= 20 && typeof q.text === 'string'
+    ? [{ id: q.id, text: q.text.slice(0, 280), votes: int(q.votes, 0, 100000) ?? 0, answered: q.answered === true }] : []))
+  : []);
 
 // What the host tells the audience: the slide's prompts and the running totals.
 export function cleanAudienceState(raw) {
@@ -79,7 +93,17 @@ export function cleanAudienceState(raw) {
       if (Array.isArray(row)) counts[p.id] = p.options.map((_, i) => int(row[i], 0, 1_000_000) ?? 0);
     }
   }
-  return { title: text(raw.title, 200), prompts, counts, ended: raw.ended === true, session: text(raw.session, 40) };
+  // Typed answers come back as aggregates: the cloud's words, the latest responses, the open questions.
+  const data = {};
+  if (isObj(raw.data)) {
+    for (const p of prompts) {
+      const row = raw.data[p.id];
+      if (p.kind === 'cloud') data[p.id] = cleanWords(row);
+      else if (p.kind === 'open') data[p.id] = cleanResponses(row);
+      else if (p.kind === 'qna') data[p.id] = cleanQuestions(row);
+    }
+  }
+  return { title: text(raw.title, 200), prompts, counts, data, ended: raw.ended === true, session: text(raw.session, 40) };
 }
 
 // What the host tells the phone remote.
@@ -106,10 +130,35 @@ export function parseVote(raw, prompts) {
   const cid = cidOf(raw.cid);
   if (!cid) return null;
   const prompt = prompts.find((p) => p.id === raw.id);
-  if (!prompt || !Array.isArray(raw.picks)) return null;
-  const picks = [...new Set(raw.picks.map((n) => int(n, 0, prompt.options.length - 1)))].filter((n) => n !== null).sort((a, b) => a - b);
+  if (!prompt || !CHOICE_KINDS.has(prompt.kind) || !Array.isArray(raw.picks)) return null;
+  const n = prompt.options.length;
+  if (prompt.kind === 'ranking') { // an order of every option, best first
+    const order = raw.picks.map((v) => int(v, 0, n - 1));
+    if (order.length !== n || order.includes(null) || new Set(order).size !== n) return null;
+    return { cid, id: prompt.id, picks: order };
+  }
+  const picks = [...new Set(raw.picks.map((v) => int(v, 0, n - 1)))].filter((v) => v !== null).sort((a, b) => a - b);
   if (!picks.length || (!prompt.multi && picks.length > 1)) return null;
   return { cid, id: prompt.id, picks };
+}
+
+// A typed answer to a word cloud or an open question.
+export function parseText(raw, prompts) {
+  if (!isObj(raw) || raw.t !== 'text') return null;
+  const cid = cidOf(raw.cid);
+  const prompt = prompts.find((p) => p.id === raw.id);
+  if (!cid || !prompt || !TEXT_KINDS.has(prompt.kind) || typeof raw.text !== 'string') return null;
+  return { cid, id: prompt.id, kind: prompt.kind, text: raw.text.slice(0, 400), limit: prompt.limit ?? 1 };
+}
+
+// A new audience question, or an upvote on one.
+export function parseAsk(raw, prompts) {
+  if (!isObj(raw) || (raw.t !== 'ask' && raw.t !== 'up')) return null;
+  const cid = cidOf(raw.cid);
+  const prompt = prompts.find((p) => p.id === raw.id);
+  if (!cid || !prompt || prompt.kind !== 'qna') return null;
+  if (raw.t === 'ask') return typeof raw.text === 'string' ? { op: 'ask', cid, id: prompt.id, text: raw.text.slice(0, 400) } : null;
+  return typeof raw.q === 'string' && raw.q.length <= 20 ? { op: 'up', cid, id: prompt.id, q: raw.q } : null;
 }
 
 export function parseCommand(raw) {
@@ -140,6 +189,16 @@ export class Tally {
   counts(id, optionCount) {
     const out = new Array(optionCount).fill(0);
     for (const picks of this.#answers.get(id)?.values() ?? []) for (const n of picks) if (n < optionCount) out[n]++;
+    return out;
+  }
+
+  // Ranking: an answer is an order, best first. A first place among n options earns n-1 points,
+  // the last earns 0, and the totals are what the presenter's screen sorts by.
+  scores(id, optionCount) {
+    const out = new Array(optionCount).fill(0);
+    for (const order of this.#answers.get(id)?.values() ?? []) {
+      order.forEach((option, place) => { if (option < optionCount) out[option] += optionCount - 1 - place; });
+    }
     return out;
   }
 

@@ -25,7 +25,11 @@ export function mountAudience(root, { code, config }) {
   const cid = clientId();
   const picks = new Map(); // prompt id -> chosen indexes
   const sent = new Set(); // prompt ids this phone has answered
-  let state = { title: '', prompts: [], counts: {}, ended: false };
+  let state = { title: '', prompts: [], counts: {}, data: {}, ended: false };
+  const orders = new Map(); // ranking prompt id -> the phone's current order
+  const typed = new Map(); // prompt id -> text this phone has sent (cloud, open, Q&A)
+  const ups = new Map(); // Q&A prompt id -> Set of question ids this phone upvoted
+  const drafts = new Map(); // prompt id -> text typed but not yet sent
   let status = 'connecting';
   let heard = false; // has the presenter said anything yet?
   let lastHeardAt = null;
@@ -59,8 +63,12 @@ export function mountAudience(root, { code, config }) {
       // question we answered shows up and that page has not got our answer, send it again.
       if (!next.ended) {
         for (const p of next.prompts) {
-          if (sent.has(p.id) && picks.get(p.id)?.length && answeredIn.get(p.id) !== session) {
+          if (answeredIn.get(p.id) === session) continue;
+          if (sent.has(p.id) && picks.get(p.id)?.length) {
             channel.send({ t: 'vote', cid, id: p.id, picks: picks.get(p.id) });
+            answeredIn.set(p.id, session);
+          } else if (typed.get(p.id)?.length) {
+            for (const text of typed.get(p.id)) channel.send({ t: p.kind === 'qna' ? 'ask' : 'text', cid, id: p.id, text });
             answeredIn.set(p.id, session);
           }
         }
@@ -84,7 +92,7 @@ export function mountAudience(root, { code, config }) {
     paint();
   };
 
-  function card(prompt) {
+  function choiceCard(prompt) {
     const chosen = picks.get(prompt.id) ?? [];
     const answered = sent.has(prompt.id);
     const counts = state.counts[prompt.id];
@@ -116,10 +124,137 @@ export function mountAudience(root, { code, config }) {
     return out;
   }
 
+  // ---- the other kinds of question --------------------------------------------------
+
+  const sendText = (prompt, text) => {
+    const clean = text.replace(/\s+/g, ' ').trim();
+    if (!clean) return false;
+    const mine = typed.get(prompt.id) ?? [];
+    if (prompt.kind !== 'qna' && mine.length >= (prompt.limit ?? 1)) return false;
+    channel.send({ t: prompt.kind === 'qna' ? 'ask' : 'text', cid, id: prompt.id, text: clean });
+    typed.set(prompt.id, [...mine, clean]);
+    answeredIn.set(prompt.id, session);
+    drafts.set(prompt.id, '');
+    return true;
+  };
+
+  // A box to type in, a send button and a note of what has been sent.
+  function entryForm(prompt, { multiline, label, button, doneNote }) {
+    const mine = typed.get(prompt.id) ?? [];
+    const left = prompt.kind === 'qna' ? Infinity : (prompt.limit ?? 1) - mine.length;
+    const form = h('form', { class: 'lv-form' });
+    if (left > 0) {
+      const input = h(multiline ? 'textarea' : 'input', { class: 'lv-input', 'aria-label': label, maxlength: multiline ? '280' : '40', rows: multiline ? '3' : undefined, type: multiline ? undefined : 'text', autocomplete: 'off' });
+      input.value = drafts.get(prompt.id) ?? '';
+      input.addEventListener('input', () => drafts.set(prompt.id, input.value));
+      const send = h('button', { type: 'submit', class: 'lv-send', text: button });
+      form.append(input, send);
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (sendText(prompt, input.value)) paint();
+      });
+    }
+    if (mine.length && prompt.kind !== 'qna') {
+      form.append(h('ul', { class: 'lv-mine' }, ...mine.map((t) => h('li', { text: t }))));
+    }
+    if (prompt.kind !== 'qna') form.append(h('p', { class: 'lv-sent', text: left > 0 ? (mine.length ? `Sent. You can add ${left} more.` : `You can send up to ${prompt.limit}.`) : doneNote }));
+    return form;
+  }
+
+  function ratingCard(prompt) {
+    const chosen = picks.get(prompt.id)?.[0];
+    const answered = sent.has(prompt.id);
+    const counts = state.counts[prompt.id] ?? [];
+    const n = counts.reduce((a, b) => a + b, 0);
+    const row = h('div', { class: 'lv-scale', role: 'group', 'aria-label': prompt.question, style: `--n:${prompt.options.length}` });
+    prompt.options.forEach((label, i) => {
+      const on = chosen === i;
+      const b = h('button', { type: 'button', class: `lv-num${on ? ' is-on' : ''}`, 'aria-pressed': String(on), text: label });
+      b.addEventListener('click', () => { picks.set(prompt.id, [i]); submit(prompt); });
+      row.append(b);
+    });
+    const out = h('section', { class: 'lv-card' }, h('h2', { class: 'lv-q', text: prompt.question }), row);
+    if (prompt.low || prompt.high) out.append(h('div', { class: 'lv-ends' }, h('span', { text: prompt.low }), h('span', { text: prompt.high })));
+    if (answered) {
+      const avg = n ? Math.round((counts.reduce((a, c, i) => a + c * (i + 1), 0) / n) * 10) / 10 : null;
+      out.append(h('p', { class: 'lv-sent', text: `Answer sent. Tap another number to change it.${avg ? ` Average so far: ${avg}.` : ''}` }));
+    }
+    return out;
+  }
+
+  function rankingCard(prompt) {
+    const n = prompt.options.length;
+    let order = orders.get(prompt.id);
+    if (!order || order.length !== n) { order = prompt.options.map((_, i) => i); orders.set(prompt.id, order); }
+    const answered = sent.has(prompt.id);
+    const list = h('ol', { class: 'lv-rank' });
+    order.forEach((optionIndex, place) => {
+      const move = (by) => {
+        const to = place + by;
+        if (to < 0 || to >= n) return;
+        const next = order.slice();
+        [next[place], next[to]] = [next[to], next[place]];
+        orders.set(prompt.id, next);
+        sent.delete(prompt.id); // a changed order has not been sent yet
+        paint();
+        const rows = body.querySelectorAll(`[data-rank="${prompt.id}"] .lv-rank__row`);
+        rows[to]?.querySelector(by < 0 ? '.lv-up' : '.lv-down')?.focus();
+      };
+      const up = h('button', { type: 'button', class: 'lv-up', 'aria-label': `Move ${prompt.options[optionIndex]} up`, text: '\u2191' });
+      const down = h('button', { type: 'button', class: 'lv-down', 'aria-label': `Move ${prompt.options[optionIndex]} down`, text: '\u2193' });
+      up.disabled = place === 0;
+      down.disabled = place === n - 1;
+      up.addEventListener('click', () => move(-1));
+      down.addEventListener('click', () => move(1));
+      list.append(h('li', { class: 'lv-rank__row' }, h('span', { class: 'lv-rank__place', text: String(place + 1) }), h('span', { class: 'lv-rank__text', text: prompt.options[optionIndex] }), up, down));
+    });
+    const send = h('button', { type: 'button', class: 'lv-send', text: answered ? 'Ranking sent' : 'Send ranking' });
+    send.disabled = answered;
+    send.addEventListener('click', () => { picks.set(prompt.id, orders.get(prompt.id).slice()); submit(prompt); });
+    const out = h('section', { class: 'lv-card', 'data-rank': prompt.id }, h('h2', { class: 'lv-q', text: prompt.question }), h('p', { class: 'lv-hint', text: 'Put the best first. Use the arrows to move items.' }), list, send);
+    if (answered) out.append(h('p', { class: 'lv-sent', text: 'Ranking sent. Move something to change it.' }));
+    return out;
+  }
+
+  function qnaCard(prompt) {
+    const questions = state.data[prompt.id] ?? [];
+    const mine = ups.get(prompt.id) ?? new Set();
+    const list = h('ul', { class: 'lv-qs' });
+    for (const q of questions) {
+      const own = (typed.get(prompt.id) ?? []).includes(q.text); // you cannot upvote or withdraw your own question
+      const on = own || mine.has(q.id);
+      const b = h('button', { type: 'button', class: `lv-up-btn${on ? ' is-on' : ''}`, 'aria-pressed': String(on), disabled: own ? 'true' : undefined, 'aria-label': `${own ? 'Your question' : 'Upvote'}: ${q.text}. ${q.votes} ${q.votes === 1 ? 'vote' : 'votes'}` }, h('span', { 'aria-hidden': 'true', text: '\u25B2' }), h('span', { text: String(q.votes) }));
+      b.addEventListener('click', () => {
+        const set = new Set(mine);
+        if (on) set.delete(q.id); else set.add(q.id);
+        ups.set(prompt.id, set);
+        channel.send({ t: 'up', cid, id: prompt.id, q: q.id });
+        paint();
+      });
+      list.append(h('li', { class: `lv-q-item${q.answered ? ' is-answered' : ''}` }, b, h('span', { class: 'lv-q-text', text: q.text }), q.answered ? h('span', { class: 'lv-q-flag', text: 'Answered' }) : null));
+    }
+    const out = h('section', { class: 'lv-card' }, h('h2', { class: 'lv-q', text: prompt.question }), entryForm(prompt, { multiline: true, label: 'Your question', button: 'Ask', doneNote: '' }));
+    out.append(questions.length ? list : h('p', { class: 'lv-hint', text: 'No questions yet. Be the first.' }));
+    return out;
+  }
+
+  function card(prompt) {
+    if (prompt.kind === 'rating') return ratingCard(prompt);
+    if (prompt.kind === 'ranking') return rankingCard(prompt);
+    if (prompt.kind === 'qna') return qnaCard(prompt);
+    if (prompt.kind === 'cloud' || prompt.kind === 'open') {
+      const cloud = prompt.kind === 'cloud';
+      return h('section', { class: 'lv-card' }, h('h2', { class: 'lv-q', text: prompt.question }),
+        entryForm(prompt, { multiline: !cloud, label: cloud ? 'Your word' : 'Your answer', button: 'Send', doneNote: 'Thanks. Your answer is on the screen.' }));
+    }
+    return choiceCard(prompt);
+  }
+
   function paint() {
     head.querySelector('.lv-title').textContent = state.title;
-    // Keep the focused option focused across a repaint.
+    // Keep the focused option focused across a repaint, and keep half-typed text.
     const focusIndex = [...body.querySelectorAll('.lv-opt')].indexOf(document.activeElement);
+    const typing = document.activeElement?.classList?.contains('lv-input') ? { at: [...body.querySelectorAll('.lv-input')].indexOf(document.activeElement), pos: document.activeElement.selectionStart } : null;
     body.replaceChildren();
     if (isStale(lastHeardAt, Date.now()) && !state.ended) {
       body.append(h('p', { class: 'lv-warn', role: 'alert', text: 'Lost contact with the presenter. Answers may not be counted until they are back. This page will update by itself.' }));
@@ -137,6 +272,11 @@ export function mountAudience(root, { code, config }) {
       for (const p of state.prompts) body.append(card(p));
     }
     if (focusIndex >= 0) body.querySelectorAll('.lv-opt')[focusIndex]?.focus();
+    if (typing && typing.at >= 0) {
+      const input = body.querySelectorAll('.lv-input')[typing.at];
+      input?.focus();
+      input?.setSelectionRange?.(typing.pos, typing.pos);
+    }
     footStatus.textContent = status === 'error' ? 'Connection problem. Retrying...' : '';
   }
   paint();

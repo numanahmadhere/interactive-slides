@@ -232,6 +232,11 @@ Interactive (the presenter clicks, the audience sees the result):
 | Fill in the blank | `[answer]` blanks in a sentence, with accepted alternatives `[a\|b]` |
 | Reflection prompt | a private text box that stays on the device |
 | Live poll | a question the audience answers on their phones; bars fill in as votes arrive |
+| Word cloud | phones send up to five words each; the most common grow biggest. One person's repeat of a word counts once |
+| Open answers | free-text answers appear as cards, newest first |
+| Rating scale | 1 to 5, 7 or 10 with labels at each end; shows the spread and the average |
+| Ranking | each phone orders the items (arrows, so it works by keyboard); the screen sorts by points |
+| Audience Q&A | phones ask and upvote; you mark questions answered or hide them. Hidden questions never reach phones |
 | Chart | bar, line, pie or donut from pasted spreadsheet data, with a table for screen readers |
 | Calculator | sliders feeding formulas (`people * hours * 48`), evaluated without `eval` |
 | Live code | HTML, CSS and JS the audience can edit, run in an isolated frame with no network |
@@ -400,7 +405,7 @@ Phases 1 to 6 are done, with phase 6 limited to what was asked for: offline
 support, shapes, icons and diagrams, a theme builder and logo, per-slide
 backgrounds, and find and replace. Not built: an accessibility checker,
 right-to-left languages and their fonts, a template library, Markdown import.
-Phase 7: phone remote, live polls and quizzes, accounts, cloud decks and share links. Not built: real-time co-editing, team workspaces, image storage outside the deck.
+Phase 7: phone remote, live polls, quizzes, word clouds, open answers, ratings, rankings and Q&A, accounts, cloud decks and share links. Results can be downloaded as a CSV from the Go live dialog (built on the presenter's page; nothing is stored on a server). Not built: real-time co-editing, team workspaces, single sign-on, PowerPoint and Google Slides add-ins, importing PowerPoint, timed leaderboard quizzes, image storage outside the deck.
 
 Known limits: Inter is bundled as the Latin subset only, so other scripts
 fall back to system fonts. Code blocks are not syntax-highlighted yet.

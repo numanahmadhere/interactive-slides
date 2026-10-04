@@ -313,3 +313,32 @@ kbd { padding: 1px 7px; border: 1px solid var(--border-strong); border-bottom-wi
   .tut__phone { max-width: none; }
   .tut__actions .btn { flex: 1 1 auto; justify-content: center; text-align: center; }
 }
+
+/* ---- comparison table ---- */
+#compare { padding-block: clamp(56px, 7vw, 96px); }
+.cmp__scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-lg, 12px); background: var(--surface); }
+.cmp__scroll:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.cmp { width: 100%; min-width: 860px; border-collapse: separate; border-spacing: 0; font-size: 15px; }
+.cmp thead th { position: sticky; top: 0; padding: 16px 14px; border-bottom: 1px solid var(--border-strong); background: var(--surface); color: var(--ink); font-size: 14px; font-weight: 650; text-align: left; }
+.cmp thead th a { color: inherit; text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 3px; }
+.cmp thead th.cmp__us { background: var(--blue); color: var(--on-blue); }
+.cmp tbody th[scope='row'] { padding: 13px 14px; color: var(--ink); font-weight: 500; text-align: left; border-bottom: 1px solid var(--border); position: sticky; left: 0; background: var(--surface); min-width: 220px; }
+.cmp td { padding: 13px 14px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+.cmp tbody td:nth-child(2) { background: var(--blue-dim); }
+.cmp__group th { padding: 22px 14px 8px; border-bottom: 1px solid var(--border-strong); background: var(--bg-alt); color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; text-align: left; }
+.cmp tbody tr:last-child th, .cmp tbody tr:last-child td { border-bottom: 0; }
+.cmp__word { margin-left: 8px; font-weight: 550; }
+.cmp td:not(.cmp__text) { white-space: nowrap; }
+.cmp__text { font-size: 14px; line-height: 1.35; min-width: 130px; }
+.cmp__mark { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; flex: none; border: 2px solid var(--muted); box-sizing: border-box; }
+.cmp__yes .cmp__mark, li > .cmp__yes { background: var(--success); border-color: var(--success); }
+.cmp__paid .cmp__mark, li > .cmp__paid { background: transparent; border-color: var(--blue-text); }
+.cmp__part .cmp__mark, li > .cmp__part { background: linear-gradient(90deg, var(--muted) 50%, transparent 50%); }
+.cmp__no .cmp__mark, li > .cmp__no { background: transparent; border-color: var(--border-strong); }
+.cmp__no .cmp__word, .cmp__check .cmp__word { color: var(--muted); }
+.cmp__soon .cmp__mark, li > .cmp__soon { border-style: dashed; border-color: var(--muted); }
+.cmp__check .cmp__mark, li > .cmp__check { border-style: dotted; border-color: var(--muted); }
+.cmp__key { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 18px 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 13.5px; }
+.cmp__key li { display: flex; align-items: center; gap: 8px; }
+.cmp__note { max-width: 760px; margin: 22px 0 0; color: var(--text); font-size: 16px; }
+@media (max-width: 600px) { .cmp { font-size: 14px; } .cmp tbody th[scope='row'] { min-width: 150px; } }

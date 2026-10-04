@@ -1,6 +1,7 @@
 // "Go live": connection settings, then the room's join code, links and QR codes.
 
 import { h } from '../core/dom.js';
+import { slugify } from '../core/util.js';
 import { qrElement } from '../live/qr.js';
 import { baseAddress, isLocalAddress, joinLink, loadSettings, remoteLink, saveSettings } from '../live/config.js';
 import { cleanConfig } from '../live/protocol.js';
@@ -127,6 +128,14 @@ export function openLiveDialog(editor) {
       h('div', { class: 'ed-live__bar' }, count, status),
       h('div', { class: 'ed-hint', text: `Build ${BUILD}  ·  ${config.kind === 'local' ? 'this browser only' : new URL(config.url).hostname}` }),
       h('div', { class: 'ed-live__actions' },
+        button({ label: 'Download results (CSV)', onClick: () => {
+          const blob = new Blob([host.exportResults()], { type: 'text/csv;charset=utf-8' });
+          const a = h('a', { href: URL.createObjectURL(blob), download: `${slugify(editor.deck.meta.title) || 'results'}-results.csv` });
+          document.body.append(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        } }),
         button({ label: 'Clear all votes', onClick: () => { host.resetVotes(); toast('Votes cleared.'); } }),
         button({ label: 'Present', variant: 'primary', onClick: () => { dialog.close(); editor.present(); } }),
         button({ label: 'End session', variant: 'danger', onClick: () => { editor.stopLive(); render(); } })));

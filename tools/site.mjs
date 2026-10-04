@@ -2,6 +2,11 @@
 // No framework and almost no JavaScript, so the first visit is fast and search
 // engines and link previews see real content.
 
+import { renderTable, CHECKED } from './compare.mjs';
+import { listBlocks } from '../src/core/blocks/index.js';
+
+const BLOCK_COUNT = listBlocks().filter((d) => !d.internal).length;
+
 const SITE = (process.env.SITE_URL ?? 'https://densight-slides.netlify.app').replace(/\/+$/, '');
 const NAME = 'Densight Slides';
 const SUPPORT = 'hello@densight.com';
@@ -108,6 +113,9 @@ const FIGS = [
   ['Diagram', 'Rows, columns or a cycle with arrows', `<svg viewBox="0 0 240 150" role="img" aria-label="A cycle diagram with four steps"><ellipse class="ln" cx="120" cy="75" rx="74" ry="46" fill="none"/><rect class="bl" x="92" y="14" width="56" height="22" rx="5"/><rect class="bs" x="160" y="64" width="56" height="22" rx="5"/><rect class="bs" x="92" y="114" width="56" height="22" rx="5"/><rect class="bs" x="24" y="64" width="56" height="22" rx="5"/></svg>`],
   ['Matching', 'Pair ideas by drawing them together', `<svg viewBox="0 0 240 150" role="img" aria-label="Two columns of items joined by lines"><rect class="ln" x="16" y="20" width="76" height="24" rx="5"/><rect class="ln" x="16" y="63" width="76" height="24" rx="5"/><rect class="ln" x="16" y="106" width="76" height="24" rx="5"/><rect class="ln" x="148" y="20" width="76" height="24" rx="5"/><rect class="ln" x="148" y="63" width="76" height="24" rx="5"/><rect class="ln" x="148" y="106" width="76" height="24" rx="5"/><path class="cn" d="M92 32L148 118M92 75L148 32M92 118L148 75"/></svg>`],
   ['Hotspots', 'Numbered notes on a picture', `<svg viewBox="0 0 240 150" role="img" aria-label="A picture with three numbered markers"><rect class="bs" x="16" y="12" width="208" height="126" rx="6"/><path class="ln" d="M16 112l56-44 40 30 36-26 76 50" fill="none"/><circle class="bl" cx="70" cy="58" r="11"/><circle class="bl" cx="140" cy="86" r="11"/><circle class="bl" cx="190" cy="44" r="11"/><text class="nm" x="70" y="62" text-anchor="middle">1</text><text class="nm" x="140" y="90" text-anchor="middle">2</text><text class="nm" x="190" y="48" text-anchor="middle">3</text></svg>`],
+  ['Word cloud', 'The most common answers grow biggest', `<svg viewBox="0 0 240 150" role="img" aria-label="A cloud of words in different sizes"><text class="bl" x="120" y="64" text-anchor="middle" font-size="30" font-weight="700">clarity</text><text class="ik" x="58" y="98" text-anchor="middle" font-size="18" font-weight="700">speed</text><text class="bl" x="170" y="100" text-anchor="middle" font-size="22" font-weight="700">trust</text><text class="ik" x="64" y="38" text-anchor="middle" font-size="13" font-weight="700">fun</text><text class="ik" x="190" y="40" text-anchor="middle" font-size="12" font-weight="700">simple</text><text class="ik" x="120" y="128" text-anchor="middle" font-size="14" font-weight="700">teamwork</text></svg>`],
+  ['Audience Q&A', 'Questions rise with upvotes', `<svg viewBox="0 0 240 150" role="img" aria-label="Three audience questions with vote counts"><rect class="bl" x="16" y="16" width="34" height="26" rx="6"/><text class="nm" x="33" y="34" text-anchor="middle">12</text><rect class="tx" x="60" y="22" width="150" height="9" rx="2"/><rect class="bl" x="16" y="62" width="34" height="26" rx="6"/><text class="nm" x="33" y="80" text-anchor="middle">7</text><rect class="tx" x="60" y="68" width="120" height="9" rx="2"/><rect class="bs" x="16" y="108" width="34" height="26" rx="6"/><text class="ik" x="33" y="126" text-anchor="middle" font-size="12" font-weight="700">3</text><rect class="tx" x="60" y="114" width="90" height="9" rx="2"/></svg>`],
+  ['Ranking', 'The room puts items in order', `<svg viewBox="0 0 240 150" role="img" aria-label="Four items in ranked order with bars"><rect class="bl" x="16" y="16" width="200" height="22" rx="4"/><rect class="bl" x="16" y="48" width="150" height="22" rx="4"/><rect class="bs" x="16" y="80" width="104" height="22" rx="4"/><rect class="bs" x="16" y="112" width="60" height="22" rx="4"/></svg>`],
 ];
 
 const home = () => layout({
@@ -135,7 +143,7 @@ const home = () => layout({
 </div>
 </div>
 <div class="wrap"><dl class="facts">
-<div><dt>30</dt><dd>interactive and design blocks</dd></div>
+<div><dt>${BLOCK_COUNT}</dt><dd>interactive and design blocks</dd></div>
 <div><dt>0</dt><dd>apps for your audience to install</dd></div>
 <div><dt>5</dt><dd>ways to export a deck</dd></div>
 <div><dt>12</dt><dd>slide templates to start from</dd></div>
@@ -172,11 +180,21 @@ const home = () => layout({
 <noscript><p class="note">The tutorial needs JavaScript. The <a href="/learn/">guides</a> cover the same steps in text.</p></noscript>
 </div></section>
 
-<section id="features"><div class="wrap">
+<section id="compare"><div class="wrap">
+<header class="head reveal"><p class="label">How we compare</p><h2>Pick the right tool, not just ours.</h2>
+<p class="sub">Four well-known audience tools next to Densight Slides. Where we are missing something, it says so. Read from each vendor's public pages in ${CHECKED}; plans change, so confirm anything that decides a purchase.</p></header>
+<div class="reveal">
+${renderTable()}
+<ul class="cmp__key" aria-label="Key"><li><span class="cmp__mark cmp__yes"></span>Included</li><li><span class="cmp__mark cmp__paid"></span>Paid plan only</li><li><span class="cmp__mark cmp__part"></span>Partly</li><li><span class="cmp__mark cmp__no"></span>Not offered, as far as we could find</li><li><span class="cmp__mark cmp__soon"></span>Not yet (ours)</li><li><span class="cmp__mark cmp__check"></span>Could not confirm</li></ul>
+<p class="cmp__note">Where we win: slides, questions and results in one place, working offline, with answers that stay in your browser. Where others lead today: add-ins for PowerPoint and Google Slides, team workspaces and timed leaderboards. <a href="/app/">Try it free</a> and judge for yourself.</p>
+</div>
+</div></section>
+
+<section id="features" class="alt"><div class="wrap">
 <header class="head reveal"><p class="label">Features</p><h2>Everything a live presentation needs.</h2>
 <p class="sub">Built for rooms where people are expected to take part, not just watch.</p></header>
 <div class="rules">
-<article class="item reveal"><span class="no">01</span><h3>Interactive blocks</h3><p>Quizzes with instant feedback, polls, matching, ordering, flip cards, hotspots, timelines, charts, calculators and a live code lab, all inside your slides.</p></article>
+<article class="item reveal"><span class="no">01</span><h3>Interactive blocks</h3><p>Quizzes, polls, word clouds, open answers, ratings, rankings, audience Q&A, matching, flip cards, hotspots, timelines, charts, calculators and a live code lab, all inside your slides.</p></article>
 <article class="item reveal"><span class="no">02</span><h3>Live audience</h3><p>Show a code or QR. People answer on their phones and watch the results build on your screen. Nothing for them to install.</p></article>
 <article class="item reveal"><span class="no">03</span><h3>Phone remote</h3><p>Move the slides from your phone and read your speaker notes and the next slide while you talk.</p></article>
 <article class="item reveal"><span class="no">04</span><h3>Drag, drop, done</h3><p>Place anything anywhere, with guides that snap things into line. Start from a template, then change the theme, colours, logo and backgrounds. Text stays readable on any colour you pick.</p></article>
@@ -213,8 +231,8 @@ const home = () => layout({
 </div></section>
 
 <section id="blocks" class="alt"><div class="wrap">
-<header class="head reveal"><p class="label">Blocks</p><h2>Thirty kinds of block. One deck.</h2>
-<p class="sub">Six of them are shown here; flip cards, calculators, a live code lab and the rest are in the app. Mix them freely. Each one works while you present, and each has a clear text version for screen readers.</p></header>
+<header class="head reveal"><p class="label">Blocks</p><h2>${BLOCK_COUNT} kinds of block. One deck.</h2>
+<p class="sub">Nine of them are shown here; flip cards, calculators, a live code lab and the rest are in the app. Mix them freely. Each one works while you present, and each has a clear text version for screen readers.</p></header>
 <div class="figs">
 ${FIGS.map(([t, d, svg]) => `<figure class="fig reveal">${svg}<figcaption><b>${t}</b><span>${d}</span></figcaption></figure>`).join('\n')}
 </div></div></section>
