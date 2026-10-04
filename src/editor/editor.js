@@ -8,8 +8,10 @@ import { createBlock, listBlocks, getBlock } from '../core/blocks/index.js';
 import { getLayout, listLayouts } from '../core/layouts.js';
 import { blankDeck, sampleDeckCopy, demoDeckCopy } from '../library/starters.js';
 import { Session } from '../core/session.js';
-import { slugify } from '../core/util.js';
+import { slugify, escapeHtml } from '../core/util.js';
 import * as ops from './ops.js';
+import * as clip from './clipboard.js';
+import * as xf from './transform.js';
 import { Store } from './store.js';
 import { Persistence } from './persist.js';
 import { AssetStore } from './assets.js';
@@ -48,7 +50,7 @@ export class Editor {
     this.meta = null; // this deck's library summary: title, thumbnail, cloud link
     this.persist = new Persistence();
     this.assets = new AssetStore(this.persist);
-    this.selection = { slideId: null, blockId: null, slotId: null };
+    this.selection = { slideId: null, blockId: null, slotId: null, blockIds: [] };
     this.presenter = null;
     this.live = null; // { host, room, config, base } while a live session is open
     this.sync = null; // saves the deck to the cloud by itself when signed in
@@ -185,6 +187,12 @@ export class Editor {
     return this.store.commit(next, opts);
   }
 
+  // Every selected block id (one, or several for a multi-selection).
+  get selectedIds() {
+    const { blockId, blockIds } = this.selection;
+    return blockIds.length ? blockIds : blockId ? [blockId] : [];
+  }
+
   // select({}) means the slide itself; select({ blockId }) or ({ slotId }) narrows it.
   select(next = {}) {
     const deck = this.deck;
@@ -192,6 +200,15 @@ export class Editor {
     const slide = deck.slides.find((s) => s.id === slideId);
     let blockId = next.blockId ?? null;
     let slotId = next.slotId ?? null;
+    let blockIds = [];
+    if (next.blockIds?.length > 1) {
+      const onSlide = new Set(slide.blocks.map((b) => b.id));
+      blockIds = [...new Set(next.blockIds)].filter((id) => onSlide.has(id));
+      if (blockIds.length === 1) [blockId] = blockIds, blockIds = [];
+      else blockId = null;
+    } else if (next.blockIds?.length === 1) {
+      blockId = next.blockIds[0];
+    }
     if (blockId) {
       const hit = ops.findBlock(deck, blockId);
       if (!hit || hit.slide.id !== slideId) blockId = null;
@@ -199,31 +216,52 @@ export class Editor {
     if (slotId && !getLayout(slide.layout).slots.some((s) => s.id === slotId)) slotId = null;
 
     const prev = this.selection;
-    if (prev.slideId === slideId && prev.blockId === blockId && prev.slotId === slotId) return;
+    const sameIds = prev.blockIds.length === blockIds.length && prev.blockIds.every((id, i) => id === blockIds[i]);
+    if (prev.slideId === slideId && prev.blockId === blockId && prev.slotId === slotId && sameIds) return;
     if (this.canvas.isEditing && (slideId !== prev.slideId || blockId !== this.canvas.editing.blockId)) this.canvas.finishEdit();
     this.store.endCoalesce();
-    this.selection = { slideId, blockId, slotId };
+    this.selection = { slideId, blockId, slotId, blockIds };
     this.#syncAll({ selectionChanged: true });
+  }
+
+  selectMany(ids) {
+    this.select({ blockIds: ids });
+  }
+
+  toggleSelected(id) {
+    const ids = this.selectedIds;
+    this.selectMany(ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
+  }
+
+  selectAllBlocks() {
+    this.selectMany(this.slide.blocks.filter((b) => !b.hidden).map((b) => b.id));
   }
 
   #repairSelection(prevDeck) {
     const deck = this.deck;
-    let { slideId, blockId, slotId } = this.selection;
+    let { slideId, blockId, slotId, blockIds } = this.selection;
     if (!deck.slides.some((s) => s.id === slideId)) {
       const prevIndex = prevDeck.slides.findIndex((s) => s.id === slideId);
       slideId = deck.slides[Math.min(Math.max(prevIndex, 0), deck.slides.length - 1)].id;
       blockId = null;
       slotId = null;
+      blockIds = [];
     }
     if (blockId) {
       const hit = ops.findBlock(deck, blockId);
       if (!hit || hit.slide.id !== slideId) blockId = null;
     }
+    if (blockIds.length) {
+      const onSlide = new Set(deck.slides.find((s) => s.id === slideId).blocks.map((b) => b.id));
+      blockIds = blockIds.filter((id) => onSlide.has(id));
+      if (blockIds.length === 1) [blockId] = blockIds, blockIds = [];
+      else if (!blockIds.length) blockId = null;
+    }
     if (slotId) {
       const layout = getLayout(deck.slides.find((s) => s.id === slideId).layout);
       if (!layout.slots.some((s) => s.id === slotId)) slotId = null;
     }
-    this.selection = { slideId, blockId, slotId };
+    this.selection = { slideId, blockId, slotId, blockIds };
   }
 
   #onChange({ prev, source }) {
@@ -332,7 +370,7 @@ export class Editor {
     this.store.redo();
   }
 
-  addSlide(layoutId, index = this.slideIndex + 1) {
+  addSlide(layoutId = 'free', index = this.slideIndex + 1) {
     const slide = createSlide(layoutId);
     this.commit(ops.insertSlide(this.deck, index, slide));
     this.select({ slideId: slide.id });
@@ -384,8 +422,170 @@ export class Editor {
     else if (getBlock(type)?.edit?.length) this.canvas.startEdit(block.id, { selectAll: true });
   }
 
+  // ---- free-form arrangement --------------------------------------------
+
+  get isFree() {
+    return !!getLayout(this.slide?.layout)?.free;
+  }
+
+  // The selected top-level blocks of a free-form slide.
+  #picked() {
+    if (!this.isFree) return [];
+    const ids = new Set(this.selectedIds);
+    return this.slide.blocks.filter((b) => ids.has(b.id) && b.frame);
+  }
+
+  #framesOf(blocks, boxes) {
+    const frames = {};
+    blocks.forEach((b, i) => {
+      const n = boxes[i];
+      frames[b.id] = { x: Math.round(n.x), y: Math.round(n.y), w: Math.round(n.w), ...(b.frame.h ? { h: Math.round(n.h) } : {}) };
+    });
+    return frames;
+  }
+
+  nudge(dx, dy) {
+    const picked = this.#picked().filter((b) => !b.locked);
+    if (!picked.length) return false;
+    const frames = {};
+    for (const b of picked) frames[b.id] = { x: b.frame.x + dx, y: b.frame.y + dy };
+    this.commit(ops.setFrames(this.deck, frames), { coalesce: 'nudge' });
+    return true;
+  }
+
+  // mode: left | center | right | top | middle | bottom. One block aligns to the slide.
+  alignSelection(mode) {
+    const picked = this.#picked().filter((b) => !b.locked);
+    if (!picked.length) return;
+    const boxes = picked.map((b) => this.canvas.free.boxOf(b));
+    const within = picked.length === 1 ? { x: 0, y: 0, ...this.canvas.free.slideSize } : xf.boundsOf(boxes);
+    if (picked.length === 1) within.w = ops.SLIDE_W, within.h = this.canvas.free.slideSize.h;
+    this.commit(ops.setFrames(this.deck, this.#framesOf(picked, xf.alignBoxes(boxes, mode, within))));
+  }
+
+  distributeSelection(axis) {
+    const picked = this.#picked().filter((b) => !b.locked);
+    if (picked.length < 3) return;
+    const boxes = picked.map((b) => this.canvas.free.boxOf(b));
+    this.commit(ops.setFrames(this.deck, this.#framesOf(picked, xf.distributeBoxes(boxes, axis))));
+  }
+
+  // Make the selection the same width and/or height as the block selected first.
+  matchSelection(dim) {
+    const picked = this.#picked().filter((b) => !b.locked);
+    if (picked.length < 2) return;
+    const boxes = picked.map((b) => this.canvas.free.boxOf(b));
+    this.commit(ops.setFrames(this.deck, this.#framesOf(picked, xf.matchSize(boxes, dim, boxes[0]))));
+  }
+
+  // Type exact numbers into the Placement fields.
+  setFrameField(id, patch) {
+    this.commit(ops.setFrames(this.deck, { [id]: patch }), { coalesce: `frame:${id}`, source: 'inspector' });
+  }
+
+  arrangeSelection(where) {
+    this.commit(ops.arrangeBlocks(this.deck, this.slide.id, this.selectedIds, where));
+  }
+
+  setLocked(flag, ids = this.selectedIds) {
+    this.commit(ops.setBlockFlags(this.deck, ids, { locked: flag }));
+  }
+
+  setHidden(flag, ids = this.selectedIds) {
+    this.commit(ops.setBlockFlags(this.deck, ids, { hidden: flag }));
+  }
+
+  // Free the blocks of a fixed-layout slide so they can be moved anywhere. Their
+  // current positions are read off the screen so nothing jumps.
+  convertSlideToFree() {
+    const slide = this.slide;
+    if (this.isFree) return;
+    const stage = this.canvas.stage.getBoundingClientRect();
+    const scale = this.canvas.scale || 1;
+    const frames = {};
+    for (const b of slide.blocks) {
+      const el = this.canvas.blockEl(b.id);
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      frames[b.id] = {
+        x: Math.round((r.left - stage.left) / scale),
+        y: Math.round((r.top - stage.top) / scale),
+        w: Math.round(r.width / scale),
+        h: Math.round(r.height / scale),
+      };
+      // Text keeps an automatic height; boxes that were stretched by their slot keep that height.
+      if (!['image', 'embed', 'shape', 'icon', 'diagram', 'chart', 'hotspots', 'compare'].includes(b.type)) delete frames[b.id].h;
+    }
+    this.commit(ops.convertToFree(this.deck, slide.id, frames));
+  }
+
+  // Double-click on empty canvas: a text block right there, ready to type in.
+  addTextAt(point) {
+    const block = createBlock('text', { props: { text: 'Text' } });
+    const frame = { x: Math.max(0, Math.round(point.x - 200)), y: Math.max(0, Math.round(point.y - 30)), w: 560 };
+    if (!this.commit(ops.insertBlock(this.deck, this.slide.id, { slot: 'free' }, { ...block, frame }))) return;
+    this.select({ blockId: block.id });
+    this.canvas.startEdit(block.id, { selectAll: true });
+  }
+
+  // ---- clipboard -----------------------------------------------------------
+
+  #blocksForClip() {
+    const ids = new Set(this.selectedIds);
+    return this.slide.blocks.filter((b) => ids.has(b.id));
+  }
+
+  copyEvent(e, { cut = false } = {}) {
+    const blocks = this.#blocksForClip();
+    if (!blocks.length) return false;
+    e.preventDefault();
+    clip.writeBlocks(e, blocks);
+    this.pasteCount = 0;
+    if (cut) this.commit(ops.removeBlocks(this.deck, blocks.map((b) => b.id)));
+    else toast(blocks.length === 1 ? 'Copied.' : `Copied ${blocks.length} blocks.`, { timeout: 1500 });
+    return true;
+  }
+
+  duplicateSelection() {
+    const blocks = this.#blocksForClip();
+    if (!blocks.length) return;
+    const copies = blocks.map(ops.cloneBlock);
+    const before = new Set(this.slide.blocks.map((b) => b.id));
+    this.commit(ops.insertBlocks(this.deck, this.slide.id, copies, { offset: ops.DUP_OFFSET }));
+    const added = this.slide.blocks.filter((b) => !before.has(b.id)).map((b) => b.id);
+    this.selectMany(added);
+  }
+
+  pasteBlocks(blocks) {
+    this.pasteCount = (this.pasteCount ?? 0) + 1;
+    const before = new Set(this.slide.blocks.map((b) => b.id));
+    this.commit(ops.insertBlocks(this.deck, this.slide.id, blocks, { offset: this.isFree ? ops.DUP_OFFSET * this.pasteCount : 0 }));
+    this.selectMany(this.slide.blocks.filter((b) => !before.has(b.id)).map((b) => b.id));
+  }
+
+  // Text, a link or an image address pasted from elsewhere becomes the right block.
+  pasteSmart(item) {
+    if (item.imageUrl) {
+      const block = createBlock('image', { props: { src: item.imageUrl, fit: 'contain' } });
+      this.commit(ops.insertBlock(this.deck, this.slide.id, { slot: ops.defaultSlot(getLayout(this.slide.layout)) }, block));
+      this.select({ blockId: block.id });
+      return;
+    }
+    const html = item.link
+      ? `<a href="${escapeHtml(item.link)}">${escapeHtml(item.link)}</a>`
+      : clip.textHtml(item.text);
+    const block = createBlock('text', { props: { text: html } });
+    this.commit(ops.insertBlock(this.deck, this.slide.id, { slot: ops.defaultSlot(getLayout(this.slide.layout)) }, block));
+    this.select({ blockId: block.id });
+  }
+
   deleteBlock(id) {
     this.commit(ops.removeBlock(this.deck, id));
+  }
+
+  deleteSelection() {
+    const ids = this.selectedIds.filter((id) => !ops.findBlock(this.deck, id)?.block.locked);
+    if (ids.length) this.commit(ops.removeBlocks(this.deck, ids));
   }
 
   duplicateBlock(id) {
@@ -635,6 +835,9 @@ export class Editor {
   #bindGlobal() {
     document.addEventListener('keydown', (e) => this.#onKey(e));
     document.addEventListener('paste', (e) => this.#onPaste(e));
+    document.addEventListener('copy', (e) => !this.presenter && !isTyping(e.target) && this.copyEvent(e));
+    document.addEventListener('cut', (e) => !this.presenter && !isTyping(e.target) && this.copyEvent(e, { cut: true }));
+    document.addEventListener('keyup', (e) => e.key.startsWith('Arrow') && this.store.endCoalesce());
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden' && this.saveState !== 'saved') this.flushSave();
     });
@@ -674,14 +877,31 @@ export class Editor {
         this.redo();
       } else if (key === 'd') {
         e.preventDefault();
-        if (this.selection.blockId) this.duplicateBlock(this.selection.blockId);
+        if (this.selectedIds.length) this.duplicateSelection();
         else this.duplicateSlide(this.selection.slideId);
+      } else if (key === 'a' && this.isFree && (e.target === document.body || e.target.closest?.('.ed-main'))) {
+        e.preventDefault();
+        this.selectAllBlocks();
+      } else if (key === 'g' && this.isFree) {
+        e.preventDefault();
+        if (e.shiftKey) this.ungroupSelection?.();
+        else this.groupSelection?.();
+      } else if ((e.key === ']' || e.key === '[') && this.isFree) {
+        e.preventDefault();
+        this.arrangeSelection(e.key === ']' ? (e.shiftKey ? 'front' : 'forward') : (e.shiftKey ? 'back' : 'backward'));
       }
       return;
     }
 
     const onCanvas = e.target === document.body || !!e.target.closest?.('.ed-main');
     const { blockId, slotId } = this.selection;
+    const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+    if (arrows && onCanvas && this.isFree && this.selectedIds.length) {
+      e.preventDefault();
+      const step = xf.nudgeStep(e.shiftKey);
+      this.nudge(arrows[0] * step, arrows[1] * step);
+      return;
+    }
     switch (e.key) {
       case 'Enter':
       case 'F2':
@@ -692,13 +912,13 @@ export class Editor {
         break;
       case 'Delete':
       case 'Backspace':
-        if (onCanvas && blockId) {
+        if (onCanvas && this.selectedIds.length) {
           e.preventDefault();
-          this.deleteBlock(blockId);
+          this.deleteSelection();
         }
         break;
       case 'Escape':
-        if (blockId || slotId) this.select({});
+        if (this.selectedIds.length || slotId) this.select({});
         break;
       case 'PageDown':
       case 'PageUp': {
@@ -715,9 +935,11 @@ export class Editor {
 
   #onPaste(e) {
     if (this.presenter || isTyping(e.target)) return;
-    const files = [...(e.clipboardData?.files ?? [])].filter((f) => f.type.startsWith('image/'));
-    if (!files.length) return;
+    const item = clip.readPaste(e);
+    if (!item) return;
     e.preventDefault();
-    this.addImageFiles(files, { blockId: this.selection.blockId });
+    if (item.blocks) this.pasteBlocks(item.blocks);
+    else if (item.files) this.addImageFiles(item.files, { blockId: this.selection.blockId });
+    else this.pasteSmart(item);
   }
 }

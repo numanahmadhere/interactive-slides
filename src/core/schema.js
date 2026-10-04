@@ -27,7 +27,11 @@ export function createSlide(layoutId = 'content') {
   return {
     id: uid('s_'),
     layout: layout.id,
-    blocks: layout.starter().map((b) => ({ ...createBlock(b.type, { props: b.props }), slot: b.slot })),
+    blocks: layout.starter().map((b) => ({
+      ...createBlock(b.type, { props: b.props }),
+      slot: b.slot,
+      ...(b.frame ? { frame: b.frame } : {}),
+    })),
     notes: '',
   };
 }
@@ -70,6 +74,8 @@ function normalizeSlide(raw, index, state) {
       if (block.slot) state.warn(`${path}: slot "${block.slot}" not in layout "${layout.id}", moved to "${fallbackSlot}"`);
       block.slot = fallbackSlot;
     }
+    if (layout.free) block.frame ??= { x: 128, y: 128, w: 800 };
+    else delete block.frame;
   }
 
   const slide = { id, layout: layout.id, blocks, notes: str(raw.notes, '', 20000) };

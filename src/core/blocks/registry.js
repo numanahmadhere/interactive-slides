@@ -78,6 +78,28 @@ export function walkDeck(deck, fn) {
 
 // ---- normalisation ----------------------------------------------------------
 
+// A free-form block's place on the 1920-wide canvas. h is optional (auto height).
+export const FRAME_LIMITS = { min: 8, max: 6000 };
+export function normalizeFrame(raw) {
+  if (!isObject(raw)) return null;
+  const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+  const x = num(raw.x);
+  const y = num(raw.y);
+  const w = num(raw.w);
+  if (x === null || y === null || w === null) return null;
+  const r2 = (v) => Math.round(v * 100) / 100;
+  const frame = {
+    x: r2(clamp(x, -FRAME_LIMITS.max, FRAME_LIMITS.max)),
+    y: r2(clamp(y, -FRAME_LIMITS.max, FRAME_LIMITS.max)),
+    w: r2(clamp(w, FRAME_LIMITS.min, FRAME_LIMITS.max)),
+  };
+  const h = num(raw.h);
+  if (h !== null && h > 0) frame.h = r2(clamp(h, FRAME_LIMITS.min, FRAME_LIMITS.max));
+  const r = num(raw.r);
+  if (r !== null && r % 360 !== 0) frame.r = r2(((r % 360) + 360) % 360);
+  return frame;
+}
+
 // state: { warn(msg), seen: Set<string> } shared across one normalizeDeck run.
 export function normalizeBlock(raw, state, path, depth = 0) {
   if (!isObject(raw)) {
@@ -93,6 +115,11 @@ export function normalizeBlock(raw, state, path, depth = 0) {
   if (typeof raw.slot === 'string') block.slot = raw.slot.slice(0, 40);
   const reveal = Number.isInteger(raw.reveal) ? clamp(raw.reveal, 0, 99) : 0;
   if (reveal > 0) block.reveal = reveal;
+
+  const frame = normalizeFrame(raw.frame);
+  if (frame) block.frame = frame;
+  if (raw.locked === true) block.locked = true;
+  if (raw.hidden === true) block.hidden = true;
 
   const props = isObject(raw.props) ? raw.props : {};
   const def = defs.get(type);

@@ -458,3 +458,65 @@ a.ed-logo .logo { width: 28px; height: 28px; }
 @keyframes ed-rise { from { opacity: 0; transform: translateY(8px) scale(0.985); } to { opacity: 1; transform: none; } }
 @keyframes ed-fade { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .ed-menu, .ed-dialog, .ed-dialog-backdrop, .ed-toast { animation: none; } .ed-btn, .ed-thumb__preview, .ed-theme { transition: none; } }
+
+/* ---- free-form slides: selection box, handles, guides, marquee -----------------
+   Drawn in canvas px inside the scaled stage; --ed-px (1 / scale) keeps lines and
+   handles a constant size on screen. */
+.ed-overlay { position: absolute; inset: 0; z-index: 20; pointer-events: none; --ed-px: 1; }
+.ed-stage .sp-free > .sp-block { cursor: move; }
+.ed-stage .sp-free > .sp-block[data-locked='true'] { cursor: default; }
+.ed-stage .sp-free > .sp-block.ed-selected { outline: none; }
+.ed-stage .sp-free > .sp-block.ed-hover:not(.ed-selected) { outline: calc(2px * var(--ed-px, 1)) solid var(--ed-select); outline-offset: 0; }
+.ed-stage .sp-block[data-hidden='true'] { opacity: 0.3; }
+.ed-stage.is-gesture, .ed-stage.is-gesture * { cursor: grabbing !important; }
+.ed-stage .sp-free-empty, .ed-free-empty { position: absolute; inset: 0; border: 0; pointer-events: none; background: none !important; flex: none; }
+
+.ed-selbox {
+  position: absolute;
+  box-sizing: border-box;
+  border: calc(2px * var(--ed-px)) solid var(--ed-select);
+  pointer-events: none;
+}
+.ed-selbox.is-multi { border-style: dashed; }
+.ed-selbox.is-locked { border-style: dotted; }
+.ed-grip {
+  position: absolute;
+  width: calc(12px * var(--ed-px));
+  height: calc(12px * var(--ed-px));
+  margin: calc(-6px * var(--ed-px)) 0 0 calc(-6px * var(--ed-px));
+  box-sizing: border-box;
+  border: calc(2px * var(--ed-px)) solid var(--ed-select);
+  border-radius: calc(3px * var(--ed-px));
+  background: #fff;
+  pointer-events: auto;
+  touch-action: none;
+}
+/* A larger invisible target so small handles are easy to hit. */
+.ed-grip::after { content: ''; position: absolute; inset: calc(-8px * var(--ed-px)); }
+.ed-grip--nw { left: 0; top: 0; cursor: nwse-resize; }
+.ed-grip--n { left: 50%; top: 0; cursor: ns-resize; }
+.ed-grip--ne { left: 100%; top: 0; cursor: nesw-resize; }
+.ed-grip--e { left: 100%; top: 50%; cursor: ew-resize; }
+.ed-grip--se { left: 100%; top: 100%; cursor: nwse-resize; }
+.ed-grip--s { left: 50%; top: 100%; cursor: ns-resize; }
+.ed-grip--sw { left: 0; top: 100%; cursor: nesw-resize; }
+.ed-grip--w { left: 0; top: 50%; cursor: ew-resize; }
+.ed-selbox__size {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 14px * var(--ed-px));
+  transform: translateX(-50%);
+  padding: calc(2px * var(--ed-px)) calc(8px * var(--ed-px));
+  border-radius: calc(4px * var(--ed-px));
+  background: var(--ed-select);
+  color: #fff;
+  font: 600 calc(12px * var(--ed-px)) / 1.4 var(--font, system-ui);
+  white-space: nowrap;
+  opacity: 0;
+}
+.ed-stage.is-gesture .ed-selbox__size { opacity: 1; }
+.ed-guide { position: absolute; background: #ff3b81; pointer-events: none; }
+.ed-guide--x { width: calc(1px * var(--ed-px)); }
+.ed-guide--y { height: calc(1px * var(--ed-px)); }
+.ed-marquee { position: absolute; border: calc(1px * var(--ed-px)) solid var(--ed-select); background: rgb(90 90 255 / 0.12); pointer-events: none; }
+.ed-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }

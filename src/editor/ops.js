@@ -183,9 +183,10 @@ export function setSlideLayout(deck, slideId, layoutId) {
   if (!layout) return deck;
   return replaceSlide(deck, slideId, (slide) => {
     if (slide.layout === layout.id) return slide;
+    if (layout.free) return slide; // use convertToFree: it needs measured frames
     const slots = new Set(layout.slots.map((s) => s.id));
     const fallback = defaultSlot(layout);
-    const blocks = slide.blocks.map((b) => (slots.has(b.slot) ? b : { ...b, slot: fallback }));
+    const blocks = slide.blocks.map(({ frame, locked, hidden, ...b }) => (slots.has(b.slot) ? b : { ...b, slot: fallback }));
     return { ...slide, layout: layout.id, blocks };
   });
 }
@@ -227,6 +228,7 @@ export function insertBlock(deck, slideId, target, block) {
     if (!hit) return deck;
     const nested = hit.parent !== null;
     const placed = nested ? withoutSlot(block) : { ...block, slot: hit.block.slot };
+    if (nested || !getLayout(hit.slide.layout)?.free) delete placed.frame;
     return editBlockSiblings(deck, target.afterBlockId, (sibs) => {
       const out = sibs.slice();
       out.splice(sibs.findIndex((b) => b.id === target.afterBlockId) + 1, 0, placed);
@@ -244,6 +246,8 @@ export function insertBlock(deck, slideId, target, block) {
   }
   return replaceSlide(deck, slideId, (slide) => {
     const placed = { ...block, slot: target.slot };
+    if (getLayout(slide.layout)?.free) placed.frame ??= defaultFrame(block.type, slide);
+    else delete placed.frame;
     let at = slide.blocks.length;
     for (let i = slide.blocks.length - 1; i >= 0; i--) {
       if (slide.blocks[i].slot === target.slot) {
@@ -293,10 +297,18 @@ export function removeBlock(deck, blockId) {
   return editBlockSiblings(deck, blockId, (sibs) => sibs.filter((b) => b.id !== blockId));
 }
 
+export function removeBlocks(deck, ids) {
+  let next = deck;
+  for (const id of ids) next = removeBlock(next, id);
+  return next;
+}
+
 export function duplicateBlock(deck, blockId) {
   const hit = findBlock(deck, blockId);
   if (!hit) return deck;
-  return insertBlock(deck, hit.slide.id, { afterBlockId: blockId }, cloneBlock(hit.block));
+  const copy = cloneBlock(hit.block);
+  if (copy.frame) copy.frame = { ...copy.frame, x: copy.frame.x + DUP_OFFSET, y: copy.frame.y + DUP_OFFSET };
+  return insertBlock(deck, hit.slide.id, { afterBlockId: blockId }, copy);
 }
 
 // dir -1 moves up, +1 moves down, among blocks sharing the same slot (or the
@@ -377,5 +389,116 @@ export function patchSection(deck, blockId, index, patch) {
     if (!section || Object.keys(patch).every((k) => same(section[k], patch[k]))) return block;
     const next = block.props[key].map((s, i) => (i === index ? { ...s, ...patch } : s));
     return { ...block, props: { ...block.props, [key]: next } };
+  });
+}
+
+// ---- free-form slides -----------------------------------------------------
+
+export const SLIDE_W = 1920;
+export const SLIDE_H = 1080;
+export const DUP_OFFSET = 40;
+
+const WIDE = new Set(['heading', 'text', 'list', 'quote', 'divider', 'columns', 'chart', 'timeline', 'tabs', 'accordion', 'compare', 'matching', 'ordering', 'code', 'code-sandbox', 'calculator', 'fill-blank', 'reflection', 'reveal-answer', 'quiz', 'poll', 'quiz-results', 'diagram']);
+const SMALL = { shape: [360, 360], icon: [200, 200], button: [420, 110] };
+
+// Where a newly inserted block lands on a free-form slide: sensible size per type,
+// stepped diagonally so a run of inserts does not pile up on one spot.
+export function defaultFrame(type, slide, size) {
+  const [w, h] = size ?? SMALL[type] ?? (WIDE.has(type) ? [1280, 0] : [960, 540]);
+  const n = slide.blocks.length % 8;
+  const x = Math.max(0, Math.round((SLIDE_W - w) / 2) + (n - 4) * 24);
+  const y = Math.max(0, Math.round((h ? (SLIDE_H - h) / 2 : 300) + (n - 4) * 24));
+  return h ? { x, y, w, h } : { x, y, w };
+}
+
+const sameFrame = (a, b) => a && b && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h && (a.r ?? 0) === (b.r ?? 0);
+
+// frames: { [blockId]: {x, y, w, h?, r?} }. One pass, so a drag of many blocks is one step.
+export function setFrames(deck, frames) {
+  const ids = new Set(Object.keys(frames));
+  if (!ids.size) return deck;
+  let changed = false;
+  const slides = deck.slides.map((slide) => {
+    if (!slide.blocks.some((b) => ids.has(b.id))) return slide;
+    const blocks = slide.blocks.map((b) => {
+      const f = frames[b.id];
+      if (!f || !b.frame || sameFrame(b.frame, { ...b.frame, ...f })) return b;
+      changed = true;
+      return { ...b, frame: { ...b.frame, ...f } };
+    });
+    return { ...slide, blocks };
+  });
+  return changed ? { ...deck, slides } : deck;
+}
+
+// patch: { locked?: bool, hidden?: bool } applied to top-level blocks by id.
+export function setBlockFlags(deck, ids, patch) {
+  const set = new Set(ids);
+  let changed = false;
+  const slides = deck.slides.map((slide) => {
+    if (!slide.blocks.some((b) => set.has(b.id))) return slide;
+    const blocks = slide.blocks.map((b) => {
+      if (!set.has(b.id)) return b;
+      const next = { ...b };
+      for (const key of ['locked', 'hidden']) {
+        if (!(key in patch)) continue;
+        if (patch[key]) next[key] = true;
+        else delete next[key];
+      }
+      if (JSON.stringify(next) === JSON.stringify(b)) return b;
+      changed = true;
+      return next;
+    });
+    return { ...slide, blocks };
+  });
+  return changed ? { ...deck, slides } : deck;
+}
+
+// Free-form z-order is array order. where: front | back | forward | backward.
+export function arrangeBlocks(deck, slideId, ids, where) {
+  const set = new Set(ids);
+  return replaceSlide(deck, slideId, (slide) => {
+    const list = slide.blocks;
+    let out;
+    if (where === 'front') out = [...list.filter((b) => !set.has(b.id)), ...list.filter((b) => set.has(b.id))];
+    else if (where === 'back') out = [...list.filter((b) => set.has(b.id)), ...list.filter((b) => !set.has(b.id))];
+    else {
+      out = list.slice();
+      const step = where === 'forward' ? 1 : -1;
+      const order = step > 0 ? [...out.keys()].reverse() : [...out.keys()];
+      for (const i of order) {
+        const j = i + step;
+        if (!set.has(out[i].id) || j < 0 || j >= out.length || set.has(out[j].id)) continue;
+        [out[i], out[j]] = [out[j], out[i]];
+      }
+    }
+    return out.every((b, i) => b === list[i]) ? slide : { ...slide, blocks: out };
+  });
+}
+
+// Insert several blocks at once (paste). Frames are kept and shifted by `offset`.
+export function insertBlocks(deck, slideId, blocks, { offset = 0 } = {}) {
+  let next = deck;
+  for (const block of blocks) {
+    const copy = { ...block };
+    if (copy.frame && offset) copy.frame = { ...copy.frame, x: copy.frame.x + offset, y: copy.frame.y + offset };
+    const slide = findSlide(next, slideId)?.slide;
+    const layout = slide && getLayout(slide.layout);
+    if (!layout) return deck;
+    next = insertBlock(next, slideId, { slot: copy.slot && layout.slots.some((s) => s.id === copy.slot) ? copy.slot : defaultSlot(layout) }, copy);
+  }
+  return next;
+}
+
+// Turn a slide into a free-form one. `frames` are the blocks' measured rectangles (the
+// canvas reads them off the screen, so the slide looks the same afterwards).
+export function convertToFree(deck, slideId, frames) {
+  return replaceSlide(deck, slideId, (slide) => {
+    if (getLayout(slide.layout)?.free) return slide;
+    const blocks = slide.blocks.map((b, i) => {
+      const { slot, ...rest } = b;
+      return { ...rest, slot: 'free', frame: frames[b.id] ?? defaultFrame(b.type, { blocks: slide.blocks.slice(0, i) }) };
+    });
+    return { ...slide, layout: 'free', blocks };
   });
 }

@@ -16,6 +16,7 @@ import { sanitizeInline, safeLinkUrl } from '../core/sanitize.js';
 import { escapeHtml } from '../core/util.js';
 import * as ops from './ops.js';
 import { button } from './ui.js';
+import { FreeLayer } from './free.js';
 
 const STAGE_MARGIN = 40;
 
@@ -63,6 +64,7 @@ export class CanvasView {
     this.scale = 1;
     this.onSelectionChange = () => this.#syncFormatState();
 
+    this.free = new FreeLayer(this, editor);
     this.#bind();
     this.resizeObserver = new ResizeObserver(() => this.#fit());
     this.resizeObserver.observe(host);
@@ -87,6 +89,7 @@ export class CanvasView {
     if (source === 'canvas-edit' && r && r.slide.id === slide.id) {
       this.rendered = { ...r, slide, deck, assets };
       this.#scheduleOverflowCheck();
+      requestAnimationFrame(() => this.free.update());
       return;
     }
     const stale = !r || r.slide !== slide || r.theme !== deck.theme || r.brand !== deck.brand || r.aspect !== deck.aspect || r.assets !== assets;
@@ -113,6 +116,7 @@ export class CanvasView {
     });
     this.#decorate(el, deck, slide);
     this.stage.replaceChildren(el);
+    this.free.attach();
     this.disposeSlide = activateSlide(el); // visual behaviours (tabs, flip cards, marker dragging)
     this.hovered = null;
     this.#scheduleOverflowCheck();
@@ -126,6 +130,10 @@ export class CanvasView {
     for (const slotEl of slideEl.querySelectorAll(':scope > .sp-slot')) {
       if (slotEl.querySelector('.sp-block')) continue;
       const slot = layout.slots.find((s) => s.id === slotEl.dataset.slot);
+      if (layout.free) {
+        slotEl.append(h('div', { class: 'ed-slot-empty ed-free-empty', text: 'Double-click anywhere to add text, or use Add block' }));
+        continue;
+      }
       slotEl.append(h('div', { class: 'ed-slot-empty', text: `Add ${slot.label.toLowerCase()}` }));
     }
     // Empty sections of columns, tabs and accordions get a click target too.
@@ -180,8 +188,9 @@ export class CanvasView {
       n.classList.remove('ed-selected', 'ed-slot-selected');
     }
     const { blockId, slotId } = this.editor.selection;
-    if (blockId) this.blockEl(blockId)?.classList.add('ed-selected');
-    else if (slotId) this.stage.querySelector(`.sp-slot[data-slot="${CSS.escape(slotId)}"]`)?.classList.add('ed-slot-selected');
+    for (const id of this.editor.selectedIds) this.blockEl(id)?.classList.add('ed-selected');
+    this.free.update();
+    if (!blockId && slotId) this.stage.querySelector(`.sp-slot[data-slot="${CSS.escape(slotId)}"]`)?.classList.add('ed-slot-selected');
   }
 
   #fit() {
@@ -195,6 +204,7 @@ export class CanvasView {
     );
     this.scale = scale;
     this.stage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+    this.free?.update();
     if (this.editing) this.#positionFormatBar();
   }
 
@@ -222,13 +232,21 @@ export class CanvasView {
     this.host.addEventListener('drop', (e) => this.#onDrop(e));
   }
 
+  // A click on the selected block's text starts editing it.
+  editIfPossible(id, event) {
+    const hit = ops.findBlock(this.editor.deck, id);
+    if (hit && !hit.block.locked && this.#isEditable(id)) this.startEdit(id, { event });
+  }
+
   #onPointerDown(e) {
     if (e.button !== 0) return;
     const target = e.target;
+    if (target.closest('.ed-overlay') && !target.closest('.ed-marquee')) return; // handles run their own gestures
     if (this.editing) {
       if (this.editing.el.contains(target)) return; // caret placement inside the text
       this.finishEdit();
     }
+    if (this.free.pointerDown(e)) return;
     const emptySection = target.closest('.ed-section-empty');
     if (emptySection) {
       const container = ops.findBlock(this.editor.deck, emptySection.dataset.container)?.block;
@@ -262,7 +280,10 @@ export class CanvasView {
 
   #onDoubleClick(e) {
     const blockEl = e.target.closest('.sp-block');
-    if (!blockEl) return;
+    if (!blockEl) {
+      if (this.free.active && !e.target.closest('.ed-overlay')) this.editor.addTextAt(this.free.pointOf(e));
+      return;
+    }
     const hit = ops.findBlock(this.editor.deck, blockEl.dataset.block);
     const keys = hit ? ops.imageKeys(hit.block) : [];
     if (keys.length === 1) this.editor.pickImage(hit.block.id, keys[0]);

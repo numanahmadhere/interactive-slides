@@ -39,6 +39,17 @@ export function makeContext({ deck, slide, mode = 'present', resolveAsset, sessi
   return ctx;
 }
 
+// Free-form placement: absolute on the canvas, in slide pixels.
+export function applyFrame(el, f) {
+  const st = el.style;
+  st.position = 'absolute';
+  st.left = `${f.x}px`;
+  st.top = `${f.y}px`;
+  st.width = `${f.w}px`;
+  st.height = f.h ? `${f.h}px` : '';
+  st.transform = f.r ? `rotate(${f.r}deg)` : '';
+}
+
 // opts.reveal: false ignores `reveal` on these blocks (inside tabs and the like,
 // where a slide-level step would hide something the audience cannot find).
 export function renderBlock(block, ctx, { reveal = true } = {}) {
@@ -49,6 +60,10 @@ export function renderBlock(block, ctx, { reveal = true } = {}) {
     'data-type': block.type,
     'data-step': reveal ? block.reveal || undefined : undefined,
   });
+  if (block.hidden && ctx.mode !== 'edit') wrap.hidden = true;
+  if (block.hidden) wrap.dataset.hidden = 'true';
+  if (block.locked) wrap.dataset.locked = 'true';
+  if (block.frame) applyFrame(wrap, block.frame);
   if (!def) {
     wrap.append(h('div', { class: 'sp-block__unknown', text: `Unsupported block: ${block.type}` }));
     return wrap;
@@ -92,6 +107,7 @@ export function renderSlide(deck, slide, { mode = 'present', resolveAsset, index
     if (slot.layer !== undefined) slotEl.style.zIndex = String(slot.layer);
     if (slot.v) slotEl.style.justifyContent = V_ALIGN[slot.v];
     ctx.renderBlocks(slide.blocks.filter((b) => b.slot === slot.id), slotEl);
+    if (layout.free) slotEl.classList.add('sp-free');
     el.append(slotEl);
   }
   addBackground(el, deck, slide, ctx);

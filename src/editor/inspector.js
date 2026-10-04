@@ -57,7 +57,7 @@ export class Inspector {
   }
 
   sync({ rebuild = true, selectionChanged = false } = {}) {
-    const { blockId } = this.editor.selection;
+    const blockId = this.editor.selectedIds.length > 0;
     if (selectionChanged) {
       if (blockId) this.tab = 'block';
       else if (this.tab === 'block') this.tab = 'slide';
@@ -95,6 +95,7 @@ export class Inspector {
 
   #blockTab() {
     const { deck, selection } = this.editor;
+    if (this.editor.selectedIds.length > 1) return [this.#multiPanel()];
     const hit = ops.findBlock(deck, selection.blockId);
     if (!hit) return [empty('Select a block on the slide to change its settings.')];
     const { block } = hit;
@@ -122,6 +123,7 @@ export class Inspector {
     }
 
     const placement = section('Placement');
+    if (hit.parent === null && getLayout(hit.slide.layout).free) placement.append(...this.#framePanel(block));
     const parentSpec = hit.parent && getBlock(hit.parent.block.type)?.container;
     if (!hit.parent || parentSpec?.revealChildren) {
       placement.append(field(
@@ -132,7 +134,7 @@ export class Inspector {
     }
     if (hit.parent === null) {
       const layout = getLayout(hit.slide.layout);
-      if (layout.slots.length > 1) {
+      if (layout.slots.length > 1 && !layout.free) {
         placement.append(field('Slot', select({
           options: layout.slots.map((s) => ({ value: s.id, label: s.label })),
           value: block.slot,
@@ -145,6 +147,56 @@ export class Inspector {
       onClick: (e, el) => this.editor.openBlockMenu(el, { afterBlockId: id }, { exclude: this.editor.excludedInside(hit.parent?.block) }),
     }));
     return [settings, placement];
+  }
+
+  // Position and size as numbers, layer order, lock and hide: the precise side of dragging.
+  #framePanel(block) {
+    const ed = this.editor;
+    const id = block.id;
+    const f = block.frame;
+    const box = ed.canvas.free.boxOf(block);
+    const num = (label, key, value, min, max) => field(label, numberInput({
+      value: Math.round(value), min, max,
+      onInput: (n) => ed.setFrameField(id, { [key]: n }),
+    }));
+    const row = h('div', { class: 'ed-grid2' },
+      num('X', 'x', f.x, -6000, 6000), num('Y', 'y', f.y, -6000, 6000),
+      num('Width', 'w', f.w, 8, 6000), f.h ? num('Height', 'h', box.h, 8, 6000) : null);
+    const layers = h('div', { class: 'ed-actions' },
+      button({ icon: 'front', label: 'Bring to front', iconOnly: true, onClick: () => ed.arrangeSelection('front') }),
+      button({ icon: 'up', label: 'Bring forward', iconOnly: true, onClick: () => ed.arrangeSelection('forward') }),
+      button({ icon: 'down', label: 'Send backward', iconOnly: true, onClick: () => ed.arrangeSelection('backward') }),
+      button({ icon: 'back', label: 'Send to back', iconOnly: true, onClick: () => ed.arrangeSelection('back') }),
+      button({ icon: block.locked ? 'unlock' : 'lock', label: block.locked ? 'Unlock' : 'Lock position', iconOnly: true, onClick: () => ed.setLocked(!block.locked) }),
+      button({ icon: block.hidden ? 'eye' : 'eye-off', label: block.hidden ? 'Show block' : 'Hide block', iconOnly: true, onClick: () => ed.setHidden(!block.hidden) }),
+    );
+    return [row, field('Order and lock', layers)];
+  }
+
+  // Several blocks selected: line them up, spread them out, make them the same size.
+  #multiPanel() {
+    const ed = this.editor;
+    const n = ed.selectedIds.length;
+    const row = (...buttons) => h('div', { class: 'ed-actions' }, ...buttons);
+    const a = (mode, iconName, label) => button({ icon: iconName, label, iconOnly: true, onClick: () => ed.alignSelection(mode) });
+    return section(`${n} blocks selected`,
+      field('Align', row(
+        a('left', 'align-left', 'Align left'), a('center', 'align-center', 'Align centres'), a('right', 'align-right', 'Align right'),
+        a('top', 'align-top', 'Align top'), a('middle', 'align-middle', 'Align middles'), a('bottom', 'align-bottom', 'Align bottom'))),
+      field('Spread', row(
+        button({ icon: 'dist-h', label: 'Space evenly across', iconOnly: true, disabled: n < 3, onClick: () => ed.distributeSelection('x') }),
+        button({ icon: 'dist-v', label: 'Space evenly down', iconOnly: true, disabled: n < 3, onClick: () => ed.distributeSelection('y') }))),
+      field('Match size', row(
+        button({ label: 'Width', variant: 'sm', onClick: () => ed.matchSelection('w') }),
+        button({ label: 'Height', variant: 'sm', onClick: () => ed.matchSelection('h') }),
+        button({ label: 'Both', variant: 'sm', onClick: () => ed.matchSelection('both') }))),
+      field('Order and lock', row(
+        button({ icon: 'front', label: 'Bring to front', iconOnly: true, onClick: () => ed.arrangeSelection('front') }),
+        button({ icon: 'back', label: 'Send to back', iconOnly: true, onClick: () => ed.arrangeSelection('back') }),
+        button({ icon: 'lock', label: 'Lock position', iconOnly: true, onClick: () => ed.setLocked(true) }),
+        button({ icon: 'copy', label: 'Duplicate', iconOnly: true, onClick: () => ed.duplicateSelection() }),
+        button({ icon: 'trash', label: 'Delete', iconOnly: true, variant: 'danger', onClick: () => ed.deleteSelection() }))),
+      h('p', { class: 'ed-hint', text: 'Arrow keys nudge the selection. Hold Shift to move further.' }));
   }
 
   #fieldControl(block, f, def) {
@@ -302,8 +354,11 @@ export class Inspector {
       field('Layout', select({
         options: listLayouts().map((l) => ({ value: l.id, label: l.name })),
         value: slide.layout,
-        onChange: (value) => this.#rebuilding(ops.setSlideLayout(this.editor.deck, id, value)),
-      })),
+        onChange: (value) => {
+          if (value === 'free') this.editor.convertSlideToFree();
+          else this.#rebuilding(ops.setSlideLayout(this.editor.deck, id, value));
+        },
+      }), layout.free ? 'Drag blocks anywhere. Choosing another layout snaps them into its columns.' : 'Fixed layouts keep blocks in columns. Choose Free-form to place them anywhere.'),
       field('Transition', select({
         options: [{ value: '', label: `Deck default (${TRANSITION_LABELS[deck.transition]})` }, ...TRANSITIONS.map((t) => ({ value: t, label: TRANSITION_LABELS[t] }))],
         value: slide.transition ?? '',

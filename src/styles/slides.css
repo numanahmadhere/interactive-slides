@@ -976,3 +976,11 @@ button.sp-poll__row:focus-visible { outline: 5px solid var(--sp-accent-text); ou
 .sp-poll__row.is-top .sp-poll__pct { color: var(--sp-accent-text); }
 .sp-poll__text { flex: 1; min-width: 0; }
 .sp-poll__total { margin: 0; color: var(--sp-muted); font-size: 30px; }
+
+/* Free-form slides: the slot is the whole canvas and blocks position themselves. */
+.sp-slot.sp-free { position: absolute; inset: 0; display: block; overflow: hidden; }
+.sp-free > .sp-block { box-sizing: border-box; }
+.sp-free > .sp-block[data-type='image'],
+.sp-free > .sp-block[data-type='embed'] { display: flex; flex-direction: column; }
+.sp-free > .sp-block[style*='height'] > * { max-height: 100%; }
+.sp-free > .sp-block[style*='height'][data-type='image'] { overflow: hidden; }

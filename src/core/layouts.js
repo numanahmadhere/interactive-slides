@@ -9,6 +9,19 @@ const SLOT = (id, label, extra = {}) => ({ id, label, ...extra });
 
 export const LAYOUTS = [
   {
+    // Free-form: every block carries its own frame {x, y, w, h?, r?} on the canvas.
+    id: 'free',
+    name: 'Free-form canvas',
+    tone: 'default',
+    free: true,
+    grid: { areas: [['free']], columns: '1fr', rows: '1fr', gap: '0' },
+    pad: '0',
+    slots: [SLOT('free', 'Canvas', { pad: '0' })],
+    starter: () => [
+      { slot: 'free', type: 'heading', props: { text: 'Slide title', level: 2 }, frame: { x: 128, y: 96, w: 1664 } },
+    ],
+  },
+  {
     id: 'title',
     name: 'Title',
     tone: 'default',
