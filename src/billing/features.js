@@ -29,6 +29,7 @@ export function highlights(id) {
   if (plan.brand && !below.brand) lines.push('Your own logo, colours and font');
   if (plan.csv && !below.csv) lines.push('Download results as a spreadsheet');
   if (plan.reports && !below.reports) lines.push('Save session reports on your device');
+  if (plan.teamSeats && plan.teamSeats !== below.teamSeats) lines.push(below.teamSeats ? `Team workspace seats raised to ${plan.teamSeats}` : `Team workspace for ${plan.teamSeats} people: shared decks, comments, shared brand`);
   if (plan.selfPaced && !below.selfPaced) lines.push('Self-paced courses with completion list and certificates');
   if (plan.leaderboard && !below.leaderboard) lines.push('Timed quizzes with names, teams and a leaderboard');
   const newExports = plan.exports.filter((e) => !below.exports.includes(e));

@@ -13,22 +13,22 @@ export const PLANS = {
   free: {
     id: 'free', name: 'Free', blurb: 'Build, present and try live questions.',
     cloudDecks: 3, livePhones: 25, kinds: ['poll', 'quiz', 'rating'],
-    exports: ['json', 'png'], brand: false, csv: false, leaderboard: false, reports: false, selfPaced: false, themes: ['densight-dark', 'densight-light'],
+    exports: ['json', 'png'], brand: false, csv: false, leaderboard: false, reports: false, selfPaced: false, teamSeats: 0, themes: ['densight-dark', 'densight-light'],
   },
   starter: {
     id: 'starter', name: 'Starter', blurb: 'For regular workshops and talks.',
     cloudDecks: 25, livePhones: 100, kinds: ['poll', 'quiz', 'rating', ...PAID_KINDS],
-    exports: ['json', 'png', 'html', 'pdf'], brand: true, csv: true, leaderboard: true, reports: true, selfPaced: true, themes: ['densight-dark', 'densight-light', 'paper', 'midnight'],
+    exports: ['json', 'png', 'html', 'pdf'], brand: true, csv: true, leaderboard: true, reports: true, selfPaced: true, teamSeats: 0, themes: ['densight-dark', 'densight-light', 'paper', 'midnight'],
   },
   pro: {
     id: 'pro', name: 'Pro', blurb: 'For trainers and speakers who present every week.',
     cloudDecks: 100, livePhones: 500, kinds: ['poll', 'quiz', 'rating', ...PAID_KINDS],
-    exports: ['json', 'png', 'html', 'pdf', 'pptx'], brand: true, csv: true, leaderboard: true, reports: true, selfPaced: true, themes: ['densight-dark', 'densight-light', 'paper', 'midnight'],
+    exports: ['json', 'png', 'html', 'pdf', 'pptx'], brand: true, csv: true, leaderboard: true, reports: true, selfPaced: true, teamSeats: 5, themes: ['densight-dark', 'densight-light', 'paper', 'midnight'],
   },
   advanced: {
     id: 'advanced', name: 'Advanced', blurb: 'For large rooms and organisations.',
     cloudDecks: 1000, livePhones: 1000, kinds: ['poll', 'quiz', 'rating', ...PAID_KINDS],
-    exports: ['json', 'png', 'html', 'pdf', 'pptx'], brand: true, csv: true, leaderboard: true, reports: true, selfPaced: true, themes: ['densight-dark', 'densight-light', 'paper', 'midnight'],
+    exports: ['json', 'png', 'html', 'pdf', 'pptx'], brand: true, csv: true, leaderboard: true, reports: true, selfPaced: true, teamSeats: 25, themes: ['densight-dark', 'densight-light', 'paper', 'midnight'],
   },
 };
 
@@ -55,6 +55,7 @@ export const canBrand = (plan) => getPlan(plan).brand;
 export const canCsv = (plan) => getPlan(plan).csv;
 export const canLeaderboard = (plan) => getPlan(plan).leaderboard;
 export const canSelfPace = (plan) => getPlan(plan).selfPaced;
+export const canTeam = (plan) => getPlan(plan).teamSeats > 0;
 export const canReports = (plan) => getPlan(plan).reports;
 export const livePhones = (plan) => getPlan(plan).livePhones;
 export const cloudDeckLimit = (plan) => getPlan(plan).cloudDecks;

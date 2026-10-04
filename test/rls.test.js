@@ -234,6 +234,8 @@ test('the deck limits in the database match the plan table in the app', async ()
   for (const [id, plan] of Object.entries(PLANS)) {
     const [{ n }] = await asService('select deck_limit($1) as n', [id]);
     assert.equal(n, plan.cloudDecks, id);
+    const [{ seats }] = await asService('select team_seats($1) as seats', [id]);
+    assert.equal(seats, plan.teamSeats, `${id} team seats`);
   }
 });
 
@@ -322,4 +324,89 @@ test('course completions: visitors can add one for a shared deck only, and only 
   assert.equal((await record(null, T, 'Late'))[0].ok, false, 'stopped sharing');
   await as(A, 'delete from decks where id = $1', [deck.id]);
   assert.equal((await db.query('select count(*)::int as n from completions')).rows[0].n, 0, 'deleting the deck deletes its list');
+});
+
+// ---- team workspaces ------------------------------------------------------------------
+const C = '33333333-3333-3333-3333-333333333333';
+
+test('only a Pro or Advanced plan can create a team; free and Starter are refused', async () => {
+  await db.query(`insert into auth.users (id, email) values ($1, 'c@example.test') on conflict do nothing`, [C]);
+  await db.query('delete from subscriptions where user_id = $1', [A]); // earlier tests left a plan on this account
+  assert.match((await as(A, `select create_team('Nope') as id`)).error ?? '', /team_needs_plan/);
+  await db.query(`insert into subscriptions (user_id, plan, status) values ($1, 'starter', 'active') on conflict (user_id) do update set plan = 'starter', status = 'active'`, [A]);
+  assert.match((await as(A, `select create_team('Nope') as id`)).error ?? '', /team_needs_plan/);
+  await db.query(`update subscriptions set plan = 'pro' where user_id = $1`, [A]);
+  assert.match((await as(A, `select create_team('   ') as id`)).error ?? '', /team_needs_name/);
+  const [t] = await as(A, `select create_team('Design team') as id`);
+  assert.ok(t.id);
+  assert.deepEqual((await as(A, 'select role from team_members where team_id = $1', [t.id])).map((r) => r.role), ['owner']);
+  assert.ok((await as(B, `insert into teams (name, owner) values ('self-made', $1)`, [B])).error, 'no direct inserts');
+  assert.ok((await as(B, `insert into team_members (team_id, user_id, role) values ($1, $2, 'owner')`, [t.id, B])).error, 'no adding yourself');
+  assert.deepEqual(await as(B, 'select * from teams'), [], 'outsiders see nothing');
+});
+
+test('invites: owner makes a link, one person uses it, seats are limited by the owner\'s plan', async () => {
+  const [team] = await as(A, `select id from teams where name = 'Design team'`);
+  assert.match((await as(B, 'select create_team_invite($1) as t', [team.id])).error ?? '', /not_team_owner/);
+  const [{ t: token }] = await as(A, 'select create_team_invite($1) as t', [team.id]);
+  assert.ok(token.length >= 22);
+  assert.match((await as(B, 'select accept_team_invite($1) as id', ['x'.repeat(30)])).error ?? '', /invite_invalid/);
+  assert.match((await as(null, 'select accept_team_invite($1) as id', [token])).error ?? '', /permission denied|not signed in/i);
+  assert.equal((await as(B, 'select accept_team_invite($1) as id', [token]))[0].id, team.id);
+  assert.match((await as(C, 'select accept_team_invite($1) as id', [token])).error ?? '', /invite_invalid/, 'a link works once');
+  assert.deepEqual((await as(B, 'select user_id from team_members where team_id = $1 order by role', [team.id])).length, 2, 'a member sees the roster');
+  assert.equal((await as(B, 'select name from teams'))[0].name, 'Design team');
+  assert.ok((await as(B, `update teams set name = 'Mine' where id = $1 returning id`, [team.id])).length === 0, 'a member cannot rename it');
+  // seats: Pro allows five
+  await db.query(`insert into auth.users (id, email) select gen_random_uuid(), 'u' || g || '@example.test' from generate_series(1, 4) g`);
+  for (const row of (await db.query(`select id from auth.users where email like 'u%@example.test'`)).rows) {
+    await db.query(`insert into team_members (team_id, user_id) values ($1, $2)`, [team.id, row.id]);
+  }
+  const [{ t: t2 }] = await as(A, 'select create_team_invite($1) as t', [team.id]);
+  assert.match((await as(C, 'select accept_team_invite($1) as id', [t2])).error ?? '', /team_full/);
+  await db.query(`delete from team_members where team_id = $1 and email like 'u%@example.test'`, [team.id]);
+});
+
+test('team decks: members edit them, only the maker can delete, share or move them', async () => {
+  const [team] = await as(A, `select id from teams where name = 'Design team'`);
+  const [deck] = await as(A, `insert into decks (title, data, team_id) values ('Team deck', '{"v":1}', $1) returning id`, [team.id]);
+  assert.equal((await as(B, 'select title from decks where id = $1', [deck.id]))[0].title, 'Team deck', 'a member can open it');
+  assert.deepEqual(await as(C, 'select title from decks where id = $1', [deck.id]), [], 'an outsider cannot');
+  await as(B, `update decks set data = '{"v":2}', share_token = $2, team_id = null where id = $1`, [deck.id, 'S'.repeat(22)]);
+  const [after] = await as(A, 'select data, share_token, team_id from decks where id = $1', [deck.id]);
+  assert.deepEqual(after.data, { v: 2 }, 'the edit went through');
+  assert.equal(after.share_token, null, 'but a member cannot publish a link');
+  assert.equal(after.team_id, team.id, 'or take it out of the team');
+  assert.deepEqual(await as(B, 'delete from decks where id = $1 returning id', [deck.id]), [], 'a member cannot delete it');
+  assert.match((await as(C, `insert into decks (title, data, team_id) values ('Sneak', '{}', $1)`, [team.id])).error ?? '', /not_in_team/, 'cannot file a deck into a team you are not in');
+});
+
+test('comments: team members read and write, mark done, and only the author edits the words', async () => {
+  const [team] = await as(A, `select id from teams where name = 'Design team'`);
+  const [deck] = await as(A, `select id from decks where title = 'Team deck'`);
+  assert.deepEqual(await as(C, 'select * from deck_comments'), []);
+  assert.ok((await as(C, `insert into deck_comments (deck_id, slide_id, body) values ($1, 's1', 'hi')`, [deck.id])).error, 'outsiders cannot comment');
+  const [c1] = await as(B, `insert into deck_comments (deck_id, slide_id, author_name, body) values ($1, 's1', 'Bo', 'Make this bigger') returning id`, [deck.id]);
+  assert.ok((await as(B, `insert into deck_comments (deck_id, slide_id, author, body) values ($1, 's1', $2, 'forged') returning id`, [deck.id, A])).error, 'cannot write as someone else');
+  assert.equal((await as(A, 'select body from deck_comments where id = $1', [c1.id]))[0].body, 'Make this bigger');
+  await as(A, `update deck_comments set resolved = true, body = 'edited by owner' where id = $1`, [c1.id]);
+  const [after] = await as(B, 'select body, resolved from deck_comments where id = $1', [c1.id]);
+  assert.deepEqual(after, { body: 'Make this bigger', resolved: true });
+  assert.deepEqual(await as(C, 'delete from deck_comments returning id'), []);
+  assert.equal((await as(A, 'delete from deck_comments where id = $1 returning id', [c1.id])).length, 1, 'the deck owner can remove any comment');
+  void team;
+});
+
+test('leaving and removing: the owner removes people, people leave, decks go back to their makers', async () => {
+  const [team] = await as(A, `select id from teams where name = 'Design team'`);
+  const [bdeck] = await as(B, `insert into decks (title, data, team_id) values ('Bo deck', '{}', $1) returning id`, [team.id]);
+  assert.equal((await as(C, 'select remove_team_member($1, $2) as ok', [team.id, B]))[0].ok, false, 'a stranger cannot remove anyone');
+  assert.equal((await as(A, 'select remove_team_member($1, $2) as ok', [team.id, A]))[0].ok, false, 'the owner cannot be removed');
+  assert.equal((await as(A, 'select remove_team_member($1, $2) as ok', [team.id, B]))[0].ok, true);
+  assert.deepEqual(await as(A, 'select * from decks where id = $1', [bdeck.id]), [], 'their deck is no longer in the team');
+  assert.equal((await as(B, 'select team_id from decks where id = $1', [bdeck.id]))[0].team_id, null, 'it is theirs alone again');
+  assert.deepEqual(await as(B, 'select * from teams'), [], 'and they see no team');
+  const [{ t }] = await as(A, 'select create_team_invite($1) as t', [team.id]);
+  await as(B, 'select accept_team_invite($1)', [t]);
+  assert.equal((await as(B, 'select remove_team_member($1, $2) as ok', [team.id, B]))[0].ok, true, 'anyone can leave');
 });
