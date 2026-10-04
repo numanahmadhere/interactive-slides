@@ -265,3 +265,14 @@ test('the thank-you page exists, is kept out of search, and sends people to thei
   assert.ok(site['robots.txt'].includes('Disallow: /welcome/'));
   assert.ok(!site['sitemap.xml'].includes('welcome'));
 });
+
+test('the client logos are real files, and the SVGs carry no scripts', () => {
+  const home = buildSite()['index.html'];
+  const files = [...home.matchAll(/src="\/clients\/([\w.]+)"/g)].map((m) => m[1]);
+  assert.ok(files.length >= 7 && files.includes('uchicago.svg') && files.includes('utaustin.svg'));
+  for (const f of files) {
+    assert.ok(existsSync(new URL(`../site/clients/${f}`, import.meta.url)), f);
+    if (f.endsWith('.svg')) assert.ok(!/<script|\son\w+=|javascript:/i.test(readFileSync(new URL(`../site/clients/${f}`, import.meta.url), 'utf8')), f);
+  }
+  assert.ok(home.includes('>Trusted by<'));
+});

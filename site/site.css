@@ -416,7 +416,7 @@ kbd { padding: 1px 7px; border: 1px solid var(--border-strong); border-bottom-wi
 .clients__label { margin: 0 0 22px; text-align: center; color: var(--muted); font-size: 14.5px; }
 .clients__label a { color: inherit; }
 .clients__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 20px clamp(28px, 5vw, 64px); margin: 0; padding: 0; list-style: none; }
-.clients__row img { display: block; width: auto; max-width: 150px; object-fit: contain; filter: grayscale(1); opacity: .65; transition: opacity .2s ease, filter .2s ease; }
+.clients__row img { display: block; width: auto; max-width: 150px; object-fit: contain; filter: grayscale(1); opacity: .75; transition: opacity .2s ease, filter .2s ease; }
 .clients__row img:hover { filter: none; opacity: 1; }
 :root[data-theme='dark'] .clients__row img { padding: 6px 10px; border-radius: 8px; background: #fff; opacity: .85; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .clients__row img { padding: 6px 10px; border-radius: 8px; background: #fff; opacity: .85; } }

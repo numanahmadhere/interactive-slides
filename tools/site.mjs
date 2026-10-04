@@ -170,13 +170,15 @@ const home = () => layout({
 </div></section>
 
 <section id="clients" class="clients"><div class="wrap">
-<p class="clients__label reveal">Organisations our team at <a href="${COMPANY}">Densight Labs</a> has worked with</p>
+<p class="clients__label reveal">Trusted by</p>
 <ul class="clients__row reveal" aria-label="Client logos">
-<li><img src="/clients/agakhan.webp" alt="Aga Khan University Hospital" width="262" height="150" loading="lazy" style="height:40px"></li>
+<li><img src="/clients/uchicago.svg" alt="University of Chicago" width="250" height="63" loading="lazy" style="height:34px"></li>
+<li><img src="/clients/utaustin.svg" alt="The University of Texas at Austin" width="350" height="100" loading="lazy" style="height:44px"></li>
+<li><img src="/clients/agakhan.webp" alt="Aga Khan University Hospital" width="262" height="150" loading="lazy" style="height:54px"></li>
 <li><img src="/clients/loreal.webp" alt="L&rsquo;Or&eacute;al Pakistan" width="400" height="188" loading="lazy" style="height:34px"></li>
 <li><img src="/clients/alyousif.webp" alt="Al Yousif Group" width="300" height="129" loading="lazy" style="height:40px"></li>
 <li><img src="/clients/pseb.webp" alt="Pakistan Software Export Board" width="300" height="143" loading="lazy" style="height:40px"></li>
-<li><img src="/clients/vision2030.webp" alt="Vision 2030" width="200" height="150" loading="lazy" style="height:40px"></li>
+<li><img src="/clients/vision2030.webp" alt="Vision 2030" width="200" height="150" loading="lazy" style="height:58px"></li>
 </ul>
 </div></section>
 
