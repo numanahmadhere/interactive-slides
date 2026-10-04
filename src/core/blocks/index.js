@@ -36,6 +36,10 @@ import './rating.js';
 import './ranking.js';
 import './qna.js';
 import './leaderboard.js';
+import './table.js';
+import './matrix.js';
+import './reactions.js';
+import './pin.js';
 import './group.js';
 
 export * from './registry.js';

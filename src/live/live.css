@@ -81,3 +81,10 @@
 .lv-score { margin: 12px 0 0; padding: 10px 14px; border: 2px solid var(--lv-control); border-radius: 12px; font-weight: 650; }
 .lv-score.is-right { border-color: var(--lv-accent); }
 .lv-score.is-late, .lv-score.is-wrong { color: var(--lv-muted); }
+
+/* Pin on image */
+.lv-pin { position: relative; display: block; width: 100%; padding: 0; border: 1px solid var(--lv-border); border-radius: 12px; overflow: hidden; background: var(--lv-surface); cursor: crosshair; touch-action: manipulation; }
+.lv-pin img { display: block; width: 100%; height: 100%; object-fit: fill; pointer-events: none; user-select: none; }
+.lv-pin__dot, .lv-pin__mine { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; pointer-events: none; }
+.lv-pin__dot { background: color-mix(in srgb, var(--lv-accent) 45%, transparent); border: 1px solid rgba(255, 255, 255, .85); }
+.lv-pin__mine { background: var(--lv-accent); border: 3px solid var(--lv-surface); box-shadow: 0 0 0 2px var(--lv-accent); width: 18px; height: 18px; margin: -9px 0 0 -9px; }

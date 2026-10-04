@@ -8,7 +8,7 @@ import { uid } from '../core/util.js';
 import { stripTags } from '../core/util.js';
 import { collectPrompts, collectKeys } from './prompts.js';
 import {
-  Tally, audienceChannel, remoteChannel, parseVote, parseCommand, parseHello, parseText, parseAsk, CHOICE_KINDS,
+  Tally, LIMITS, audienceChannel, remoteChannel, parseVote, parseCommand, parseHello, parseText, parsePin, parseAsk, CHOICE_KINDS,
 } from './protocol.js';
 import { Boards } from './boards.js';
 import { resultsCsv } from './results.js';
@@ -29,6 +29,8 @@ export class LiveHost {
   #prompts = [];
   #tally = new Tally();
   #boards = new Boards();
+  #pins = new Map();      // prompt id -> Map(cid -> [x, y]) in thousandths of the picture
+  #images = new Map();    // prompt id -> { image, ratio }: the thumbnail phones tap on
   #known = new Map(); // every prompt shown during the session, for the results export
   #seen = new Map(); // cid -> last time we heard from that phone
   #subs = new Set();
@@ -165,7 +167,7 @@ export class LiveHost {
     const p = this.#player;
     const all = p ? collectPrompts(p.deck.slides[p.state.slide]) : [];
     this.#locked = new Set(all.filter((x) => !canUseKind(this.plan, x.kind)).map((x) => x.id));
-    this.#prompts = all.filter((x) => !this.#locked.has(x.id));
+    this.#prompts = all.filter((x) => !this.#locked.has(x.id)).map((x) => (x.kind === 'pin' ? { ...x, ...(this.#images.get(x.id) ?? {}) } : x));
     this.#keys = p ? collectKeys(p.deck.slides[p.state.slide]) : new Map();
     for (const prompt of this.#prompts) {
       this.#known.set(prompt.id, { prompt, slide: p.state.slide + 1 });
@@ -193,6 +195,7 @@ export class LiveHost {
     this.#tally.reset(id);
     if (id === undefined) { this.#board.reset(); this.#askedAt.clear(); } else { this.#board.forget(id); this.#askedAt.delete(id); }
     this.#boards.reset(id);
+    if (id === undefined) this.#pins.clear(); else this.#pins.delete(id);
     this.#changed();
   }
 
@@ -201,6 +204,27 @@ export class LiveHost {
   responses = (id) => this.#boards.responses(id);
   questions = (id, opts) => this.#boards.questions(id, opts);
   ranking = (id, n) => this.#tally.scores(id, n);
+
+  // Pins: where people tapped on a picture. The block sends a small thumbnail of its image for phones to tap on.
+  pins = (id) => [...(this.#pins.get(id)?.values() ?? [])].slice(-LIMITS.pins);
+  pin = (id, x, y) => this.#pin(id, HOST_CID, x, y);
+  setImage = (id, image, ratio) => {
+    const prev = this.#images.get(id);
+    if (prev?.image === image) return;
+    this.#images.set(id, { image, ratio });
+    this.#refreshPrompts();
+    this.#publishSoon();
+  };
+
+  #pin(id, cid, x, y) {
+    if (!this.#prompts.some((p) => p.id === id && p.kind === 'pin')) return false;
+    let byVoter = this.#pins.get(id);
+    if (!byVoter) this.#pins.set(id, (byVoter = new Map()));
+    if (!byVoter.has(cid) && byVoter.size >= LIMITS.voters) return false;
+    byVoter.set(cid, [x, y]);
+    this.#changed();
+    return true;
+  }
 
   // The presenter taking part from their own screen counts as one person.
   submitText = (id, text) => {
@@ -243,7 +267,7 @@ export class LiveHost {
 
   // Has anyone answered anything yet? (Used to offer saving a report before the session ends.)
   get hasAnswers() {
-    return [...this.#known.values()].some(({ prompt }) => this.#tally.voters(prompt.id) > 0 || this.#boards.words(prompt.id).length > 0 || this.#boards.responses(prompt.id).length > 0 || this.#boards.questions(prompt.id).length > 0);
+    return [...this.#known.values()].some(({ prompt }) => this.#tally.voters(prompt.id) > 0 || this.#boards.words(prompt.id).length > 0 || this.#boards.responses(prompt.id).length > 0 || this.#boards.questions(prompt.id).length > 0 || (this.#pins.get(prompt.id)?.size ?? 0) > 0);
   }
 
   // The whole session as a report object (see report.js).
@@ -257,6 +281,7 @@ export class LiveHost {
       known: [...this.#known.values()],
       tally: this.#tally,
       boards: this.#boards,
+      pins: (id) => this.pins(id),
       players: this.#board.players(),
       teams: this.#board.teams(),
     });
@@ -264,7 +289,7 @@ export class LiveHost {
 
   // Everything answered so far, as a CSV the presenter can download. Nothing leaves this page.
   exportResults() {
-    return resultsCsv([...this.#known.values()], this.#tally, this.#boards, this.title);
+    return resultsCsv([...this.#known.values()], this.#tally, this.#boards, this.title, (id) => this.pins(id));
   }
 
   get audienceSize() {
@@ -298,6 +323,13 @@ export class LiveHost {
       const outcome = text.kind === 'cloud' ? this.#boards.addEntry(text.id, text.cid, text.text, text.limit, mode) : this.#boards.addResponse(text.id, text.cid, text.text, text.limit, mode);
       this.#tell(text.cid, text.id, outcome);
       if (outcome === 'added' || outcome === 'pending') this.#changed();
+      return;
+    }
+    const pin = parsePin(raw, this.#prompts);
+    if (pin) {
+      if (!this.#admit(pin.cid)) return;
+      this.#touch(pin.cid);
+      this.#pin(pin.id, pin.cid, pin.x, pin.y);
       return;
     }
     const ask = parseAsk(raw, this.#prompts);
@@ -392,6 +424,7 @@ export class LiveHost {
       else if (p.kind === 'cloud') data[p.id] = this.#boards.words(p.id);
       else if (p.kind === 'open') data[p.id] = this.#boards.responses(p.id);
       else if (p.kind === 'qna') data[p.id] = this.#boards.questions(p.id).slice(0, 100);
+      else if (p.kind === 'pin') data[p.id] = this.pins(p.id);
     }
     const remaining = {};
     for (const p of this.#prompts) {

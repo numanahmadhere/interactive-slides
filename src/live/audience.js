@@ -320,7 +320,34 @@ export function mountAudience(root, { code, config }) {
     return out;
   }
 
+  // Tap a picture to drop a pin. The thumbnail comes from the presenter's page; where you tapped is sent
+  // as thousandths of its width and height.
+  const pinned = new Map();
+  function pinCard(prompt) {
+    const mine = pinned.get(prompt.id);
+    const dots = state.data[prompt.id] ?? [];
+    const field = h('button', { type: 'button', class: 'lv-pin', 'aria-label': `${prompt.question || 'Picture'}. Tap to place your pin.`, style: `aspect-ratio:${prompt.ratio ?? 1.5}` });
+    if (prompt.image) field.append(h('img', { src: prompt.image, alt: '', draggable: 'false' }));
+    else field.classList.add('is-blank');
+    for (const [x, y] of dots) field.append(h('span', { class: 'lv-pin__dot', style: `left:${x / 10}%;top:${y / 10}%` }));
+    if (mine) field.append(h('span', { class: 'lv-pin__mine', style: `left:${mine[0] / 10}%;top:${mine[1] / 10}%` }));
+    field.addEventListener('click', (e) => {
+      const box = field.getBoundingClientRect();
+      const keyboard = e.detail === 0 || !e.clientX; // Enter or Space: drop it in the middle
+      const x = Math.max(0, Math.min(1000, Math.round(keyboard ? 500 : ((e.clientX - box.left) / box.width) * 1000)));
+      const y = Math.max(0, Math.min(1000, Math.round(keyboard ? 500 : ((e.clientY - box.top) / box.height) * 1000)));
+      pinned.set(prompt.id, [x, y]);
+      channel.send({ t: 'pin', cid, id: prompt.id, x, y });
+      sent.add(prompt.id);
+      paint();
+    });
+    const out = h('section', { class: 'lv-card' }, h('h2', { class: 'lv-q', text: prompt.question }), field);
+    out.append(h('p', { class: 'lv-sent', text: mine ? 'Pin placed. Tap somewhere else to move it.' : 'Tap the picture to place your pin.' }));
+    return out;
+  }
+
   function card(prompt) {
+    if (prompt.kind === 'pin') return pinCard(prompt);
     if (prompt.kind === 'rating') return ratingCard(prompt);
     if (prompt.kind === 'ranking') return rankingCard(prompt);
     if (prompt.kind === 'qna') return qnaCard(prompt);

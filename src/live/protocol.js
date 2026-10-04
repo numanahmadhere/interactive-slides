@@ -12,12 +12,14 @@ export const LIMITS = {
   text: 600,
   notes: 4000,
   cid: 40,
+  pinImage: 40000, // characters in the thumbnail phones tap on
+  pins: 300, // dots shown on screen
 };
 
 const COMMANDS = new Set(['next', 'prev', 'first', 'last']);
 
 // What the audience can be asked. Choice kinds have options; the rest take typed answers.
-export const PROMPT_KINDS = ['poll', 'quiz', 'rating', 'ranking', 'cloud', 'open', 'qna'];
+export const PROMPT_KINDS = ['poll', 'quiz', 'rating', 'ranking', 'cloud', 'open', 'qna', 'pin'];
 export const CHOICE_KINDS = new Set(['poll', 'quiz', 'rating', 'ranking']);
 export const TEXT_KINDS = new Set(['cloud', 'open']);
 
@@ -72,12 +74,17 @@ export function cleanPrompt(raw) {
     prompt.high = text(raw.high, 60);
   }
   if (TEXT_KINDS.has(kind)) prompt.limit = int(raw.limit, 1, 5) ?? (kind === 'cloud' ? 3 : 1);
+  if (kind === 'pin') { // the picture phones tap on: a small JPEG the presenter's page made, never a link
+    prompt.image = typeof raw.image === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(raw.image) && raw.image.length <= LIMITS.pinImage ? raw.image : '';
+    prompt.ratio = Number.isFinite(raw.ratio) ? Math.min(5, Math.max(0.2, Math.round(raw.ratio * 100) / 100)) : 1.5;
+  }
   if (kind === 'quiz') prompt.timeLimit = int(raw.timeLimit, 0, 300) ?? 0;
   if (TEXT_KINDS.has(kind) || kind === 'qna') prompt.moderation = ['off', 'filter', 'approve'].includes(raw.moderation) ? raw.moderation : 'filter';
   return prompt;
 }
 
 const cleanWords = (v) => (Array.isArray(v) ? v.slice(0, 80).flatMap((e) => (Array.isArray(e) && typeof e[0] === 'string' && int(e[1], 1, 1_000_000) ? [[e[0].slice(0, 40), e[1]]] : [])) : []);
+const cleanPins = (v) => (Array.isArray(v) ? v.slice(0, LIMITS.pins).flatMap((e) => (Array.isArray(e) && int(e[0], 0, 1000) !== null && int(e[1], 0, 1000) !== null ? [[e[0], e[1]]] : [])) : []);
 const cleanResponses = (v) => (Array.isArray(v) ? v.slice(0, 60).filter((t) => typeof t === 'string').map((t) => t.slice(0, 280)) : []);
 const cleanQuestions = (v) => (Array.isArray(v)
   ? v.slice(0, 100).flatMap((q) => (isObj(q) && typeof q.id === 'string' && q.id.length <= 20 && typeof q.text === 'string'
@@ -103,6 +110,7 @@ export function cleanAudienceState(raw) {
       if (p.kind === 'cloud') data[p.id] = cleanWords(row);
       else if (p.kind === 'open') data[p.id] = cleanResponses(row);
       else if (p.kind === 'qna') data[p.id] = cleanQuestions(row);
+      else if (p.kind === 'pin') data[p.id] = cleanPins(row);
     }
   }
   // Names and teams for the leaderboard, and how many seconds are left on each timed question.
@@ -155,6 +163,16 @@ export function parseText(raw, prompts) {
   const prompt = prompts.find((p) => p.id === raw.id);
   if (!cid || !prompt || !TEXT_KINDS.has(prompt.kind) || typeof raw.text !== 'string') return null;
   return { cid, id: prompt.id, kind: prompt.kind, text: raw.text.slice(0, 400), limit: prompt.limit ?? 1 };
+}
+
+// A tap on a picture, as thousandths of its width and height.
+export function parsePin(raw, prompts) {
+  if (!isObj(raw) || raw.t !== 'pin') return null;
+  const cid = cidOf(raw.cid);
+  const prompt = prompts.find((p) => p.id === raw.id);
+  const x = int(raw.x, 0, 1000);
+  const y = int(raw.y, 0, 1000);
+  return cid && prompt?.kind === 'pin' && x !== null && y !== null ? { cid, id: prompt.id, x, y } : null;
 }
 
 // A new audience question, or an upvote on one.

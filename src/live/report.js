@@ -7,7 +7,7 @@ import { cell } from './results.js';
 const MAX_TEXT_ROWS = 300;
 
 // parts: everything the host knows. See LiveHost.report().
-export function buildReport({ id, title, startedAt, endedAt, participants, known, tally, boards, players, teams }) {
+export function buildReport({ id, title, startedAt, endedAt, participants, known, tally, boards, players, teams, pins = () => [] }) {
   const questions = known.map(({ prompt: p, slide }) => {
     const q = { slide, kind: p.kind, question: p.question };
     if (p.kind === 'poll' || p.kind === 'quiz') {
@@ -30,6 +30,9 @@ export function buildReport({ id, title, startedAt, endedAt, participants, known
     } else if (p.kind === 'open') {
       q.answers = boards.responses(p.id, MAX_TEXT_ROWS);
       q.responses = q.answers.length;
+    } else if (p.kind === 'pin') {
+      q.pins = pins(p.id).slice(0, MAX_TEXT_ROWS);
+      q.responses = q.pins.length;
     } else if (p.kind === 'qna') {
       q.questions = boards.questions(p.id, { includeHidden: false }).slice(0, MAX_TEXT_ROWS);
       q.responses = q.questions.length;
@@ -61,6 +64,7 @@ export function reportCsv(r) {
     } else if (q.words) q.words.forEach(([w, n]) => out.push([...base, w, n]));
     else if (q.answers) q.answers.forEach((a) => out.push([...base, a, 1]));
     else if (q.questions) q.questions.forEach((x) => out.push([...base, x.text, x.votes]));
+    else if (q.pins) q.pins.forEach(([x, y]) => out.push([...base, `${Math.round(x / 10)}% across, ${Math.round(y / 10)}% down`, 1]));
   }
   if (r.players.length) {
     out.push([], ['Rank', 'Name', 'Team', 'Points', 'Questions right', 'Questions answered']);
@@ -83,6 +87,7 @@ export function reportHtml(r) {
     else if (q.counts) body = `<table>${q.counts.map((c, i) => `<tr><td>${i + 1}</td><td class="n">${c}</td></tr>`).join('')}</table>${q.average !== null ? `<p>Average ${q.average}</p>` : ''}`;
     else if (q.words) body = `<p>${q.words.slice(0, 40).map(([w, n]) => `${esc(w)} (${n})`).join(', ') || 'No words.'}</p>`;
     else if (q.answers) body = `<ul>${q.answers.slice(0, 100).map((a) => `<li>${esc(a)}</li>`).join('') || '<li>No answers.</li>'}</ul>`;
+    else if (q.pins) body = `<p>${q.pins.length ? `${q.pins.length} pins placed.` : 'No pins.'}</p>`;
     else if (q.questions) body = `<ol>${q.questions.map((x) => `<li>${esc(x.text)} <span class="n">${x.votes} votes${x.answered ? ', answered' : ''}</span></li>`).join('') || '<li>No questions.</li>'}</ol>`;
     return `<section><h3>${esc(q.question || '(no question text)')}</h3><p class="meta">Slide ${q.slide} &middot; ${esc(q.kind)} &middot; ${q.responses} ${q.responses === 1 ? 'response' : 'responses'}</p>${body}</section>`;
   };

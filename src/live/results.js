@@ -9,10 +9,10 @@ export function cell(value) {
   return /[",\n\r]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
 }
 
-const TYPE_NAMES = { poll: 'Poll', quiz: 'Quiz', rating: 'Rating', ranking: 'Ranking', cloud: 'Word cloud', open: 'Open answers', qna: 'Q&A' };
+const TYPE_NAMES = { poll: 'Poll', quiz: 'Quiz', rating: 'Rating', ranking: 'Ranking', cloud: 'Word cloud', open: 'Open answers', qna: 'Q&A', pin: 'Pin on image' };
 
 // known: [{ prompt, slide }]. Rows are: slide, type, question, answer, count, note.
-export function resultsCsv(known, tally, boards, title = '') {
+export function resultsCsv(known, tally, boards, title = '', pins = () => []) {
   const rows = [['Slide', 'Type', 'Question', 'Answer', 'Count', 'Note']];
   for (const { prompt: p, slide } of known) {
     const base = [slide, TYPE_NAMES[p.kind] ?? p.kind, p.question];
@@ -31,6 +31,8 @@ export function resultsCsv(known, tally, boards, title = '') {
       for (const [word, n] of boards.words(p.id, 500)) rows.push([...base, word, n, '']);
     } else if (p.kind === 'open') {
       for (const text of boards.responses(p.id, 500)) rows.push([...base, text, 1, '']);
+    } else if (p.kind === 'pin') {
+      for (const [x, y] of pins(p.id)) rows.push([...base, `${Math.round(x / 10)}% across, ${Math.round(y / 10)}% down`, 1, '']);
     } else if (p.kind === 'qna') {
       for (const q of boards.questions(p.id, { includeHidden: true })) rows.push([...base, q.text, q.votes, [q.answered ? 'answered' : '', q.hidden ? 'hidden' : ''].filter(Boolean).join(', ')]);
     }

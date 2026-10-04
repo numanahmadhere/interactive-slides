@@ -23,6 +23,8 @@ function fromBlock(block) {
   }
   if (block.type === 'ranking') return { id: block.id, kind: 'ranking', question: clean(p.question), options: p.items.map((o) => clean(o.text)), multi: false };
   if (block.type === 'qna') return { id: block.id, kind: 'qna', question: clean(p.question), options: [], multi: false, moderation: p.moderation };
+  if (block.type === 'reactions') return { id: block.id, kind: 'poll', question: clean(p.question), options: p.options.map((o) => clean(o.text)), multi: false };
+  if (block.type === 'pin') return { id: block.id, kind: 'pin', question: clean(p.question), options: [], multi: false };
   return null;
 }
 

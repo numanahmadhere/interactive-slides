@@ -7,7 +7,7 @@
 export const PLAN_ORDER = ['free', 'starter', 'pro', 'advanced'];
 
 // Question types that need a paid plan to collect answers from a live room.
-export const PAID_KINDS = ['cloud', 'open', 'qna', 'ranking'];
+export const PAID_KINDS = ['cloud', 'open', 'qna', 'ranking', 'pin'];
 
 export const PLANS = {
   free: {

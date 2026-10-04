@@ -52,10 +52,14 @@ const SYNONYMS = {
   rating: 'scale stars score nps satisfaction survey likert',
   ranking: 'order prioritise priorities sort rank vote',
   qna: 'questions ask upvote moderated town hall',
+  table: 'grid rows columns spreadsheet data comparison',
+  matrix: '2x2 quadrant priority impact effort swot grid',
+  reactions: 'hand raise feedback agree slow down emoji react',
+  pin: 'map heatmap tap image click floor plan where',
 };
 
 // Block types whose live answers need a paid plan.
-const PAID_BLOCKS = { wordcloud: 'cloud', 'open-answers': 'open', ranking: 'ranking', qna: 'qna' };
+const PAID_BLOCKS = { wordcloud: 'cloud', 'open-answers': 'open', ranking: 'ranking', qna: 'qna', pin: 'pin' };
 
 export const QUICK_TYPES = ['text', 'image', 'shape', 'quiz', 'poll'];
 
