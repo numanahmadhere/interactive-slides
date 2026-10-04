@@ -2,6 +2,8 @@ import { h, rich } from '../dom.js';
 import { str } from '../util.js';
 import { registerBlock } from './registry.js';
 import { stateOf, isLocked, LOCKED_NOTE } from './shared.js';
+import { MODERATION_FIELD, queueBox, mountQueue } from './moderation.js';
+import { cleanModeration } from '../../live/boards.js';
 
 const SAMPLE = [{ text: 'When will the next release ship?', votes: 12 }, { text: 'Can we see this with our own data?', votes: 7 }];
 
@@ -9,16 +11,16 @@ export default registerBlock({
   type: 'qna',
   label: 'Audience Q&A',
   group: 'Interactive',
-  defaults: () => ({ question: 'Ask us anything' }),
-  normalize: (p) => ({ question: str(p.question, '', 1000) }),
-  fields: [{ type: 'hint', text: 'The audience asks on their phones and upvotes each other\'s questions. The most popular rise to the top. Mark one answered or hide it from the presenter screen.' }],
+  defaults: () => ({ question: 'Ask us anything', moderation: 'filter' }),
+  normalize: (p) => ({ question: str(p.question, '', 1000), moderation: cleanModeration(p.moderation) }),
+  fields: [MODERATION_FIELD, { type: 'hint', text: 'The audience asks on their phones and upvotes each other\'s questions. The most popular rise to the top. Mark one answered or hide it from the presenter screen.' }],
   edit: [{ prop: 'question', selector: '.sp-qa__q', kind: 'rich', placeholder: 'Heading' }],
   render: (block, ctx) => {
     const list = h('ul', { class: 'sp-qa__list' });
     if (ctx.mode === 'edit' || ctx.mode === 'thumb') SAMPLE.forEach((q) => list.append(h('li', { class: 'sp-qa__item' }, h('span', { class: 'sp-qa__votes', text: String(q.votes) }), h('span', { class: 'sp-qa__text', text: q.text }))));
     const root = h('div', { class: 'sp-qa' }, rich('p', { class: 'sp-qa__q' }, block.props.question), list);
     if (ctx.mode === 'present') {
-      root.append(h('p', { class: 'sp-live__count', role: 'status', 'aria-live': 'polite' }));
+      root.append(h('p', { class: 'sp-live__count', role: 'status', 'aria-live': 'polite' }), queueBox());
       root.append(h('form', { class: 'sp-live__try' },
         h('input', { type: 'text', maxlength: '280', 'aria-label': 'Type a question', placeholder: ctx.live ? 'Add a question yourself' : 'Type a question to try it' }),
         h('button', { type: 'submit', class: 'sp-btn sp-btn--outline sp-btn--md', text: 'Ask' })));
@@ -75,7 +77,9 @@ export default registerBlock({
       input.value = '';
       paint();
     });
-    paint();
-    return live?.subscribe(paint);
+    const paintQueue = mountQueue(el, block, live);
+    const all = () => { paint(); paintQueue(); };
+    all();
+    return live?.subscribe(all);
   },
 });

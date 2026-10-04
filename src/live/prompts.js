@@ -16,13 +16,13 @@ function fromBlock(block) {
   if (block.type === 'quiz') {
     return { id: block.id, kind: 'quiz', question: clean(p.question), options: p.choices.map((c) => clean(c.text)), multi: p.mode === 'multiple' };
   }
-  if (block.type === 'wordcloud') return { id: block.id, kind: 'cloud', question: clean(p.question), options: [], multi: false, limit: p.limit };
-  if (block.type === 'open-answers') return { id: block.id, kind: 'open', question: clean(p.question), options: [], multi: false, limit: p.limit };
+  if (block.type === 'wordcloud') return { id: block.id, kind: 'cloud', question: clean(p.question), options: [], multi: false, limit: p.limit, moderation: p.moderation };
+  if (block.type === 'open-answers') return { id: block.id, kind: 'open', question: clean(p.question), options: [], multi: false, limit: p.limit, moderation: p.moderation };
   if (block.type === 'rating') {
     return { id: block.id, kind: 'rating', question: clean(p.question), options: Array.from({ length: p.max }, (_, i) => String(i + 1)), multi: false, low: clean(p.low), high: clean(p.high) };
   }
   if (block.type === 'ranking') return { id: block.id, kind: 'ranking', question: clean(p.question), options: p.items.map((o) => clean(o.text)), multi: false };
-  if (block.type === 'qna') return { id: block.id, kind: 'qna', question: clean(p.question), options: [], multi: false };
+  if (block.type === 'qna') return { id: block.id, kind: 'qna', question: clean(p.question), options: [], multi: false, moderation: p.moderation };
   return null;
 }
 

@@ -1,6 +1,13 @@
 // Free-text answers: word clouds, open responses and an audience Q&A. Pure data
 // structures with hard limits, because everything arrives from phones nobody vets.
 
+import { isProfane } from './profanity.js';
+
+// How a board treats what phones send: off (show everything), filter (drop swearing), approve (hold every
+// entry until the presenter allows it).
+export const MODERATION = ['off', 'filter', 'approve'];
+export const cleanModeration = (m) => (MODERATION.includes(m) ? m : 'filter');
+
 export const BOARD_LIMITS = {
   entry: 40,      // characters in one word-cloud entry
   response: 280,  // characters in one open answer
@@ -35,21 +42,64 @@ export class Boards {
   #open = new Map();      // prompt id -> { cid, text }[]
   #qna = new Map();       // prompt id -> Map(qid -> { id, cid, text, ups:Set, answered, hidden, at })
   #seq = 0;
+  #pending = new Map();  // prompt id -> [{ pid, kind, cid, text, limit }] waiting for the presenter
+  #holdSeq = 0;
 
   // ---- word cloud --------------------------------------------------------------
 
-  addEntry(id, cid, raw, limit = BOARD_LIMITS.perPerson) {
+  // -> 'added' | 'pending' | 'filtered' | 'duplicate' | 'limit' | 'empty'
+  addEntry(id, cid, raw, limit = BOARD_LIMITS.perPerson, { mode = 'filter' } = {}) {
     const word = normalizeEntry(raw);
-    if (!word) return false;
+    if (!word) return 'empty';
+    if (mode !== 'off' && isProfane(word)) return 'filtered';
     let byPerson = this.#cloud.get(id);
     if (!byPerson) this.#cloud.set(id, (byPerson = new Map()));
     const mine = byPerson.get(cid) ?? [];
-    if (mine.length >= Math.min(limit, BOARD_LIMITS.perPerson)) return false;
-    if (mine.includes(word)) return false; // the same word twice from one phone counts once
+    const held = (this.#pending.get(id) ?? []).filter((p) => p.cid === cid);
+    if (mine.length + held.length >= Math.min(limit, BOARD_LIMITS.perPerson)) return 'limit';
+    if (mine.includes(word) || held.some((p) => p.text === word)) return 'duplicate'; // the same word twice from one phone counts once
     let total = 0;
     for (const list of byPerson.values()) total += list.length;
-    if (total >= BOARD_LIMITS.entries) return false;
+    if (total >= BOARD_LIMITS.entries) return 'limit';
+    if (mode === 'approve') return this.#hold(id, { kind: 'cloud', cid, text: word, limit });
     byPerson.set(cid, [...mine, word]);
+    return 'added';
+  }
+
+  #hold(id, item) {
+    const list = this.#pending.get(id) ?? [];
+    if (list.length >= 200) return 'limit';
+    this.#pending.set(id, [...list, { pid: `h${++this.#holdSeq}`, ...item }]);
+    return 'pending';
+  }
+
+  // What is waiting for the presenter on one board.
+  pending(id) {
+    return (this.#pending.get(id) ?? []).map(({ pid, kind, text }) => ({ pid, kind, text }));
+  }
+
+  // Let a held entry onto the board, or throw it away.
+  approve(id, pid) {
+    const list = this.#pending.get(id) ?? [];
+    const item = list.find((p) => p.pid === pid);
+    if (!item) return false;
+    this.#pending.set(id, list.filter((p) => p.pid !== pid));
+    if (item.kind === 'cloud') {
+      let byPerson = this.#cloud.get(id);
+      if (!byPerson) this.#cloud.set(id, (byPerson = new Map()));
+      byPerson.set(item.cid, [...(byPerson.get(item.cid) ?? []), item.text]);
+    } else if (item.kind === 'open') {
+      this.#open.set(id, [...(this.#open.get(id) ?? []), { cid: item.cid, text: item.text }]);
+    } else if (item.kind === 'qna') {
+      this.#insertQuestion(id, item.cid, item.text, item.at ?? 0);
+    }
+    return true;
+  }
+
+  reject(id, pid) {
+    const list = this.#pending.get(id) ?? [];
+    if (!list.some((p) => p.pid === pid)) return false;
+    this.#pending.set(id, list.filter((p) => p.pid !== pid));
     return true;
   }
 
@@ -66,14 +116,17 @@ export class Boards {
 
   // ---- open answers --------------------------------------------------------------
 
-  addResponse(id, cid, raw, limit = 3) {
+  addResponse(id, cid, raw, limit = 3, { mode = 'filter' } = {}) {
     const text = cleanText(raw, BOARD_LIMITS.response);
-    if (!text) return false;
+    if (!text) return 'empty';
+    if (mode !== 'off' && isProfane(text)) return 'filtered';
     const list = this.#open.get(id) ?? [];
-    if (list.filter((r) => r.cid === cid).length >= Math.min(limit, BOARD_LIMITS.perPerson)) return false;
-    if (list.length >= BOARD_LIMITS.entries) return false;
+    const held = (this.#pending.get(id) ?? []).filter((p) => p.cid === cid);
+    if (list.filter((r) => r.cid === cid).length + held.length >= Math.min(limit, BOARD_LIMITS.perPerson)) return 'limit';
+    if (list.length >= BOARD_LIMITS.entries) return 'limit';
+    if (mode === 'approve') return this.#hold(id, { kind: 'open', cid, text, limit });
     this.#open.set(id, [...list, { cid, text }]);
-    return true;
+    return 'added';
   }
 
   // Newest first, so the latest answer is on top.
@@ -87,15 +140,23 @@ export class Boards {
 
   // ---- Q&A -------------------------------------------------------------------------
 
-  ask(id, cid, raw, at = 0) {
+  // -> a question id, or 'pending' | 'filtered' | null (empty or over a limit)
+  ask(id, cid, raw, at = 0, { mode = 'filter' } = {}) {
     const text = cleanText(raw, BOARD_LIMITS.question);
     if (!text) return null;
+    if (mode !== 'off' && isProfane(text)) return 'filtered';
+    const all = this.#qna.get(id);
+    if ((all?.size ?? 0) >= BOARD_LIMITS.questions) return null;
+    let mine = (this.#pending.get(id) ?? []).filter((p) => p.cid === cid).length;
+    for (const q of all?.values() ?? []) if (q.cid === cid) mine++;
+    if (mine >= BOARD_LIMITS.asksPerPerson) return null;
+    if (mode === 'approve') return this.#hold(id, { kind: 'qna', cid, text, at });
+    return this.#insertQuestion(id, cid, text, at);
+  }
+
+  #insertQuestion(id, cid, text, at) {
     let all = this.#qna.get(id);
     if (!all) this.#qna.set(id, (all = new Map()));
-    if (all.size >= BOARD_LIMITS.questions) return null;
-    let mine = 0;
-    for (const q of all.values()) if (q.cid === cid) mine++;
-    if (mine >= BOARD_LIMITS.asksPerPerson) return null;
     const qid = `q${++this.#seq}`;
     all.set(qid, { id: qid, cid, text, ups: new Set([cid]), answered: false, hidden: false, at });
     return qid;
@@ -141,10 +202,12 @@ export class Boards {
       this.#cloud.clear();
       this.#open.clear();
       this.#qna.clear();
+      this.#pending.clear();
     } else {
       this.#cloud.delete(id);
       this.#open.delete(id);
       this.#qna.delete(id);
+      this.#pending.delete(id);
     }
   }
 }

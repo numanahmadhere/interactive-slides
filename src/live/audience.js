@@ -36,6 +36,7 @@ export function mountAudience(root, { code, config }) {
   let session = null; // which presenter page is talking; a new one has lost the totals
   const answeredIn = new Map(); // prompt id -> the presenter session that has our answer
   let slow = false;
+  const notes = new Map(); // prompt id -> what the presenter did with the last thing we sent
   let fullTimer = 0;
   let full = false; // turned away: the room is at its limit
 
@@ -55,6 +56,12 @@ export function mountAudience(root, { code, config }) {
       paint();
     },
     onMessage: (raw) => {
+      if (raw?.t === 'note' && raw.cid === cid && typeof raw.id === 'string') { // what became of something we sent
+        if (raw.what === 'filtered' && typed.get(raw.id)?.length) typed.set(raw.id, typed.get(raw.id).slice(0, -1)); // it never reached the board, so it does not count against the limit
+        notes.set(raw.id, raw.what === 'filtered' ? 'That was not shown: it breaks the room\'s rules.' : 'Sent. The presenter checks answers before they appear.');
+        paint();
+        return;
+      }
       if (raw?.t === 'full' && raw.cid === cid) { // the presenter's plan has no room for another phone
         full = Number.isInteger(raw.limit) ? raw.limit : true;
         clearTimeout(fullTimer);
@@ -163,6 +170,7 @@ export function mountAudience(root, { code, config }) {
         if (sendText(prompt, input.value)) paint();
       });
     }
+    if (notes.has(prompt.id)) form.append(h('p', { class: 'lv-warn', role: 'status', text: notes.get(prompt.id) }));
     if (mine.length && prompt.kind !== 'qna') {
       form.append(h('ul', { class: 'lv-mine' }, ...mine.map((t) => h('li', { text: t }))));
     }

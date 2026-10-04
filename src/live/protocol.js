@@ -72,6 +72,7 @@ export function cleanPrompt(raw) {
     prompt.high = text(raw.high, 60);
   }
   if (TEXT_KINDS.has(kind)) prompt.limit = int(raw.limit, 1, 5) ?? (kind === 'cloud' ? 3 : 1);
+  if (TEXT_KINDS.has(kind) || kind === 'qna') prompt.moderation = ['off', 'filter', 'approve'].includes(raw.moderation) ? raw.moderation : 'filter';
   return prompt;
 }
 

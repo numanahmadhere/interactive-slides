@@ -169,14 +169,15 @@ export class LiveHost {
   submitText = (id, text) => {
     const prompt = this.#prompts.find((p) => p.id === id);
     if (!prompt) return false;
-    const ok = prompt.kind === 'cloud' ? this.#boards.addEntry(id, HOST_CID, text, prompt.limit)
-      : prompt.kind === 'open' ? this.#boards.addResponse(id, HOST_CID, text, prompt.limit) : false;
+    const own = { mode: 'off' }; // the presenter is trusted
+    const ok = prompt.kind === 'cloud' ? this.#boards.addEntry(id, HOST_CID, text, prompt.limit, own) === 'added'
+      : prompt.kind === 'open' ? this.#boards.addResponse(id, HOST_CID, text, prompt.limit, own) === 'added' : false;
     if (ok) this.#changed();
     return ok;
   };
 
   ask = (id, text) => {
-    const qid = this.#prompts.some((p) => p.id === id && p.kind === 'qna') ? this.#boards.ask(id, HOST_CID, text, this.now()) : null;
+    const qid = this.#prompts.some((p) => p.id === id && p.kind === 'qna') ? this.#boards.ask(id, HOST_CID, text, this.now(), { mode: 'off' }) : null;
     if (qid) this.#changed();
     return qid;
   };
@@ -184,6 +185,16 @@ export class LiveHost {
   upvote = (id, qid) => {
     if (this.#boards.upvote(id, HOST_CID, qid)) this.#changed();
   };
+
+  // Entries waiting for the presenter on boards set to "approve first".
+  pending = (id) => this.#boards.pending(id);
+  approve = (id, pid) => { if (this.#boards.approve(id, pid)) this.#changed(); };
+  reject = (id, pid) => { if (this.#boards.reject(id, pid)) this.#changed(); };
+
+  // Tell one phone what became of what it sent, when that is not "it appeared": held for approval, or filtered.
+  #tell(cid, id, outcome) {
+    if (outcome === 'pending' || outcome === 'filtered') this.#audience?.send({ t: 'note', cid, id, what: outcome });
+  }
 
   // The presenter's own moderation of the audience's questions.
   moderate = (id, qid, op) => {
@@ -220,15 +231,24 @@ export class LiveHost {
     if (text) {
       if (!this.#admit(text.cid)) return;
       this.#touch(text.cid);
-      const ok = text.kind === 'cloud' ? this.#boards.addEntry(text.id, text.cid, text.text, text.limit) : this.#boards.addResponse(text.id, text.cid, text.text, text.limit);
-      if (ok) this.#changed();
+      const prompt = this.#prompts.find((p) => p.id === text.id);
+      const mode = { mode: prompt?.moderation ?? 'filter' };
+      const outcome = text.kind === 'cloud' ? this.#boards.addEntry(text.id, text.cid, text.text, text.limit, mode) : this.#boards.addResponse(text.id, text.cid, text.text, text.limit, mode);
+      this.#tell(text.cid, text.id, outcome);
+      if (outcome === 'added' || outcome === 'pending') this.#changed();
       return;
     }
     const ask = parseAsk(raw, this.#prompts);
     if (ask) {
       if (!this.#admit(ask.cid)) return;
       this.#touch(ask.cid);
-      const ok = ask.op === 'ask' ? !!this.#boards.ask(ask.id, ask.cid, ask.text, this.now()) : this.#boards.upvote(ask.id, ask.cid, ask.q);
+      let ok;
+      if (ask.op === 'ask') {
+        const prompt = this.#prompts.find((p) => p.id === ask.id);
+        const outcome = this.#boards.ask(ask.id, ask.cid, ask.text, this.now(), { mode: prompt?.moderation ?? 'filter' });
+        this.#tell(ask.cid, ask.id, outcome);
+        ok = !!outcome && outcome !== 'filtered';
+      } else ok = this.#boards.upvote(ask.id, ask.cid, ask.q);
       if (ok) this.#changed();
       return;
     }

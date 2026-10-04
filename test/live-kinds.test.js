@@ -26,12 +26,12 @@ test('word entries are tidied so "Clear Vision!" and "clear vision" are one word
 
 test('a word cloud counts each person once per word and caps how many they send', () => {
   const b = new Boards();
-  assert.ok(b.addEntry('c', 'u1', 'Trust', 2));
-  assert.ok(!b.addEntry('c', 'u1', 'trust', 2), 'the same word twice from one phone');
-  assert.ok(b.addEntry('c', 'u1', 'speed', 2));
-  assert.ok(!b.addEntry('c', 'u1', 'third', 2), 'over the limit');
-  assert.ok(b.addEntry('c', 'u2', 'TRUST', 2));
-  assert.ok(!b.addEntry('c', 'u2', '!!!', 2));
+  assert.equal(b.addEntry('c', 'u1', 'Trust', 2), 'added');
+  assert.equal(b.addEntry('c', 'u1', 'trust', 2), 'duplicate', 'the same word twice from one phone');
+  assert.equal(b.addEntry('c', 'u1', 'speed', 2), 'added');
+  assert.equal(b.addEntry('c', 'u1', 'third', 2), 'limit', 'over the limit');
+  assert.equal(b.addEntry('c', 'u2', 'TRUST', 2), 'added');
+  assert.equal(b.addEntry('c', 'u2', '!!!', 2), 'empty');
   assert.deepEqual(b.words('c'), [['trust', 2], ['speed', 1]]);
   assert.deepEqual(b.entriesOf('c', 'u1'), ['trust', 'speed']);
   b.reset('c');
@@ -40,11 +40,11 @@ test('a word cloud counts each person once per word and caps how many they send'
 
 test('open answers keep the newest first and respect each person\'s limit', () => {
   const b = new Boards();
-  assert.ok(b.addResponse('o', 'u1', ' first  answer ', 1));
-  assert.ok(!b.addResponse('o', 'u1', 'second', 1));
-  assert.ok(b.addResponse('o', 'u2', 'second'));
+  assert.equal(b.addResponse('o', 'u1', ' first  answer ', 1), 'added');
+  assert.equal(b.addResponse('o', 'u1', 'second', 1), 'limit');
+  assert.equal(b.addResponse('o', 'u2', 'second'), 'added');
   assert.deepEqual(b.responses('o'), ['second', 'first answer']);
-  assert.ok(!b.addResponse('o', 'u3', '   '));
+  assert.equal(b.addResponse('o', 'u3', '   '), 'empty');
   assert.equal(b.responses('o', 1).length, 1);
   assert.equal(b.responsesOf('o', 'u1').length, 1);
 });

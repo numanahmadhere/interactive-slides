@@ -1066,3 +1066,10 @@ button.sp-rt__col { cursor: pointer; }
 .sp-qa__toggle { margin-top: 16px; }
 .sp-qa__toggle[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .sp-wc__word, .sp-rt__bar, .sp-rk__bar { transition: none; } }
+
+/* ---- entries held for the presenter's approval ---- */
+.sp-mod { margin-top: 24px; padding: 20px 24px; border: 3px dashed var(--sp-border); border-radius: 18px; }
+.sp-mod[hidden] { display: none; }
+.sp-mod__title { margin: 0 0 12px; color: var(--sp-muted); font-size: 28px; font-weight: 650; }
+.sp-mod__row { display: flex; align-items: center; gap: 16px; padding: 8px 0; font-size: 32px; }
+.sp-mod__text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
