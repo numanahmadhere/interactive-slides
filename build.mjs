@@ -117,6 +117,10 @@ async function writeSite() {
   await copyFile('site/site.css', 'dist/site.css');
   await copyFile('src/styles/tokens.css', 'dist/tokens.css');
   await copyFile('site/favicon.ico', 'dist/favicon.ico');
+  await copyFile('site/fonts.css', 'dist/fonts.css');
+  await copyFile('site/tutorial.js', 'dist/tutorial.js');
+  await mkdir('dist/fonts', { recursive: true });
+  for (const f of await readdir('site/fonts')) await copyFile(`site/fonts/${f}`, `dist/fonts/${f}`);
   await mkdir('dist/brand', { recursive: true });
   for (const f of await readdir('site/brand')) await copyFile(`site/brand/${f}`, `dist/brand/${f}`);
   await writeFile('dist/manifest.webmanifest', JSON.stringify({
@@ -138,7 +142,7 @@ async function writeSite() {
 // build is a changed worker and visitors get the update.
 async function writeServiceWorker() {
   const hash = createHash('sha256');
-  for (const file of ['dist/index.html', 'dist/app/index.html', 'dist/app.js', 'dist/app.css', 'dist/site.css', 'dist/tokens.css']) hash.update(await readFile(file));
+  for (const file of ['dist/index.html', 'dist/app/index.html', 'dist/app.js', 'dist/app.css', 'dist/site.css', 'dist/tokens.css', 'dist/fonts.css', 'dist/tutorial.js']) hash.update(await readFile(file));
   await writeFile('dist/sw.js', serviceWorkerSource(hash.digest('hex').slice(0, 12)));
 }
 

@@ -39,12 +39,12 @@
   --warn-border: #F2C58B;
 
   /* shape and depth */
-  --radius: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --shadow-sm: 0 1px 2px rgb(15 17 23 / 0.06);
-  --shadow-md: 0 8px 24px -8px rgb(15 17 23 / 0.14);
-  --shadow-lg: 0 24px 60px -20px rgb(32 32 232 / 0.28);
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --shadow-sm: 0 1px 2px rgb(15 17 23 / 0.05);
+  --shadow-md: 0 4px 16px -6px rgb(15 17 23 / 0.12);
+  --shadow-lg: 0 18px 44px -18px rgb(15 17 23 / 0.22);
   --shadow-pop: 0 18px 50px -12px rgb(15 17 23 / 0.28);
   --scrim: rgb(15 17 23 / 0.45);
 
@@ -53,6 +53,7 @@
   --t: 0.2s var(--ease);
 
   --font: 'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Newsreader Variable', Newsreader, 'Iowan Old Style', Georgia, 'Times New Roman', serif;
 
   /* editor chrome (derived) */
   --ed-bg: #EEF0F6;
@@ -112,7 +113,7 @@
     --warn-border: #7A4A1F;
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
     --shadow-md: 0 8px 24px -8px rgb(0 0 0 / 0.5);
-    --shadow-lg: 0 24px 60px -20px rgb(80 80 255 / 0.35);
+    --shadow-lg: 0 18px 44px -18px rgb(0 0 0 / 0.6);
     --shadow-pop: 0 18px 50px -12px rgb(0 0 0 / 0.65);
     --scrim: rgb(4 6 10 / 0.66);
     --ed-bg: #0A0C12; --ed-panel: #11141C; --ed-panel-2: #171B26; --ed-field: #0C0F15;
@@ -136,7 +137,7 @@
   --danger: #F0605D; --danger-bg: #2A1517; --success: #5FD38A; --success-bg: #11261A;
   --warn-text: #F0B47A; --warn-bg: #2A1F14; --warn-border: #7A4A1F;
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4); --shadow-md: 0 8px 24px -8px rgb(0 0 0 / 0.5);
-  --shadow-lg: 0 24px 60px -20px rgb(80 80 255 / 0.35); --shadow-pop: 0 18px 50px -12px rgb(0 0 0 / 0.65);
+  --shadow-lg: 0 18px 44px -18px rgb(0 0 0 / 0.6); --shadow-pop: 0 18px 50px -12px rgb(0 0 0 / 0.65);
   --scrim: rgb(4 6 10 / 0.66);
   --ed-bg: #0A0C12; --ed-panel: #11141C; --ed-panel-2: #171B26; --ed-field: #0C0F15;
   --ed-border: #232838; --ed-border-strong: #31384D; --ed-text: #E8EAF2; --ed-text-2: #C9CEE0; --ed-muted: #8F97AD;

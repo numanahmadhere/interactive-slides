@@ -139,3 +139,33 @@ test('the in-app pages offer the same support and company links', () => {
   for (const f of ['src/shell/chrome.js', 'src/shell/account.js', 'src/editor/editor.js']) assert.match(read(f), /supportHref|SUPPORT_EMAIL/, `${f} offers support`);
   assert.match(read('src/shell/chrome.js'), /COMPANY_URL/, 'the footer links the company');
 });
+
+test('the public pages use rules and plain text, not pill or chip boxes', () => {
+  const home = buildSite()['index.html'];
+  for (const banned of ['class="pill', 'class="chip', 'class="tags', 'mini__tag', 'class="eyebrow']) assert.ok(!home.includes(banned), `home still uses ${banned}`);
+  const css = readFileSync(new URL('../site/site.css', import.meta.url), 'utf8');
+  assert.ok(!/border-radius:\s*(999px|100px)/.test(css), 'no pill-shaped boxes in the site stylesheet');
+  assert.ok(!/@keyframes\s+(float|pulse)/.test(css), 'no floating or pulsing decoration');
+  const shell = readFileSync(new URL('../src/shell/shell.css', import.meta.url), 'utf8');
+  assert.match(shell, /\.sh-badge \{ padding: 0; border: 0;/, 'deck status words are plain text');
+});
+
+test('type: both faces are self-hosted and the headlines use the serif', () => {
+  const fonts = readFileSync(new URL('../site/fonts.css', import.meta.url), 'utf8');
+  for (const f of ['inter-latin-wght-normal.woff2', 'newsreader-latin-wght-normal.woff2', 'newsreader-latin-wght-italic.woff2']) {
+    assert.ok(fonts.includes(f), `${f} is declared`);
+    assert.ok(existsSync(new URL(`../site/fonts/${f}`, import.meta.url)), `${f} exists`);
+  }
+  const css = readFileSync(new URL('../site/site.css', import.meta.url), 'utf8');
+  assert.match(css, /h1, h2 \{ font-family: var\(--font-display\)/);
+  const home = buildSite()['index.html'];
+  assert.ok(home.includes('/fonts.css') && home.includes('rel="preload"'), 'the page loads and preloads its fonts');
+});
+
+test('the interactive tutorial is on the home page and wired up', () => {
+  const home = buildSite()['index.html'];
+  for (const id of ['id="tut"', 'id="tut-question"', 'id="tut-bars"', 'id="tut-opts"', 'id="tut-act"', 'id="tut-back"', 'src="/tutorial.js"']) assert.ok(home.includes(id), `missing ${id}`);
+  assert.equal((home.match(/data-go="/g) ?? []).length, 4, 'four steps');
+  assert.ok(home.includes('<noscript>'), 'a text fallback without JavaScript');
+  assert.ok((home.match(/<svg[^>]+role="img"[^>]+aria-label=/g) ?? []).length >= 6, 'block drawings are labelled');
+});

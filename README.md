@@ -13,6 +13,15 @@ follows the device by default; the sun/moon button on the dashboard and File >
 Appearance in the editor switch it (remembered per browser). Tests check the
 contrast of every palette pair and that every CSS variable used is defined.
 
+## Type and look
+
+Headlines use Newsreader (a serif), text and the interface use Inter; both are
+self-hosted from `site/fonts/` (declared in `site/fonts.css`). The public pages are
+deliberately plain: hairline rules and plain text instead of pill badges, chips or
+card grids; flat surfaces; no floating or pulsing motion. A test fails if pill-shaped
+boxes or decorative animations come back. The home page has an interactive tutorial
+(`site/tutorial.js`, logic unit-tested) and SVG drawings of the block types.
+
 ## Brand and contact
 
 The logo is the Densight Labs mark. `site/brand/` holds every size generated from the

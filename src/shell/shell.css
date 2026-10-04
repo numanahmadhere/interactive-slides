@@ -11,25 +11,25 @@ body.sh a:focus-visible, body.sh button:focus-visible, body.sh select:focus-visi
 .sh-brand { display: inline-flex; align-items: center; gap: 10px; margin-right: 12px; color: var(--ink); font-weight: 800; letter-spacing: -0.02em; text-decoration: none; }
 
 .sh-nav { display: flex; gap: 2px; }
-.sh-nav__link { padding: 8px 14px; border-radius: 10px; color: var(--muted); font-weight: 600; text-decoration: none; transition: color var(--t), background var(--t); }
+.sh-nav__link { padding: 8px 12px; border-radius: 6px; color: var(--muted); font-weight: 600; text-decoration: none; transition: color var(--t), background var(--t); }
 .sh-nav__link:hover { color: var(--ink); background: var(--bg-sunk); }
 .sh-nav__link.is-active { color: var(--blue-text); background: var(--blue-dim); }
 .sh-spacer { flex: 1; }
-.sh-iconbtn { display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 12px; background: transparent; color: var(--muted); cursor: pointer; transition: background var(--t), color var(--t); }
+.sh-iconbtn { display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; transition: background var(--t), color var(--t); }
 .sh-iconbtn:hover { background: var(--bg-sunk); color: var(--ink); }
-.sh-account { display: inline-flex; align-items: center; gap: 8px; margin-left: 4px; padding: 7px 16px; border: 1px solid var(--border-strong); border-radius: 999px; color: var(--ink); font-weight: 650; text-decoration: none; transition: border-color var(--t), background var(--t); }
-.sh-account.is-in { padding: 4px 14px 4px 4px; }
+.sh-account { display: inline-flex; align-items: center; gap: 8px; margin-left: 4px; padding: 7px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius); color: var(--ink); font-weight: 650; text-decoration: none; transition: border-color var(--t), background var(--t); }
+.sh-account.is-in { padding: 4px 12px 4px 4px; }
 .sh-account:hover { border-color: var(--blue); background: var(--blue-dim); }
 .sh-avatar { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), #5A5AFF); color: #fff; font-size: 13px; font-weight: 700; }
 .sh-avatar--lg { width: 56px; height: 56px; font-size: 22px; }
 
 /* ---- buttons and inputs ---- */
-.sh-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface); color: var(--ink); font: 650 14px var(--font); text-decoration: none; cursor: pointer; transition: transform var(--t), box-shadow var(--t), background var(--t), border-color var(--t); }
+.sh-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--ink); font: 650 14px var(--font); text-decoration: none; cursor: pointer; transition: transform var(--t), box-shadow var(--t), background var(--t), border-color var(--t); }
 .sh-btn:hover { border-color: var(--blue); }
 .sh-btn:active { transform: translateY(1px); }
 .sh-btn--primary { border-color: var(--blue); background: var(--blue); color: var(--on-blue); box-shadow: 0 8px 20px -10px var(--blue-glow); }
 .sh-btn--primary:hover { background: var(--blue-hover); border-color: var(--blue-hover); box-shadow: 0 12px 26px -10px var(--blue-glow); transform: translateY(-1px); }
-.sh-input { width: 100%; padding: 11px 14px; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface); color: var(--ink); font: 15px var(--font); transition: border-color var(--t), box-shadow var(--t); }
+.sh-input { width: 100%; padding: 11px 14px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface); color: var(--ink); font: 15px var(--font); transition: border-color var(--t), box-shadow var(--t); }
 .sh-input:hover { border-color: var(--muted); }
 .sh-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 4px var(--blue-mid); }
 .sh-input::placeholder { color: var(--muted); }
@@ -38,7 +38,7 @@ body.sh a:focus-visible, body.sh button:focus-visible, body.sh select:focus-visi
 .sh-main { max-width: 1240px; margin: 0 auto; padding: 40px clamp(16px, 4vw, 40px) 96px; }
 .sh-narrow { max-width: 760px; }
 .sh-head { margin-bottom: 28px; }
-.sh-title { margin: 0; color: var(--ink); font-size: clamp(30px, 4vw, 40px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+.sh-title { margin: 0; color: var(--ink); font-family: var(--font-display); font-size: clamp(34px, 4.4vw, 46px); font-weight: 500; letter-spacing: -0.02em; line-height: 1.08; }
 .sh-sub, .sh-lead { margin: 8px 0 0; color: var(--muted); font-size: 17px; }
 
 /* start tiles */
@@ -92,7 +92,7 @@ body.sh a:focus-visible, body.sh button:focus-visible, body.sh select:focus-visi
 .sh-line--short { width: 55%; margin-top: 8px; }
 .sh-skeleton .sh-thumb, .sh-line { background-image: linear-gradient(90deg, transparent, var(--blue-dim), transparent); background-size: 200% 100%; animation: sh-shimmer 1.4s linear infinite; }
 .sh-empty { display: grid; justify-items: center; gap: 6px; padding: 64px 24px; text-align: center; border: 1px dashed var(--border-strong); border-radius: var(--radius-xl); background: var(--surface); }
-.sh-empty h2 { margin: 18px 0 0; color: var(--ink); font-size: 24px; letter-spacing: -0.02em; }
+.sh-empty h2 { margin: 18px 0 0; color: var(--ink); font-family: var(--font-display); font-size: 28px; font-weight: 500; letter-spacing: -0.015em; }
 .sh-empty p { max-width: 46ch; margin: 0; color: var(--muted); }
 .sh-empty__art { position: relative; width: 120px; height: 76px; }
 .sh-empty__art i { position: absolute; inset: 0; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-sm); }
@@ -103,7 +103,7 @@ body.sh a:focus-visible, body.sh button:focus-visible, body.sh select:focus-visi
 
 /* account */
 .sh-section { margin: 0 0 18px; padding: 26px; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--surface); }
-.sh-section h2 { margin: 0 0 12px; color: var(--ink); font-size: 18px; letter-spacing: -0.015em; }
+.sh-section h2 { margin: 0 0 12px; color: var(--ink); font-family: var(--font-display); font-size: 22px; font-weight: 500; letter-spacing: -0.01em; }
 .sh-section p { margin: 0 0 14px; color: var(--text); }
 .sh-section a { color: var(--blue-text); }
 .sh-section--danger { border-color: color-mix(in srgb, var(--danger) 35%, var(--border)); }
@@ -137,3 +137,27 @@ body.sh a:focus-visible, body.sh button:focus-visible, body.sh select:focus-visi
 .sh-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; max-width: 1240px; margin: 0 auto; padding: 24px clamp(16px, 4vw, 40px) 40px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
 .sh-footer__links { display: flex; flex-wrap: wrap; gap: 6px 20px; }
 .sh-brand .logo { width: 34px; height: 34px; }
+
+
+/* ---- calmer finish: no pills, no lift, no glow ---- */
+.sh-brand__name { font-weight: 700; }
+.sh-start { border-radius: var(--radius-lg); }
+.sh-start:hover { transform: none; border-color: var(--ink); box-shadow: none; }
+.sh-start--primary { background: var(--blue); box-shadow: none; }
+.sh-start--primary:hover { border-color: transparent; background: var(--blue-hover); box-shadow: none; }
+.sh-start__icon { border-radius: 8px; width: 40px; height: 40px; }
+.sh-card { border-radius: var(--radius-lg); }
+.sh-card:hover, .sh-card:focus-within { transform: none; border-color: var(--ink); box-shadow: none; }
+.sh-thumb { border-radius: 6px; }
+.sh-btn--primary { box-shadow: none; }
+.sh-btn--primary:hover { transform: none; box-shadow: none; }
+.sh-avatar { background: var(--blue); }
+.sh-section { border-radius: var(--radius-lg); }
+.sh-empty { border-radius: var(--radius-lg); }
+.sh-empty__art i { border-radius: 8px; }
+
+/* status words in the card meta line are plain text, not badges */
+.sh-badge { padding: 0; border: 0; border-radius: 0; background: none; font-size: 13px; font-weight: 600; color: var(--muted); }
+.sh-badge::before { content: '\00b7'; margin-right: 8px; color: var(--border-strong); font-weight: 400; }
+.sh-badge--ok { background: none; color: var(--success); }
+.sh-badge--share { background: none; color: var(--blue-text); }
