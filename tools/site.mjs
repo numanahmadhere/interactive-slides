@@ -29,7 +29,8 @@ const COMPANY = 'https://densightlabs.com';
 const mailto = (subject = 'Densight Slides support') => `mailto:${SUPPORT}?subject=${encodeURIComponent(subject)}`;
 const LOGO = '<img class="logo logo--on-light" src="/brand/logo-64.png" width="32" height="32" alt=""><img class="logo logo--on-dark" src="/brand/logo-light-64.png" width="32" height="32" alt="">';
 const LOGO_DARK_BG = '<img class="logo" src="/brand/logo-light-64.png" width="32" height="32" alt="">';
-const UPDATED = '3 October 2026';
+const UPDATED = '5 October 2026';
+const REFUND_DAYS = 7;
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -105,7 +106,7 @@ ${body}
 <div><h3 class="foot-h">Product</h3><a href="/#features">Features</a><a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/#live">Live audience</a><a href="/app/">Open the app</a></div>
 <div><h3 class="foot-h">Solutions</h3><a href="/training/">Training and meetings</a><a href="/education/">Education</a></div>
 <div><h3 class="foot-h">Resources</h3><a href="/learn/">Guides</a><a href="/#faq">FAQ</a><a href="/security/">Security</a></div>
-<div><h3 class="foot-h">Company</h3><a href="${COMPANY}">Densight Labs</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="${mailto()}">Support: ${SUPPORT}</a></div>
+<div><h3 class="foot-h">Company</h3><a href="${COMPANY}">Densight Labs</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/refund/">Refunds</a><a href="${mailto()}">Support: ${SUPPORT}</a></div>
 </div><div class="wrap foot-end"><span>&copy; ${new Date().getFullYear()} <a href="${COMPANY}">Densight Labs</a>. All rights reserved.</span><a href="${mailto()}">${SUPPORT}</a></div></footer>
 <a class="stickycta" id="stickycta" href="/app/" hidden>Start building free</a>
 <script>
@@ -383,32 +384,71 @@ ${guides.map(([t, b, id]) => `<div class="guide"${id ? ` id="${id}"` : ''}><h2>$
 const privacy = () => layout({
   path: '/privacy/',
   title: `Privacy policy | ${NAME}`,
-  description: `What ${NAME} stores, where, and how to delete it.`,
-  body: `<div class="doc"><h1>Privacy policy</h1><p class="meta">Last updated ${UPDATED}. ${NAME} is a product of <a href="${COMPANY}">Densight Labs</a>.</p>
-<h2>The short version</h2><p>We keep your decks and your email address, only if you create an account. We do not use advertising or tracking cookies, and we do not sell data.</p>
-<h2>On your device</h2><p>Decks and images you create are stored in your browser (IndexedDB and localStorage) on your device. They are not sent anywhere unless you sign in. Clearing your browser data removes them. We use this storage to make the app work, not to follow you.</p>
-<h2>If you create an account</h2><p>We store your email address, the decks you save online (including images inside them), and for decks you choose to share, an unguessable link token. Sign-in and storage are provided by Supabase. You can delete your account and all online decks at any time from Account &gt; Delete my account.</p>
+  description: `What ${NAME} stores, where, who else handles it, and how to delete it.`,
+  body: `<div class="doc"><h1>Privacy policy</h1><p class="meta">Last updated ${UPDATED}. ${NAME} is a product of <a href="${COMPANY}">Densight Labs</a> (&ldquo;we&rdquo;). This page explains what we keep about you and why. A shorter version is on the <a href="/security/">security page</a>.</p>
+<h2>The short version</h2><p>You can use the editor and present without an account, and then nothing leaves your device. If you create an account we keep your email address and the decks you save online. If you pay, our payment provider handles your payment details; we never see your card. We do not use advertising or tracking cookies and we do not sell your data.</p>
+<h2>What we collect, and why</h2>
+<ul><li><strong>On your device only:</strong> decks, images and settings you create, kept in your browser storage so the app works and remembers your work. We do not receive them.</li>
+<li><strong>Account:</strong> your email address, used to sign you in and to write to you about your account. Sign-in and storage are provided by Supabase.</li>
+<li><strong>Online decks:</strong> the decks you choose to save online, including images inside them and the unguessable token of any share link.</li>
+<li><strong>Teams and comments:</strong> if you create or join a team, we keep the team&rsquo;s name, who belongs to it (by email), its shared logo and colours, the decks shared into it, and comments people write on slides.</li>
+<li><strong>Self-paced courses:</strong> when someone finishes a course on a shared link and types their name, we store that name and the time against the deck so its owner can see who finished. Which slides a visitor has viewed is kept on their own device.</li>
+<li><strong>Billing:</strong> your plan, its status and dates, and an identifier from our payment provider. Card and billing details are collected and held by that provider, not by us.</li>
+<li><strong>Live sessions:</strong> audience answers travel through a realtime messaging service between the presenter&rsquo;s page and the phones. They are held in the presenter&rsquo;s browser while the session runs and are not saved on our servers. Names and teams are collected only if the presenter turns them on. Session reports are saved on the presenter&rsquo;s own device only if the presenter chooses.</li>
+<li><strong>Messages to us:</strong> if you email us, we keep the conversation so we can help you.</li></ul>
+<h2>Who else handles data</h2>
+<ul><li><strong>Supabase</strong> provides sign-in, the database for online decks, teams, comments and course completions, and the realtime messaging for live sessions.</li>
+<li><strong>Netlify</strong> hosts the site and may keep standard server logs, such as IP address and time of request, for security and operation.</li>
+<li><strong>Paddle</strong> is our payment provider and merchant of record. It processes payments, handles tax and sends receipts under its own privacy policy.</li></ul>
+<p>We do not sell personal data and we do not share it for advertising.</p>
+<h2>Cookies and storage</h2><p>We do not use advertising or analytics cookies. The app stores your decks and preferences, such as light or dark mode, in your browser storage, and keeps you signed in with a session in the same storage. Clearing your browser data removes them. The checkout is shown by Paddle and may set its own cookies.</p>
+<h2>How long we keep it</h2><p>Decks and account data stay until you delete them or your account. Deleting your account removes your sign-in and, with it, your online decks, share links, team memberships, your comments and the course completions on your decks. Records we must keep for tax or accounting, such as payment records, are kept by our payment provider for as long as the law requires.</p>
+<h2>Your choices and rights</h2><ul><li>Delete a deck, or all decks on this device, from My decks and Account.</li><li>Delete your account and all online data from Account &gt; Delete my account.</li><li>Export any deck as a file at any time.</li><li>Ask us for a copy of the personal data we hold about you, to correct it, or to delete it, by writing to <a href="${mailto('My data')}">${SUPPORT}</a>. Depending on where you live you may have further rights, and you may complain to your local data protection authority.</li></ul>
 <h2>Shared decks</h2><p>Anyone with a share link can view that deck without an account. Turn sharing off and the link stops working immediately. Do not put information in a shared deck that you do not want others to see.</p>
-<h2>Live sessions</h2><p>Audience answers travel through a realtime messaging service (Supabase Realtime) between the presenter's page and the audience's phones. Answers are held in the presenter's browser while the session runs and are not saved on our servers. The audience does not need an account and is not asked for a name.</p>
-<h2>Hosting and logs</h2><p>The site is hosted on Netlify, which may keep standard server logs (such as IP address and time of request) for security and operation.</p>
-<h2>Your choices</h2><ul><li>Delete a deck, or all decks on this device, from My decks and Account.</li><li>Delete your account and all online data from Account.</li><li>Export any deck as a file at any time.</li></ul>
-<h2>Children</h2><p>The service is not directed at children under 13, and accounts are for people old enough to agree to the terms in their country. Teachers should not require pupils to create accounts; audience members never need one.</p>
-<h2>Changes and contact</h2><p>If this policy changes we will update the date above. Questions or requests about your data: write to <a href="${mailto('Densight Slides privacy')}">${SUPPORT}</a>. ${NAME} is a product of <a href="${COMPANY}">Densight Labs</a>.</p></div>`,
+<h2>Children</h2><p>The service is not directed at children under 13, and accounts are for people old enough to agree to the terms where they live. Teachers should not require pupils to create accounts; audience members never need one.</p>
+<h2>Changes and contact</h2><p>If this policy changes we will update the date above. Questions or requests about your data: write to <a href="${mailto('Densight Slides privacy')}">${SUPPORT}</a>. ${NAME} is a product of <a href="${COMPANY}">Densight Labs</a>. See also the <a href="/terms/">terms of use</a> and <a href="/refund/">refund policy</a>.</p></div>`,
 });
 
 const terms = () => layout({
   path: '/terms/',
   title: `Terms of use | ${NAME}`,
-  description: `The rules for using ${NAME}.`,
-  body: `<div class="doc"><h1>Terms of use</h1><p class="meta">Last updated ${UPDATED}.</p>
-<p>By using ${NAME} you agree to these terms. If you do not agree, please do not use the service.</p>
-<h2>Your content</h2><p>You own the decks you make. You give us permission to store and display them as needed to run the service for you, including showing a shared deck to anyone who has its link.</p>
-<h2>What you may not do</h2><ul><li>Upload or share anything illegal, hateful, harassing, deceptive, or that infringes someone else's rights.</li><li>Use the service to send spam, malware, or phishing content, or to collect people's personal data without consent.</li><li>Try to break, overload, scrape, or gain unauthorised access to the service or other people's data.</li><li>Create accounts or sessions in bulk, or use live sessions to flood others.</li></ul>
+  description: `The rules for using ${NAME}, including plans, billing, trials and cancellation.`,
+  body: `<div class="doc"><h1>Terms of use</h1><p class="meta">Last updated ${UPDATED}. ${NAME} is a product of <a href="${COMPANY}">Densight Labs</a> (&ldquo;we&rdquo;).</p>
+<p>By using ${NAME} you agree to these terms. If you do not agree, please do not use the service. If you use it for an organisation, you confirm you can accept these terms for it.</p>
+<h2>The service</h2><p>${NAME} lets you build interactive presentations, present them, and run live sessions where an audience answers on their phones. You can use the editor and present without an account. An account is needed to save decks online, share them, and use paid plans.</p>
+<h2>Your account</h2><p>Keep your sign-in secure and tell us if you think someone else has used it. You are responsible for what happens under your account.</p>
+<h2>Your content</h2><p>You own the decks you make. You give us permission to store and display them as needed to run the service for you, including showing a shared deck to anyone who has its link and showing a team deck to the team&rsquo;s members. You promise you have the right to use what you upload.</p>
+<h2>Plans, trials and billing</h2><ul><li>There is a free plan and there are paid plans (Starter, Pro and Advanced). What each includes is shown on the <a href="/pricing/">pricing page</a>. We may change plans and prices; a change to the price of a plan you already pay for takes effect at your next renewal, after we tell you.</li>
+<li>Each paid plan starts with a free trial, as stated at checkout. A payment method is needed to start a trial. If you cancel before the trial ends you are not charged; if you do not, the plan starts and you are charged.</li>
+<li>Paid plans renew automatically each month or year until you cancel. You can cancel any time from Account &gt; Manage billing. You keep the plan until the end of the period you have paid for.</li>
+<li>Payments are handled by our payment provider, Paddle, who is the seller of record. Prices are shown in US dollars and checkout shows your local price and any tax.</li>
+<li>Refunds are covered by our <a href="/refund/">refund policy</a>.</li>
+<li>If a plan ends or you move to a lower plan, nothing is deleted. You can still open, edit, present and export your decks. The limits of the lower plan apply to what you add next, such as new decks online, paid question types in live rooms, and the size of live rooms.</li></ul>
+<h2>Teams</h2><p>The person who creates a team owns it and can invite and remove people, change its shared brand, and close it. Anyone in a team can edit and comment on the decks shared into it; only a deck&rsquo;s maker can delete it, publish a share link for it, or take it out of the team. Closing a team does not delete the decks, which stay with the people who made them.</p>
+<h2>What you may not do</h2><ul><li>Upload or share anything illegal, hateful, harassing, deceptive, or that infringes someone else&rsquo;s rights.</li><li>Use the service to send spam, malware, or phishing content, or to collect people&rsquo;s personal data without consent.</li><li>Try to break, overload, scrape, or gain unauthorised access to the service or other people&rsquo;s accounts, or to get around plan limits.</li><li>Use live sessions to collect answers from people who have not been told who is collecting them.</li></ul>
 <h2>Reporting and removal</h2><p>We may remove content or suspend sharing or accounts that break these rules, with or without notice. If you see a shared deck that breaks them, tell us at <a href="${mailto('Report a shared deck')}">${SUPPORT}</a>.</p>
-<h2>Availability and changes</h2><p>We work to keep the service running but do not promise it will always be available, error-free, or that features will not change. Keep your own copy of important decks by exporting them.</p>
-<h2>No warranty and limits of liability</h2><p>The service is provided as is. To the extent the law allows, Densight Labs is not liable for indirect or consequential losses, or for losses from content you or others create or share. Nothing here limits rights you have by law that cannot be limited.</p>
-<h2>Ending</h2><p>You can stop using the service and delete your account at any time. We may end or limit access if these terms are broken.</p>
-<h2>Changes</h2><p>We may update these terms and will change the date above. Continuing to use the service after a change means you accept it.</p></div>`,
+<h2>Availability and changes</h2><p>We work to keep the service running but do not promise it will always be available, error-free, or that features will not change. Keep your own copy of important decks by exporting them. We may add, change or remove features; if we remove something a paid plan clearly includes, we will tell you and you may cancel and ask for a refund of the unused part of the period.</p>
+<h2>No warranty and limits of liability</h2><p>The service is provided as is. To the extent the law allows, Densight Labs is not liable for indirect or consequential losses, or for losses from content you or others create or share, and our total liability to you is limited to the amount you paid us in the twelve months before the claim. Nothing here limits rights you have by law that cannot be limited.</p>
+<h2>Ending</h2><p>You can stop using the service and delete your account at any time. We may end or limit access if these terms are broken or if a payment cannot be collected.</p>
+<h2>Privacy</h2><p>How we handle personal data is described in the <a href="/privacy/">privacy policy</a>.</p>
+<h2>Changes and contact</h2><p>We may update these terms and will change the date above. If a change is significant we will tell signed-in users. Continuing to use the service after a change means you accept it. Questions: <a href="${mailto('Densight Slides terms')}">${SUPPORT}</a>.</p></div>`,
+});
+
+const refund = () => layout({
+  path: '/refund/',
+  title: `Refund policy | ${NAME}`,
+  description: `Full refund within ${REFUND_DAYS} days of any payment, no questions asked. How trials, cancellation and refunds work.`,
+  body: `<div class="doc"><h1>Refund policy</h1><p class="meta">Last updated ${UPDATED}.</p>
+<p>We want you to pay for ${NAME} only if it is useful to you. Here is exactly how that works.</p>
+<h2>${REFUND_DAYS} days, full refund</h2><p>If you are not happy with a paid plan, ask within <strong>${REFUND_DAYS} days of any payment</strong>, the first one or a renewal, and we will refund that payment in full. You do not need to give a reason.</p>
+<h2>Free trial</h2><p>Every paid plan starts with a ${TRIAL_DAYS}-day free trial. If you cancel before the trial ends you are not charged at all. You can cancel from Account &gt; Manage billing.</p>
+<h2>Cancelling</h2><p>You can cancel at any time. Your plan then stays active until the end of the period you have paid for and does not renew. Cancelling does not by itself refund the current period; for that, use the ${REFUND_DAYS}-day refund above.</p>
+<h2>Mistakes and double charges</h2><p>If you were charged twice, charged by mistake, or charged after you cancelled, tell us and we will refund it, whenever it happened.</p>
+<h2>If we remove something you paid for</h2><p>If we take away a feature that your plan clearly included, you may cancel and ask for a refund of the unused part of the period.</p>
+<h2>How to ask</h2><ol><li>Write to <a href="${mailto('Refund request')}">${SUPPORT}</a> from the email address on your account, or reply to your receipt.</li><li>Tell us which payment (the date or the receipt number helps).</li><li>We confirm and refund it. Refunds are processed by our payment provider, Paddle, and go back to the payment method you used. Your bank may take several days to show it.</li></ol>
+<h2>What happens to your decks</h2><p>If you get a refund and your plan ends, nothing is deleted. You can still open, edit, present and export your decks; the free plan&rsquo;s limits apply to what you add next. See the <a href="/terms/">terms of use</a>.</p>
+<h2>Your legal rights</h2><p>This policy is in addition to any rights you have by law, which it does not limit. Paddle&rsquo;s own terms for buyers may also apply to your purchase.</p>
+<p style="margin-top:28px"><a class="btn" href="${mailto('Refund request')}">Ask for a refund</a></p></div>`,
 });
 
 const notFound = () => layout({
@@ -585,7 +625,7 @@ const pricingFaq = () => [
   ['Which plan do I need for teams?', `Team workspaces come with Pro (up to ${PLANS.pro.teamSeats} people) and Advanced (up to ${PLANS.advanced.teamSeats}). People you invite join with a link and do not need a plan.`],
   ['How do you handle payment and tax?', 'Payments are handled by Paddle. We never see or store your card details. Checkout shows the price in your currency with any tax included, and Paddle sends your receipt.'],
   ['Is there an education or non-profit price?', `Write to <a href="${mailto('Education or non-profit pricing')}">${SUPPORT}</a> and tell us how you would use it. A person will reply.`],
-  ['What if something goes wrong with a charge?', `Write to <a href="${mailto('A charge on my account')}">${SUPPORT}</a> and we will sort it out. Refunds are processed through Paddle.`],
+  ['Can I get a refund?', `Yes. Ask within ${REFUND_DAYS} days of any payment and we refund it in full, no reason needed. Double or mistaken charges are refunded whenever they happened. See the <a href="/refund/">refund policy</a>.`],
 ];
 
 const pricingPage = () => layout({
@@ -631,6 +671,7 @@ export function buildSite() {
     'learn/index.html': learn(),
     'privacy/index.html': privacy(),
     'terms/index.html': terms(),
+    'refund/index.html': refund(),
     'welcome/index.html': welcome(),
     'templates/index.html': templatesPage(),
     'education/index.html': educationPage(),
@@ -639,7 +680,7 @@ export function buildSite() {
     'security/index.html': securityPage(),
     '404.html': notFound(),
     'robots.txt': `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /welcome/\n\nSitemap: ${SITE}/sitemap.xml\n`,
-    'sitemap.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', '/templates/', '/education/', '/training/', '/pricing/', '/security/', '/learn/', '/privacy/', '/terms/'].map((p) => `<url><loc>${SITE}${p}</loc></url>`).join('\n')}\n</urlset>\n`,
+    'sitemap.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', '/templates/', '/education/', '/training/', '/pricing/', '/security/', '/learn/', '/privacy/', '/terms/', '/refund/'].map((p) => `<url><loc>${SITE}${p}</loc></url>`).join('\n')}\n</urlset>\n`,
   };
   return pages;
 }

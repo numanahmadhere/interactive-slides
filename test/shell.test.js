@@ -300,10 +300,10 @@ test('every internal link on the public pages goes somewhere that exists', () =>
 
 test('the new pages exist, are in the sitemap, and the nav leads to them', () => {
   const site = buildSite();
-  for (const dir of ['templates', 'education', 'training', 'pricing', 'security']) {
+  for (const dir of ['templates', 'education', 'training', 'pricing', 'security', 'refund', 'privacy', 'terms']) {
     assert.ok(site[`${dir}/index.html`], dir);
     assert.ok(site['sitemap.xml'].includes(`/${dir}/`), `${dir} in the sitemap`);
-    assert.ok(site['index.html'].includes(`href="/${dir}/"`) || dir === 'security', `${dir} linked from home`);
+    assert.ok(site['index.html'].includes(`href="/${dir}/"`), `${dir} linked from home`);
     assert.ok(site[`${dir}/index.html`].includes('mailto:hello@densight.com') && site[`${dir}/index.html`].includes('https://densightlabs.com'), `${dir} links support and company`);
   }
   assert.ok(site['index.html'].includes('href="/security/"'));
@@ -347,4 +347,12 @@ test('the sticky call to action and dropdown are only on pages that need them', 
   const site = buildSite();
   assert.ok(site['index.html'].includes('id="stickycta"'));
   assert.ok(site['index.html'].includes('class="dd"'));
+});
+
+test('the refund policy states the real window and the legal pages point to each other', () => {
+  const site = buildSite();
+  assert.ok(site['refund/index.html'].includes('7 days') && site['refund/index.html'].includes(`${TRIAL_DAYS}-day free trial`));
+  assert.ok(site['terms/index.html'].includes('href="/refund/"') && site['privacy/index.html'].includes('href="/refund/"'));
+  assert.ok(site['terms/index.html'].includes('Paddle') && site['privacy/index.html'].includes('Paddle') && site['privacy/index.html'].includes('Supabase') && site['privacy/index.html'].includes('Netlify'));
+  assert.ok(site['index.html'].includes('href="/refund/"'), 'the footer links the refund policy');
 });
