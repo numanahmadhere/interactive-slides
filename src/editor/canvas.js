@@ -17,6 +17,7 @@ import { escapeHtml } from '../core/util.js';
 import * as ops from './ops.js';
 import { button } from './ui.js';
 import { FreeLayer } from './free.js';
+import { INSERT_MIME } from './insert.js';
 
 const STAGE_MARGIN = 40;
 
@@ -222,7 +223,8 @@ export class CanvasView {
     });
 
     this.host.addEventListener('dragover', (e) => {
-      if (![...(e.dataTransfer?.types ?? [])].includes('Files')) return;
+      const types = [...(e.dataTransfer?.types ?? [])];
+      if (!types.includes('Files') && !types.includes(INSERT_MIME)) return;
       e.preventDefault();
       this.host.classList.add('is-dropping');
     });
@@ -311,6 +313,12 @@ export class CanvasView {
 
   #onDrop(e) {
     this.host.classList.remove('is-dropping');
+    const insertType = e.dataTransfer?.getData(INSERT_MIME);
+    if (insertType) {
+      e.preventDefault();
+      this.editor.addBlockQuick(insertType, this.free.active ? this.free.pointOf(e) : undefined);
+      return;
+    }
     const files = [...(e.dataTransfer?.files ?? [])].filter((f) => f.type.startsWith('image/'));
     if (!files.length) return;
     e.preventDefault();
@@ -321,6 +329,7 @@ export class CanvasView {
     this.editor.addImageFiles(files, {
       blockId: hit && ops.imageKeys(hit.block).length ? hit.block.id : undefined,
       slot: slotEl?.dataset.slot,
+      at: this.free.active ? this.free.pointOf(e) : undefined,
     });
   }
 

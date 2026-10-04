@@ -7,6 +7,7 @@ import { renderSlide } from '../core/render.js';
 import { applyTheme } from '../core/theme.js';
 import { ASPECTS, slideTitle } from '../core/schema.js';
 import { button } from './ui.js';
+import { icon } from './icons.js';
 
 const DRAG_THRESHOLD = 6;
 const EDGE = 40;
@@ -103,7 +104,16 @@ export class SlideList {
       button({ icon: 'trash', label: 'Delete slide', iconOnly: true, variant: 'danger', onClick: (e) => { e.stopPropagation(); this.editor.deleteSlide(id); } }),
     );
     for (const b of actions.querySelectorAll('button')) b.tabIndex = -1; // reachable by mouse only, see above
-    const el = h('div', { class: 'ed-thumb', role: 'option', id: `ed-slide-${id}`, 'data-id': id }, num, preview, actions);
+    // Hover gap between thumbnails: a quick way to add a slide right here.
+    const adder = h('button', { type: 'button', class: 'ed-thumb__add', tabindex: '-1', 'aria-hidden': 'true', title: 'Add a slide after this one' });
+    adder.append(icon('plus', 14));
+    adder.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const at = this.editor.deck.slides.findIndex((s) => s.id === id) + 1;
+      this.editor.select({ slideId: id });
+      this.editor.addSlide('free', at);
+    });
+    const el = h('div', { class: 'ed-thumb', role: 'option', id: `ed-slide-${id}`, 'data-id': id }, num, preview, actions, adder);
     return { id, el, num, preview, stageEl, slide: null, theme: null, brand: null, aspect: null, assets: -1, width: 0 };
   }
 
@@ -121,7 +131,7 @@ export class SlideList {
   // ---- pointer: select, then drag to reorder -----------------------------
 
   #onPointerDown(e) {
-    if (e.button !== 0 || e.target.closest('.ed-thumb__actions')) return;
+    if (e.button !== 0 || e.target.closest('.ed-thumb__actions, .ed-thumb__add')) return;
     const item = e.target.closest('.ed-thumb');
     if (!item) return;
     this.list.focus({ preventScroll: true });

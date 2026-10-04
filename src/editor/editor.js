@@ -30,6 +30,7 @@ import { LiveHost } from '../live/host.js';
 import { createTransport } from '../live/transport.js';
 import { newRoom, cleanSavedSession } from '../live/protocol.js';
 import { Exporter } from './exporter.js';
+import { openInsertPanel, openPalette, openLayoutPicker, QUICK_TYPES } from './insert.js';
 import { slideToPng } from '../export/png.js';
 import { setThemePref, themePref } from '../styles/theme.js';
 import { logoPair } from '../shell/chrome.js';
@@ -170,7 +171,8 @@ export class Editor {
 
     const side = h('aside', { class: 'ed-side', 'aria-label': 'Slides panel' });
     const canvasHost = h('div', { class: 'ed-canvas' });
-    const main = h('main', { class: 'ed-main' }, canvasHost);
+    this.quickbar = this.#buildQuickbar();
+    const main = h('main', { class: 'ed-main' }, this.quickbar, canvasHost);
     const insp = h('aside', { class: 'ed-insp', 'aria-label': 'Inspector panel' });
 
     this.el = h('div', { class: 'ed' }, top, side, main, insp);
@@ -179,6 +181,16 @@ export class Editor {
     this.sidebar = new SlideList(side, this);
     this.canvas = new CanvasView(canvasHost, this);
     this.inspector = new Inspector(insp, this);
+  }
+
+  #buildQuickbar() {
+    const labels = { text: 'Text', image: 'Image', shape: 'Shape', quiz: 'Quiz', poll: 'Poll' };
+    const bar = h('div', { class: 'ed-quick', role: 'toolbar', 'aria-label': 'Add to slide' });
+    bar.append(button({ icon: 'plus', label: 'Insert', variant: 'primary', title: 'Search every block type', onClick: (e, el) => this.openInsert(el) }));
+    for (const type of QUICK_TYPES) {
+      bar.append(button({ label: labels[type], variant: 'ghost', title: `Add ${labels[type].toLowerCase()} (or press / and type)`, onClick: () => this.addBlockQuick(type) }));
+    }
+    return bar;
   }
 
   // ---- state -------------------------------------------------------------
@@ -397,19 +409,15 @@ export class Editor {
   }
 
   openLayoutMenu(anchor) {
-    openMenu({
-      anchor,
-      label: 'New slide layout',
-      items: listLayouts().map((l) => ({ label: l.name, value: l.id })),
-      onPick: (id) => this.addSlide(id),
-    });
+    openLayoutPicker(this, anchor, (id) => this.addSlide(id));
   }
 
   // ---- block actions -----------------------------------------------------
 
   // target: { slot } | { afterBlockId } | { containerOf, index }
-  addBlock(type, target) {
-    const block = createBlock(type);
+  addBlock(type, target, { at } = {}) {
+    let block = createBlock(type);
+    if (at && this.isFree && target.slot) block = { ...block, frame: this.#frameAround(type, at) };
     if (!this.commit(ops.insertBlock(this.deck, this.selection.slideId, target, block))) return;
     if (target.containerOf) {
       // Show the section the block went into, or it would look like nothing happened.
@@ -579,6 +587,59 @@ export class Editor {
     this.select({ blockId: block.id });
   }
 
+  // A default-sized frame for a new block, centred on a point and kept on the slide.
+  #frameAround(type, at) {
+    const base = ops.defaultFrame(type, this.slide);
+    const height = base.h ?? 120;
+    return {
+      ...base,
+      x: Math.round(Math.min(Math.max(0, at.x - base.w / 2), ops.SLIDE_W - Math.min(base.w, ops.SLIDE_W))),
+      y: Math.round(Math.min(Math.max(0, at.y - height / 2), ops.SLIDE_H - Math.min(height, ops.SLIDE_H))),
+    };
+  }
+
+  // A frame that matches the picture's own shape, at most 1100 x 700, centred on `at`.
+  async #imageFrame(src, at) {
+    const size = await new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth || 4, h: img.naturalHeight || 3 });
+      img.onerror = () => resolve({ w: 4, h: 3 });
+      img.src = this.assets.resolve(src);
+    });
+    const k = Math.min(1100 / size.w, 700 / size.h, 1);
+    const w = Math.max(48, Math.round(size.w * k));
+    const hgt = Math.max(48, Math.round(size.h * k));
+    const cx = at?.x ?? ops.SLIDE_W / 2;
+    const cy = at?.y ?? ops.SLIDE_H / 2;
+    return {
+      x: Math.round(Math.min(Math.max(0, cx - w / 2), ops.SLIDE_W - w)),
+      y: Math.round(Math.min(Math.max(0, cy - hgt / 2), ops.SLIDE_H - hgt)),
+      w, h: hgt,
+    };
+  }
+
+  // Where a block added from the toolbar, the Insert panel or "/" goes: after the
+  // selected block, else into the selected (or main) slot.
+  insertTarget() {
+    const { blockId, slotId } = this.selection;
+    const layout = getLayout(this.slide.layout);
+    if (!layout.free && blockId) return { afterBlockId: blockId };
+    return { slot: layout.slots.some((s) => s.id === slotId) ? slotId : ops.defaultSlot(layout) };
+  }
+
+  addBlockQuick(type, at) {
+    this.addBlock(type, this.insertTarget(), { at });
+  }
+
+  openInsert(anchor) {
+    openInsertPanel(this, anchor);
+  }
+
+  openPalette() {
+    const r = this.canvas.host.getBoundingClientRect();
+    openPalette(this, { x: r.left + r.width / 2 - 180, y: r.top + 24 });
+  }
+
   deleteBlock(id) {
     this.commit(ops.removeBlock(this.deck, id));
   }
@@ -654,7 +715,7 @@ export class Editor {
     input.click();
   }
 
-  async addImageFiles(files, { blockId, key, slot } = {}) {
+  async addImageFiles(files, { blockId, key, slot, at } = {}) {
     if (!this.persist.keepsImages && !this.warnedImages) {
       this.warnedImages = true;
       toast('Images are kept for this session only because browser storage is limited.', { kind: 'error', timeout: 6000 });
@@ -672,7 +733,8 @@ export class Editor {
         } else {
           const layout = getLayout(this.slide.layout);
           const slotId = layout.slots.some((s) => s.id === slot) ? slot : ops.defaultSlot(layout);
-          const block = createBlock('image', { props: { src, fit: 'contain' } });
+          let block = createBlock('image', { props: { src, fit: 'contain' } });
+          if (this.isFree) block = { ...block, frame: await this.#imageFrame(src, at) };
           this.commit(ops.insertBlock(this.deck, this.slide.id, { slot: slotId }, block));
           this.select({ blockId: block.id });
         }
@@ -894,6 +956,11 @@ export class Editor {
     }
 
     const onCanvas = e.target === document.body || !!e.target.closest?.('.ed-main');
+    if (e.key === '/' && onCanvas && !mod && !document.querySelector('.ed-dialog-backdrop')) {
+      e.preventDefault();
+      this.openPalette();
+      return;
+    }
     const { blockId, slotId } = this.selection;
     const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
     if (arrows && onCanvas && this.isFree && this.selectedIds.length) {
