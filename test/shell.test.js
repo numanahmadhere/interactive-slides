@@ -241,10 +241,10 @@ test('the comparison table is complete and every claim about us is backed by the
   assert.ok(free.includes(`${PLANS.free.cloudDecks} decks`) && free.includes(`${PLANS.free.livePhones} phones`), free);
 });
 
-test('the table is on the home page, third after the hero and tutorial', () => {
+test('the tutorial is the first thing on the home page and the table comes right after it', () => {
   const home = buildSite()['index.html'];
   const order = [...home.matchAll(/<section[^>]*?(?:id="([a-z]+)"|class="(hero)")/g)].map((m) => m[1] ?? m[2]);
-  assert.deepEqual(order.slice(0, 3), ['hero', 'tutorial', 'compare']);
+  assert.deepEqual(order.slice(0, 2), ['tutorial', 'compare']);
   assert.ok(home.includes('Not yet') && home.includes('Paid plan'), 'it admits what we lack');
   assert.ok(home.includes('<caption'), 'the table has a caption');
 });

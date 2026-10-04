@@ -192,7 +192,6 @@ test('the tutorial never uses a feature the product lacks, and shows the join co
   const home = buildSite()['index.html'];
   assert.ok(!/word cloud|AI/.test(home.slice(home.indexOf('id="tutorial"'), home.indexOf('id="features"'))));
   assert.equal(JOIN_CODE.length, 6);
-  assert.ok(home.includes('5F5BLZ'), 'the hero shows the same sample code');
 });
 
 test('the script is plain and safe: it renders text with textContent only', () => {

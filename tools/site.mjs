@@ -4,6 +4,7 @@
 
 import { renderTable, CHECKED } from './compare.mjs';
 import { listBlocks } from '../src/core/blocks/index.js';
+import { TEMPLATES } from '../src/library/templates.js';
 import { PLANS, PLAN_ORDER, PRICES, TRIAL_DAYS } from '../src/billing/plans.js';
 import { highlights } from '../src/billing/features.js';
 
@@ -137,48 +138,27 @@ const home = () => layout({
   title: `${NAME}: interactive presentations your audience can answer`,
   description: 'Build slides with quizzes, polls and live questions. Present from your browser, let the audience join from their phones, and control the slides from yours. Free to start.',
   body: `
-<section class="hero"><div class="wrap hero__grid">
-<div class="hero__copy">
-<p class="label">Interactive presentations</p>
+<section id="tutorial" class="hero tuthero"><div class="wrap">
+<header class="tuthero__head">
 <h1>Presentations your audience can <em>answer.</em></h1>
-<p class="lead">Add live polls, quizzes and questions to the presentations you already give. Run them from your browser while the room responds from their phones, then share or export the deck.</p>
-<p class="cta"><a class="btn lg" href="/app/">Start building</a><a class="textlink" href="#tutorial">Try the tutorial <span aria-hidden="true">&darr;</span></a></p>
-<p class="assure">Free to start. Nothing to install. No account needed to try it.</p>
-</div>
-<div class="visual" role="img" aria-label="A live poll on a presenter's slide, with the same poll open on a phone and the bars filling as people answer">
-<div class="visual__slide"><p class="vs-tag">Live poll</p>
-<p class="vs-q">Which block would you use first?</p>
-<div class="bars">${pollBars([['Quiz question', 46], ['Chart', 28], ['Diagram', 18], ['Calculator', 8]])}</div>
-<p class="vs-foot">38 responses &middot; Join with 5F5BLZ</p></div>
-<div class="visual__phone"><p class="phone__brand">Densight Slides</p>
-<p class="phone__q">Which block would you use first?</p>
-<div class="opt"><i>A</i>Quiz question</div><div class="opt on"><i>B</i>Chart</div><div class="opt"><i>C</i>Diagram</div>
-<p class="phone__sent">${CHECK}Answer sent</p></div>
-</div>
-</div>
-<div class="wrap"><dl class="facts">
-<div><dt>${BLOCK_COUNT}</dt><dd>interactive and design blocks</dd></div>
-<div><dt>0</dt><dd>apps for your audience to install</dd></div>
-<div><dt>5</dt><dd>ways to export a deck</dd></div>
-<div><dt>12</dt><dd>slide templates to start from</dd></div>
-</dl></div>
-</section>
-
-<section id="tutorial" class="alt"><div class="wrap">
-<header class="head reveal"><p class="label">Interactive tutorial</p><h2>Run your first live poll in four steps.</h2>
-<p class="sub">Nothing here is a recording. Type, click and tap, and it behaves like the real thing.</p></header>
+<p class="lead">Add live polls, quizzes and questions to the presentations you already give. Try it right here: nothing below is a recording. Type, click and tap, and it behaves like the real thing.</p>
+</header>
 <div class="tut reveal" id="tut">
+<div class="tut__side">
 <ol class="tut__nav" aria-label="Tutorial steps">
-<li><button type="button" data-go="1"><span class="n">1</span><span><b>Write the question</b><small>Edit the slide</small></span></button></li>
-<li><button type="button" data-go="2"><span class="n">2</span><span><b>Start the session</b><small>Get a join code</small></span></button></li>
-<li><button type="button" data-go="3"><span class="n">3</span><span><b>Answer from a phone</b><small>Tap an option</small></span></button></li>
-<li><button type="button" data-go="4"><span class="n">4</span><span><b>Watch the room</b><small>See results build</small></span></button></li>
+<li><button type="button" data-go="1"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></span><span><b>Write the question</b><small>Edit the slide</small></span></button></li>
+<li><button type="button" data-go="2"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M7.8 7.8a6 6 0 000 8.4M16.2 7.8a6 6 0 010 8.4M4.9 4.9a10 10 0 000 14.2M19.1 4.9a10 10 0 010 14.2"/></svg></span><span><b>Start the session</b><small>Get a join code</small></span></button></li>
+<li><button type="button" data-go="3"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></span><span><b>Answer from a phone</b><small>Tap an option</small></span></button></li>
+<li><button type="button" data-go="4"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span><span><b>Watch the room</b><small>See results build</small></span></button></li>
 </ol>
+<div class="tut__actions"><button type="button" class="btn ghost" id="tut-back">Back</button><button type="button" class="btn" id="tut-act">Next</button><a class="btn" id="tut-open" href="/app/" hidden>Build your own poll</a><button type="button" class="btn ghost" id="tut-replay" hidden>Replay</button></div>
+</div>
 <div class="tut__main">
 <p class="tut__task" id="tut-task" role="status" aria-live="polite"></p>
-<div class="tut__actions"><button type="button" class="btn ghost" id="tut-back">Back</button><button type="button" class="btn" id="tut-act">Next</button><a class="btn" id="tut-open" href="/app/" hidden>Build your own poll</a><button type="button" class="btn ghost" id="tut-replay" hidden>Replay</button></div>
 <p class="sr" id="tut-announce" role="status" aria-live="polite"></p>
 <div class="tut__stage">
+<span class="tut__tag tut__tag--screen" aria-hidden="true">Your screen<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v15M6 13l6 6 6-6"/></svg></span>
+<span class="tut__tag tut__tag--phone" aria-hidden="true">Participant&rsquo;s screen<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5c0 6 3 9 9 10M10 11l4 4-4 4"/></svg></span>
 <div class="tut__screen"><div class="tut__bar"><span>Presenter screen</span><span id="tut-code" data-live="false">Not started</span></div>
 <h3 id="tut-q" class="tut__q"></h3><ul id="tut-bars" class="tbars"></ul><p id="tut-count" class="tut__count"></p></div>
 <div class="tut__phone"><p class="phone__brand">Audience phone</p>
@@ -192,6 +172,13 @@ const home = () => layout({
 </fieldset></form>
 </div></div>
 <noscript><p class="note">The tutorial needs JavaScript. The <a href="/learn/">guides</a> cover the same steps in text.</p></noscript>
+<p class="cta tuthero__cta"><a class="btn lg" href="/app/">Start building</a><span class="assure">Free to start. Nothing to install. No account needed to try it.</span></p>
+<dl class="facts">
+<div><dt>${BLOCK_COUNT}</dt><dd>interactive and design blocks</dd></div>
+<div><dt>0</dt><dd>apps for your audience to install</dd></div>
+<div><dt>5</dt><dd>ways to export a deck</dd></div>
+<div><dt>${TEMPLATES.length}</dt><dd>slides to start from</dd></div>
+</dl>
 </div></section>
 
 <section id="compare"><div class="wrap">
