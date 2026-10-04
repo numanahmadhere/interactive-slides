@@ -652,3 +652,12 @@ a.ed-logo .logo { width: 28px; height: 28px; }
 .ed-upgrade { display: grid; gap: 14px; }
 .ed-card__tag { position: absolute; top: 10px; right: 10px; padding: 2px 8px; border-radius: 999px; background: var(--ed-accent); color: #fff; font: 700 10px var(--ed-font); letter-spacing: 0.03em; text-transform: uppercase; }
 .ed-card { position: relative; }
+
+/* Comments */
+.ed-comments h3 { margin: 18px 0 6px; font-size: 13px; color: var(--ed-muted); font-weight: 600; }
+.ed-comment-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ed-comment { padding: 10px 12px; border: 1px solid var(--ed-border); border-radius: 10px; }
+.ed-comment.is-done { opacity: .6; }
+.ed-comment__meta { font-size: 12px; color: var(--ed-muted); }
+.ed-comment__body { margin: 4px 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ed-comment__actions { display: flex; gap: 8px; }

@@ -11,6 +11,7 @@ import { takeFlash } from './flash.js';
 import { getBilling } from '../billing/instance.js';
 import { planPicker } from '../billing/picker.js';
 import { PLANS } from '../billing/plans.js';
+import { teamSection } from './teams.js';
 
 export async function mountAccount(root) {
   const persist = new Persistence();
@@ -86,6 +87,25 @@ export async function mountAccount(root) {
     }
 
     if (cloud?.user) body.push(planSection());
+
+    // Joining a team from an invite link, then showing the teams this person is in.
+    if (cloud?.user) {
+      const invite = new URLSearchParams(location.search).get('invite');
+      if (invite) {
+        try {
+          await cloud.acceptInvite(invite);
+          say('You joined the team. Its decks now appear in My decks.');
+        } catch (err) {
+          say(err.message || 'Could not use that invite link.', 'error');
+        }
+        history.replaceState(null, '', location.pathname);
+      }
+      let teams = [];
+      try { teams = await cloud.teams(); } catch (err) { console.error(err); }
+      body.push(teamSection({ cloud, plan: billing.plan, teams, run, say, rerender: render }));
+    } else if (cloud && new URLSearchParams(location.search).get('invite')) {
+      body.unshift(h('p', { class: 'ed-hint ed-hint--warn', role: 'status', text: 'You have been invited to a team. Sign in below to join it. If you are sent back here without the invite, open the link again.' }));
+    }
 
     body.push(section('On this device',
       h('p', { text: `${local.length} deck${local.length === 1 ? '' : 's'} stored in this browser. They stay here until you delete them.` }),

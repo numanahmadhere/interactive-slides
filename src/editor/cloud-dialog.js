@@ -14,7 +14,9 @@ import { getCloud, resetCloud } from '../cloud/instance.js';
 import { baseAddress, loadSettings } from '../live/config.js';
 import { DASHBOARD_PATH } from '../shell/paths.js';
 import { cleanConfig, encodeConfig } from '../live/protocol.js';
-import { button, field, openDialog, textInput, toast } from './ui.js';
+import { button, field, openDialog, select, textInput, toast } from './ui.js';
+import { normalizeDeck } from '../core/schema.js';
+import { canUseTheme } from '../billing/plans.js';
 
 export function shareLink(project, token) {
   const url = new URL(baseAddress(loadSettings()));
@@ -93,10 +95,43 @@ export function openCloudDialog(editor) {
   // ---- 3. signed in: this deck's online state, sharing, conflicts ------------------
 
   let completions = null;
+  let teams = [];
+  let deckTeamId = null;
+  let deckOwner = null;
   let shareToken = undefined; // undefined = not looked up yet, null = not shared
+
+  // The team's brand kit is a logo, its position and size, and the theme with its colour overrides. It came from
+  // the database, so it goes through the same gate as any imported deck before it touches this one.
+  function useTeamBrand(team) {
+    if (!editor.requirePlan((p) => p.brand, 'Your own colours, font and logo are not part of your plan.')) return;
+    const kit = team.brand ?? {};
+    if (!kit.brand && !kit.theme) { say('This team has no brand kit yet. The team owner can save one from their deck.'); return; }
+    const { deck } = normalizeDeck({ ...editor.deck, brand: kit.brand ?? editor.deck.brand, theme: kit.theme ?? editor.deck.theme });
+    let next = ops.setBrand(editor.deck, deck.brand);
+    const theme = canUseTheme(editor.plan, deck.theme.id) ? deck.theme : { id: editor.deck.theme.id, overrides: deck.theme.overrides };
+    next = ops.setTheme(next, theme.id);
+    next = ops.setThemeOverrides(next, theme.overrides);
+    editor.commit(next, { source: 'ui' });
+    say(`Applied the ${team.name} brand to this deck.`);
+  }
+
+  async function saveTeamBrand(team) {
+    const inlined = await editor.assets.inline({ brand: editor.deck.brand });
+    const kit = { brand: inlined.brand, theme: editor.deck.theme };
+    if (JSON.stringify(kit).length > 300000) throw new Error('The logo is too large for a shared brand kit. Use a smaller image.');
+    team.brand = (await cloud.setTeamBrand(team.id, kit)).brand;
+    say(`Saved this deck's logo, colours and font as the ${team.name} brand kit.`);
+    render();
+  }
 
   async function loadShare() {
     shareToken = editor.cloudId ? (await cloud.get(editor.cloudId)).share_token ?? null : null;
+    if (editor.cloudId) {
+      teams = await cloud.teams();
+      const info = await cloud.deckTeam(editor.cloudId);
+      deckTeamId = info?.team_id ?? null;
+      deckOwner = info?.owner ?? null;
+    }
     render();
   }
 
@@ -159,6 +194,28 @@ export function openCloudDialog(editor) {
           button({ label: 'Copy link', onClick: async () => {
             try { await navigator.clipboard.writeText(link); toast('Link copied.'); } catch { toast('Could not copy. Select the link and copy it by hand.', { kind: 'error' }); }
           } })) : null));
+    }
+
+    if (linked) {
+      const team = teams.find((t) => t.id === deckTeamId);
+      const owns = deckOwner === cloud.user?.id;
+      const options = [{ value: '', label: 'Only me' }, ...teams.map((t) => ({ value: t.id, label: t.name }))];
+      const pick = select({ options, value: deckTeamId ?? '', onChange: (v) => run('Updating...', async () => {
+        await cloud.setDeckTeam(editor.cloudId, v || null);
+        deckTeamId = v || null;
+        say(v ? 'This deck is now shared with the team.' : 'This deck is private to you again.');
+        render();
+      })() });
+      pick.setAttribute('aria-label', 'Share this deck with a team');
+      pick.disabled = !owns || !teams.length;
+      out.push(h('div', { class: 'ed-cloud__row' },
+        h('div', { class: 'ed-cloud__main' },
+          h('div', { class: 'ed-xrow__title', text: 'Team' }),
+          h('div', { class: 'ed-xrow__desc', text: !teams.length ? 'You are not in a team. Make one or join one on your Account page.' : !owns ? 'You are working on a teammate\'s deck.' : team ? `Shared with ${team.name}. Everyone in it can edit and comment.` : 'Only you can open this deck.' })),
+        h('div', { class: 'ed-xrow__actions' }, pick),
+        team ? h('div', { class: 'ed-cloud__share' },
+          button({ label: 'Use the team brand', onClick: () => useTeamBrand(team) }),
+          team.owner === cloud.user?.id ? button({ label: 'Save this deck\'s brand to the team', onClick: run('Saving...', () => saveTeamBrand(team)) }) : null) : null));
     }
 
     if (linked && shareToken) {

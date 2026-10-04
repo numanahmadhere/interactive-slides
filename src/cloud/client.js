@@ -9,6 +9,22 @@ import { newToken } from '../live/protocol.js';
 const MAX_DECK_BYTES = 25 * 1024 * 1024;
 const REFRESH_MARGIN_S = 60;
 
+// The database raises short codes for team rules; say them in words.
+const TEAM_MESSAGES = {
+  team_needs_plan: 'Team workspaces come with the Pro and Advanced plans.',
+  team_needs_name: 'Give the team a name.',
+  team_limit: 'You can own up to three teams.',
+  team_full: 'This team has no free seats. Ask its owner to upgrade, or to free one up.',
+  invite_invalid: 'This invite link is not valid any more. Ask for a new one.',
+  not_team_owner: 'Only the person who made the team can do that.',
+  not_in_team: 'You are not in that team.',
+  comment_limit: 'This deck has reached its limit of comments.',
+};
+export function teamError(err) {
+  const code = Object.keys(TEAM_MESSAGES).find((c) => String(err?.message ?? '').includes(c));
+  return code ? new CloudError(TEAM_MESSAGES[code], { code, status: err.status }) : err;
+}
+
 export class CloudError extends Error {
   constructor(message, { status = 0, code = '' } = {}) {
     super(message);
@@ -267,6 +283,89 @@ export class Cloud {
   // The owner's list of people who finished (newest first).
   async listCompletions(deckId) {
     return this.#rest(`/rest/v1/completions?deck_id=eq.${encodeURIComponent(deckId)}&select=name,completed_at&order=completed_at.desc&limit=2000`);
+  }
+
+  // ---- teams -----------------------------------------------------------------------
+
+  // The teams this person belongs to, with who is in each. A project that has not run the team part of schema.sql answers [].
+  async teams() {
+    try {
+      return await this.#rest('/rest/v1/teams?select=id,name,owner,brand,created_at,team_members(user_id,email,role)&order=created_at.asc');
+    } catch (err) {
+      if (err.status === 404 || err.status === 400) return [];
+      throw err;
+    }
+  }
+
+  async #rpc(name, body) {
+    try {
+      return await this.#call(`/rest/v1/rpc/${name}`, { method: 'POST', body, auth: await this.#token() });
+    } catch (err) {
+      throw teamError(err);
+    }
+  }
+
+  createTeam(name) { return this.#rpc('create_team', { n: name }); }
+  createInvite(teamId) { return this.#rpc('create_team_invite', { t: teamId }); }
+  acceptInvite(token) { return this.#rpc('accept_team_invite', { tok: token }); }
+  removeMember(teamId, userId) { return this.#rpc('remove_team_member', { t: teamId, u: userId }); }
+
+  async setTeamBrand(teamId, brand) {
+    const rows = await this.#rest(`/rest/v1/teams?id=eq.${encodeURIComponent(teamId)}`, { method: 'PATCH', body: { brand }, prefer: 'return=representation' });
+    if (!rows[0]) throw new CloudError('Only the person who made the team can change its brand.', { code: 'not_owner' });
+    return rows[0];
+  }
+
+  async deleteTeam(teamId) {
+    await this.#rest(`/rest/v1/teams?id=eq.${encodeURIComponent(teamId)}`, { method: 'DELETE' });
+  }
+
+  // Put one of your decks in a team (or null to take it out). Returns the deck row.
+  async setDeckTeam(deckId, teamId) {
+    try {
+      const rows = await this.#rest(`/rest/v1/decks?id=eq.${encodeURIComponent(deckId)}`, { method: 'PATCH', body: { team_id: teamId }, prefer: 'return=representation' });
+      if (!rows[0]) throw new CloudError('That deck is not in your account any more.', { code: 'not_found' });
+      return rows[0];
+    } catch (err) {
+      throw teamError(err);
+    }
+  }
+
+  async deckTeam(deckId) {
+    try {
+      return (await this.#rest(`/rest/v1/decks?select=team_id,owner&id=eq.${encodeURIComponent(deckId)}`))[0] ?? null;
+    } catch (err) {
+      if (err.status === 400) return null;
+      throw err;
+    }
+  }
+
+  // ---- comments --------------------------------------------------------------------
+
+  async comments(deckId) {
+    try {
+      return await this.#rest(`/rest/v1/deck_comments?select=id,slide_id,author,author_name,body,resolved,created_at&deck_id=eq.${encodeURIComponent(deckId)}&order=created_at.asc&limit=2000`);
+    } catch (err) {
+      if (err.status === 404 || err.status === 400) return [];
+      throw err;
+    }
+  }
+
+  async addComment(deckId, slideId, authorName, body) {
+    try {
+      const rows = await this.#rest('/rest/v1/deck_comments', { method: 'POST', body: { deck_id: deckId, slide_id: String(slideId).slice(0, 64), author_name: String(authorName ?? '').slice(0, 80), body: String(body).slice(0, 1000) }, prefer: 'return=representation' });
+      return rows[0];
+    } catch (err) {
+      throw teamError(err);
+    }
+  }
+
+  async resolveComment(id, resolved) {
+    await this.#rest(`/rest/v1/deck_comments?id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', body: { resolved: resolved === true } });
+  }
+
+  async deleteComment(id) {
+    await this.#rest(`/rest/v1/deck_comments?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 
   // ---- plumbing --------------------------------------------------------------------

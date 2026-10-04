@@ -985,8 +985,9 @@ export class Editor {
         { label: 'New deck', value: 'new' },
         { label: 'Open sample deck', value: 'sample' },
         { label: 'Open interactive demo', value: 'interactive' },
-        { label: 'Import deck...', value: 'import', hint: 'JSON' },
+        { label: 'Import deck...', value: 'import', hint: 'PowerPoint, JSON' },
         { label: 'Cloud: save, open, share...', value: 'cloud', hint: 'Account' },
+        { label: 'Comments...', value: 'comments', hint: 'Team' },
         { label: 'Find and replace...', value: 'find', hint: 'Ctrl+H' },
         { label: 'Keyboard shortcuts', value: 'keys', hint: '?' },
         { label: 'Export...', value: 'export', hint: 'HTML, PDF, PNG, PPTX' },
@@ -1000,6 +1001,7 @@ export class Editor {
         else if (value === 'interactive') this.openAsNew(demoDeckCopy());
         else if (value === 'import') this.#pickImportFile();
         else if (value === 'find') openFindDialog(this);
+        else if (value === 'comments') import('./comments-dialog.js').then((m) => m.openCommentsDialog(this));
         else if (value === 'keys') openShortcuts();
         else if (value === 'cloud') openCloudDialog(this);
         else if (value === 'support') location.href = supportHref(`Help with "${this.deck.meta.title}"`);
