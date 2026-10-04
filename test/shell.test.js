@@ -372,3 +372,20 @@ test('use cases: a hub, eight segment pages, each with real ready-made slides, a
   }
   assert.ok(!/testimonial|trusted by [0-9]|million users/i.test(Object.values(site).join(' ')), 'still no invented proof');
 });
+
+test('illustrations: every use-case page has its own animated scene, the files are safe and small, and motion can be switched off', () => {
+  const site = buildSite();
+  const slugs = ['training', 'education', 'events', 'people-teams', 'consulting', 'webinars', 'retrospectives', 'community'];
+  for (const slug of slugs) {
+    const page = site[`${slug}/index.html`];
+    assert.ok(page.includes(`src="/art/${slug}.svg"`) && /class="seg__art"[^>]*alt="[^"]{20,}"/.test(page) || page.includes(`/art/${slug}.svg" alt="`), `${slug} shows its scene with a description`);
+    assert.ok(page.includes('/art/spot-ask.svg') && page.includes('What you can do'), `${slug} has the row of small animations`);
+    const art = site[`art/${slug}.svg`];
+    assert.ok(art && art.startsWith('<svg') && art.length < 30000, `${slug} svg is present and small`);
+    assert.ok(!/<script|\son\w+=|javascript:|href="http|xlink:href|<image/i.test(art), `${slug} svg loads nothing and runs nothing`);
+    assert.ok(art.includes('prefers-reduced-motion') && art.includes('@keyframes'), `${slug} animates, and stops on request`);
+  }
+  for (const n of ['ask', 'quiz', 'rank', 'discuss']) assert.ok(site[`art/spot-${n}.svg`], n);
+  assert.ok(site['index.html'].includes('/art/training.svg') && site['index.html'].includes('/art/spot-quiz.svg'), 'the home page uses them too');
+  assert.ok(site['use-cases/index.html'].includes('/art/community.svg'));
+});

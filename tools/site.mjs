@@ -7,6 +7,7 @@ import { listBlocks, getBlock } from '../src/core/blocks/index.js';
 import { PLANS, PLAN_ORDER, PRICES, TRIAL_DAYS } from '../src/billing/plans.js';
 import { highlights } from '../src/billing/features.js';
 import { TEMPLATES } from '../src/library/templates.js';
+import { buildArt, ART_ALT } from './art.mjs';
 
 const planCards = () => PLAN_ORDER.map((id) => {
   const plan = PLANS[id];
@@ -264,6 +265,8 @@ const home = () => layout({
 <article class="pcard pcard--c reveal"><div class="pcard__vis">${mockTeam()}</div><h3>Work as a team</h3><p>Share decks with colleagues, comment on slides, and keep one logo and colour set for everyone. People join with a link. Pro plan and above.</p><a class="prod__go" href="/learn/#team">Discover teams <span aria-hidden="true">&rarr;</span></a></article>
 </div></div></section>
 
+${canBand()}
+
 <section id="stats" class="band-ink"><div class="wrap">
 <ul class="stats">
 <li class="reveal"><b data-count="${BLOCK_COUNT}">${BLOCK_COUNT}</b><span>kinds of interactive and design block</span></li>
@@ -341,7 +344,7 @@ ${planCards()}
 <header class="head reveal"><p class="label">Use cases</p><h2>More <em>engagement,</em> every day.</h2>
 <p class="sub">Easily add participation to more of the moments where you talk and others listen.</p></header>
 <div class="uc">
-<div class="uc__col reveal"><h3>At work</h3>
+<div class="uc__col reveal"><img class="uc__art" src="/art/training.svg" alt="" width="800" height="560" loading="lazy"><h3>At work</h3>
 <ul>
 <li><b>Anonymous feedback.</b> Ask how a talk or briefing landed, and get honest answers.</li>
 <li><b>Training that sticks.</b> A short quiz after each section shows what was understood.</li>
@@ -350,7 +353,7 @@ ${planCards()}
 <li><b>Town halls.</b> Let people send questions, upvote the best, and hold them for approval.</li>
 <li><b>Client sessions.</b> Present with your own logo, from your phone, and leave a shareable deck.</li>
 </ul><a class="btn ghost" href="/training/">See training and meeting uses</a></div>
-<div class="uc__col reveal"><h3>In education</h3>
+<div class="uc__col reveal"><img class="uc__art" src="/art/education.svg" alt="" width="800" height="560" loading="lazy"><h3>In education</h3>
 <ul>
 <li><b>Lecture feedback.</b> Quick reactions and polls show where the room is lost.</li>
 <li><b>Check understanding.</b> Anonymous quizzes with no accounts for students.</li>
@@ -589,16 +592,20 @@ ${groups.map((g) => `<h2 class="tpg">${esc(g)}</h2><ul class="tpl">${TEMPLATES.f
 
 // ---- segment pages (education, training) ----------------------------------------------------------------------
 
+const SPOTS = [['ask', 'Ask', 'Take questions from the whole room'], ['quiz', 'Quiz', 'Test what landed, with points for speed'], ['rank', 'Rank', 'Find the group\'s real priorities'], ['discuss', 'Discuss', 'Start a conversation everyone joins']];
+const canBand = (cls = '') => `<section class="can ${cls}"><div class="wrap"><header class="head head--center reveal"><h2>What you can do</h2></header><ul class="can__row">${SPOTS.map(([n, t, d]) => `<li class="reveal"><img src="/art/spot-${n}.svg" alt="" width="200" height="200" loading="lazy"><b>${t}</b><span>${d}</span></li>`).join('')}</ul></div></section>`;
+
 function segmentPage({ path, title, description, eyebrow, h1, lead, cases, trust, closing, templates = [] }) {
   const slug = path.replace(/\//g, '');
   const picks = templates.map((id) => TEMPLATES.find((t) => t.id === id)).filter(Boolean);
   const others = SEGMENTS.filter((x) => x.slug !== slug);
   return layout({
     path, title, description,
-    body: `<section class="seg"><div class="wrap">
+    body: `<section class="seg"><div class="wrap seg__grid"><div>
 <p class="label">${eyebrow}</p><h1>${h1}</h1><p class="lead">${lead}</p>
 <p class="cta"><a class="btn lg" href="/app/">Start building free</a><a class="textlink" href="/templates/">Browse ready-made slides <span aria-hidden="true">&rarr;</span></a></p>
-</div></section>
+</div><img class="seg__art" src="/art/${slug}.svg" alt="${esc(ART_ALT[slug] ?? '')}" width="800" height="560"></div></section>
+${canBand('can--paper')}
 <section><div class="wrap"><header class="head"><h2>How people use it</h2></header>
 <div class="cases">${cases.map(([t, text, how]) => `<article class="case"><h3>${t}</h3><p>${text}</p><p class="case__how"><b>Use:</b> ${how}</p></article>`).join('')}</div></div></section>
 ${picks.length ? `<section class="band-paper"><div class="wrap"><header class="head"><h2>Start with these slides</h2><p class="sub">Each one opens in the editor as a new deck, ready to change.</p></header>
@@ -811,7 +818,7 @@ const useCasesPage = () => layout({
   description: 'How teams, schools, events and community groups use Densight Slides: training, education, conferences, HR, consulting, webinars, retros and more.',
   body: `<section class="seg"><div class="wrap"><p class="label">Use cases</p><h1>Wherever people need to be <em>heard.</em></h1>
 <p class="lead">The same slides, questions and live answers work in a classroom, a boardroom, a conference hall and a video call. Pick the one closest to you.</p></div></section>
-<section><div class="wrap"><ul class="ucgrid">${SEGMENTS.map((x) => `<li><a class="uccard uccard--${x.tone}" href="${segHref(x)}"><span class="mm__ico mm__ico--${x.tone}">${ico(x.icon)}</span><b>${x.name}</b><small>${x.short}</small><span class="mm__go">Read how <span aria-hidden="true">&rarr;</span></span></a></li>`).join('')}</ul>
+<section><div class="wrap"><ul class="ucgrid">${SEGMENTS.map((x) => `<li><a class="uccard uccard--${x.tone}" href="${segHref(x)}"><img class="uccard__art" src="/art/${x.slug}.svg" alt="" width="800" height="560" loading="lazy"><span class="mm__ico mm__ico--${x.tone}">${ico(x.icon)}</span><b>${x.name}</b><small>${x.short}</small><span class="mm__go">Read how <span aria-hidden="true">&rarr;</span></span></a></li>`).join('')}</ul>
 <p class="seg__fine" style="margin-top:36px">Not on the list? If people need to answer questions in a room or online, it probably fits. <a href="${mailto('A use case')}">Tell us about yours</a> or <a href="/app/">start building</a>.</p></div></section>
 <section class="cta-band"><div class="wrap"><h2>Try it with your next session.</h2><p>Free to start. Nothing for your audience to install.</p><a class="btn lg light" href="/app/">Start building free</a></div></section>`,
 });
@@ -896,6 +903,7 @@ export function buildSite() {
     'pricing/index.html': pricingPage(),
     'security/index.html': securityPage(),
     '404.html': notFound(),
+    ...buildArt(),
     'robots.txt': `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /welcome/\n\nSitemap: ${SITE}/sitemap.xml\n`,
     'sitemap.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', '/templates/', '/use-cases/', ...SEGMENTS.map(segHref), '/pricing/', '/security/', '/learn/', '/privacy/', '/terms/', '/refund/'].map((p) => `<url><loc>${SITE}${p}</loc></url>`).join('\n')}\n</urlset>\n`,
   };
