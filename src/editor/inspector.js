@@ -15,7 +15,7 @@ import { svgIcon } from '../core/dom.js';
 import { ASPECTS, TRANSITIONS, slideTitle } from '../core/schema.js';
 import { safeImageUrl } from '../core/sanitize.js';
 import * as ops from './ops.js';
-import { button, field, segmented, toggle, select, textInput, numberInput, listEditor, colorInput } from './ui.js';
+import { button, field, segmented, toggle, select, textInput, numberInput, rangeInput, listEditor, colorInput } from './ui.js';
 
 const TRANSITION_LABELS = { fade: 'Fade', slide: 'Slide', zoom: 'Zoom', none: 'None' };
 const TABS = [['block', 'Block'], ['layers', 'Layers'], ['slide', 'Slide'], ['deck', 'Deck']];
@@ -217,7 +217,8 @@ export class Inspector {
     }));
     const row = h('div', { class: 'ed-grid2' },
       num('X', 'x', f.x, -6000, 6000), num('Y', 'y', f.y, -6000, 6000),
-      num('Width', 'w', f.w, 8, 6000), f.h ? num('Height', 'h', box.h, 8, 6000) : null);
+      num('Width', 'w', f.w, 8, 6000), f.h ? num('Height', 'h', box.h, 8, 6000) : null,
+      num('Rotate (deg)', 'r', f.r ?? 0, 0, 359));
     const layers = h('div', { class: 'ed-actions' },
       button({ icon: 'front', label: 'Bring to front', iconOnly: true, onClick: () => ed.arrangeSelection('front') }),
       button({ icon: 'up', label: 'Bring forward', iconOnly: true, onClick: () => ed.arrangeSelection('forward') }),
@@ -276,6 +277,7 @@ export class Inspector {
         return field(f.label, input);
       }
       case 'number': return field(f.label, numberInput({ value, min: f.min, max: f.max, onInput: typing }));
+      case 'range': return field(f.label, rangeInput({ value, min: f.min, max: f.max, step: f.step, label: f.label, onInput: typing }));
       case 'slide': return field(f.label, this.#slidePicker(value, choice));
       case 'hint': return h('p', { class: 'ed-hint', text: f.text });
       case 'icon': {

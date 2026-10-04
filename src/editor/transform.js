@@ -111,3 +111,41 @@ export function matchSize(boxes, dim, to) {
 export const nudgeStep = (shift) => (shift ? 20 : 2);
 
 export const round = (box) => ({ x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.w), h: Math.round(box.h) });
+
+// ---- rotation -------------------------------------------------------------------
+
+const rad = (deg) => (deg * Math.PI) / 180;
+
+// Angle in degrees (0 = pointing up, clockwise) from a centre to a point.
+export const angleTo = (center, point) => {
+  const deg = (Math.atan2(point.y - center.y, point.x - center.x) * 180) / Math.PI + 90;
+  return ((deg % 360) + 360) % 360;
+};
+
+// Snap to the nearest step (15 degrees by default) when `on`, and to 0/90/180/270 within 4 degrees always.
+export function snapAngle(angle, on, step = 15) {
+  let a = on ? Math.round(angle / step) * step : angle;
+  for (const target of [0, 90, 180, 270, 360]) if (Math.abs(a - target) <= 4) a = target % 360;
+  return ((Math.round(a * 10) / 10 % 360) + 360) % 360;
+}
+
+// Resize a box that is rotated by r degrees about its centre. The pointer travel (dx, dy)
+// is in slide space; the edge opposite the handle stays where it is on screen.
+export function resizeRotated(box, r, handle, dx, dy, opts = {}) {
+  const c = Math.cos(rad(r));
+  const s = Math.sin(rad(r));
+  const local = resizeBox(box, handle, dx * c + dy * s, -dx * s + dy * c, opts);
+  const shiftX = local.x + local.w / 2 - (box.x + box.w / 2);
+  const shiftY = local.y + local.h / 2 - (box.y + box.h / 2);
+  const cx = box.x + box.w / 2 + shiftX * c - shiftY * s;
+  const cy = box.y + box.h / 2 + shiftX * s + shiftY * c;
+  return { x: cx - local.w / 2, y: cy - local.h / 2, w: local.w, h: local.h };
+}
+
+// A frame's children keep their place when a group is resized: scale them with it.
+export function scaleChildFrame(frame, sx, sy) {
+  const r2 = (n) => Math.round(n * 100) / 100;
+  const out = { ...frame, x: r2(frame.x * sx), y: r2(frame.y * sy), w: r2(Math.max(8, frame.w * sx)) };
+  if (frame.h) out.h = r2(Math.max(8, frame.h * sy));
+  return out;
+}

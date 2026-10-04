@@ -984,3 +984,7 @@ button.sp-poll__row:focus-visible { outline: 5px solid var(--sp-accent-text); ou
 .sp-free > .sp-block[data-type='embed'] { display: flex; flex-direction: column; }
 .sp-free > .sp-block[style*='height'] > * { max-height: 100%; }
 .sp-free > .sp-block[style*='height'][data-type='image'] { overflow: hidden; }
+
+/* Groups: children are positioned against the group's own top-left corner. */
+.sp-group { position: relative; width: 100%; height: 100%; }
+.sp-image.is-cropped { overflow: hidden; }

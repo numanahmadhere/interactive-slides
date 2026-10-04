@@ -6,7 +6,8 @@
 import { uid } from '../core/util.js';
 import { getLayout } from '../core/layouts.js';
 import { MAX_SLIDES } from '../core/schema.js';
-import { getBlock, sectionKey } from '../core/blocks/index.js';
+import { scaleChildFrame } from './transform.js';
+import { getBlock, sectionKey, createBlock } from '../core/blocks/index.js';
 
 const same = (a, b) =>
   Object.is(a, b) || (a && b && typeof a === 'object' && JSON.stringify(a) === JSON.stringify(b));
@@ -413,6 +414,15 @@ export function defaultFrame(type, slide, size) {
 
 const sameFrame = (a, b) => a && b && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h && (a.r ?? 0) === (b.r ?? 0);
 
+// Scale a group's children when the group itself is resized.
+function scaledGroup(block, sx, sy) {
+  const scaleList = (blocks) => blocks.map((c) => {
+    const next = { ...c, frame: c.frame ? scaleChildFrame(c.frame, sx, sy) : c.frame };
+    return next;
+  });
+  return { ...block, props: { ...block.props, items: block.props.items.map((s) => ({ ...s, blocks: scaleList(s.blocks) })) } };
+}
+
 // frames: { [blockId]: {x, y, w, h?, r?} }. One pass, so a drag of many blocks is one step.
 export function setFrames(deck, frames) {
   const ids = new Set(Object.keys(frames));
@@ -422,9 +432,16 @@ export function setFrames(deck, frames) {
     if (!slide.blocks.some((b) => ids.has(b.id))) return slide;
     const blocks = slide.blocks.map((b) => {
       const f = frames[b.id];
-      if (!f || !b.frame || sameFrame(b.frame, { ...b.frame, ...f })) return b;
+      if (!f || !b.frame) return b;
+      const merged = { ...b.frame, ...f };
+      if (!merged.r) delete merged.r;
+      if (sameFrame(b.frame, merged)) return b;
       changed = true;
-      return { ...b, frame: { ...b.frame, ...f } };
+      let next = { ...b, frame: merged };
+      if (b.type === 'group' && b.frame.w && (merged.w !== b.frame.w || (merged.h && b.frame.h && merged.h !== b.frame.h))) {
+        next = scaledGroup(next, merged.w / b.frame.w, merged.h && b.frame.h ? merged.h / b.frame.h : 1);
+      }
+      return next;
     });
     return { ...slide, blocks };
   });
@@ -538,6 +555,49 @@ export function moveBlockTo(deck, slideId, blockId, toIndex) {
     const blocks = slide.blocks.slice();
     const [moved] = blocks.splice(from, 1);
     blocks.splice(to, 0, moved);
+    return { ...slide, blocks };
+  });
+}
+
+// ---- groups ------------------------------------------------------------------
+
+// boxes: { [blockId]: {x, y, w, h} } measured by the canvas (auto-height blocks need it).
+export function groupBlocks(deck, slideId, ids, boxes) {
+  const hit = findSlide(deck, slideId);
+  if (!hit) return deck;
+  const members = hit.slide.blocks.filter((b) => ids.includes(b.id) && b.frame && boxes[b.id]);
+  if (members.length < 2) return deck;
+  const x0 = Math.min(...members.map((b) => boxes[b.id].x));
+  const y0 = Math.min(...members.map((b) => boxes[b.id].y));
+  const x1 = Math.max(...members.map((b) => boxes[b.id].x + boxes[b.id].w));
+  const y1 = Math.max(...members.map((b) => boxes[b.id].y + boxes[b.id].h));
+  const children = members.map((b) => {
+    const { slot, ...rest } = b;
+    return { ...rest, frame: { ...b.frame, x: b.frame.x - x0, y: b.frame.y - y0 } };
+  });
+  const group = { ...createBlock('group', { props: { items: [{ blocks: children }] } }), slot: 'free', frame: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } };
+  const top = Math.max(...members.map((b) => hit.slide.blocks.indexOf(b)));
+  return replaceSlide(deck, slideId, (slide) => {
+    const ids2 = new Set(members.map((b) => b.id));
+    const blocks = [];
+    slide.blocks.forEach((b, i) => {
+      if (i === top) blocks.push(group);
+      if (!ids2.has(b.id)) blocks.push(b);
+    });
+    return { ...slide, blocks };
+  });
+}
+
+export function ungroupBlock(deck, slideId, groupId) {
+  return replaceSlide(deck, slideId, (slide) => {
+    const g = slide.blocks.find((b) => b.id === groupId && b.type === 'group');
+    if (!g) return slide;
+    const children = (g.props.items[0]?.blocks ?? []).map((c) => ({
+      ...c, slot: 'free', frame: c.frame ? { ...c.frame, x: c.frame.x + g.frame.x, y: c.frame.y + g.frame.y } : { x: g.frame.x, y: g.frame.y, w: g.frame.w },
+    }));
+    const i = slide.blocks.indexOf(g);
+    const blocks = slide.blocks.slice();
+    blocks.splice(i, 1, ...children);
     return { ...slide, blocks };
   });
 }

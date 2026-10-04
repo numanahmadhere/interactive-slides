@@ -7,7 +7,7 @@ import { h } from '../core/dom.js';
 import { getLayout } from '../core/layouts.js';
 import * as ops from './ops.js';
 import { applyFrame } from '../core/render.js';
-import { boundsOf, resizeBox, scaleBoxes, intersects, MIN_SIZE } from './transform.js';
+import { boundsOf, resizeBox, resizeRotated, scaleBoxes, intersects, angleTo, snapAngle, MIN_SIZE } from './transform.js';
 import { snapMove, snapResize } from './snap.js';
 
 const DRAG_THRESHOLD = 3; // screen px before a press becomes a drag
@@ -45,10 +45,17 @@ export class FreeLayer {
   attach() {
     this.gesture = null;
     this.overlay = null;
-    if (!this.active) return;
+    if (!this.active) {
+      this.cropping = null;
+      return;
+    }
     this.overlay = h('div', { class: 'ed-overlay' });
     this.stage.append(this.overlay);
     this.update();
+    if (this.cropping) { // a re-render in the middle of cropping keeps the mode on
+      if (this.canvas.blockEl(this.cropping.id)) this.#showCropUi();
+      else this.cropping = null;
+    }
   }
 
   // ---- geometry ------------------------------------------------------------
@@ -101,6 +108,11 @@ export class FreeLayer {
         box.append(grip);
       }
     }
+    if (single && !locked) {
+      const rot = h('div', { class: 'ed-grip ed-grip--rot', 'data-handle': 'rotate', title: 'Rotate (hold Shift for 15 degree steps)' });
+      rot.addEventListener('pointerdown', (e) => this.#startRotate(e, single));
+      box.append(h('div', { class: 'ed-selbox__stem' }), rot);
+    }
     if (picked.length === 1) {
       const label = h('div', { class: 'ed-selbox__size', text: `${Math.round(bounds.w)} x ${Math.round(bounds.h)}` });
       box.append(label);
@@ -124,6 +136,10 @@ export class FreeLayer {
   pointerDown(e) {
     if (!this.active || e.button !== 0 || e.target.closest('.ed-overlay')) return false;
     const top = this.topLevelEl(e.target);
+    if (this.cropping) {
+      if (top?.dataset.block === this.cropping.id) { this.#startCropPan(e, this.cropping.id); return true; }
+      this.endCrop();
+    }
     if (top) {
       const id = top.dataset.block;
       const selected = this.editor.selectedIds;
@@ -270,9 +286,11 @@ export class FreeLayer {
     this.#track(e, (ev) => {
       const dx = (ev.clientX - start.x) / this.scale;
       const dy = (ev.clientY - start.y) / this.scale;
-      let box = resizeBox(bounds, h2, dx, dy, { ratio: ratioDefault !== ev.shiftKey && !allAuto, min });
+      const ratio = ratioDefault !== ev.shiftKey && !allAuto;
+      const spin = single?.frame.r ?? 0;
+      let box = spin ? resizeRotated(bounds, spin, h2, dx, dy, { ratio, min }) : resizeBox(bounds, h2, dx, dy, { ratio, min });
       let guides = [];
-      if (!ev.altKey) {
+      if (!ev.altKey && !spin) {
         const edges = { left: h2.includes('w'), right: h2.includes('e'), top: h2.includes('n'), bottom: h2.includes('s') };
         const snap = snapResize(box, edges, others, this.slideSize);
         if (!(ratioDefault !== ev.shiftKey)) box = snap.box;
@@ -283,7 +301,12 @@ export class FreeLayer {
       next = picked.length === 1 ? [box] : scaleBoxes(origin, bounds, box);
       picked.forEach((b, i) => {
         const n = next[i];
-        applyFrame(this.canvas.blockEl(b.id), { ...b.frame, x: n.x, y: n.y, w: n.w, h: auto[i] ? undefined : n.h });
+        const el = this.canvas.blockEl(b.id);
+        applyFrame(el, { ...b.frame, x: n.x, y: n.y, w: n.w, h: auto[i] ? undefined : n.h });
+        if (b.type === 'group') { // children follow the group while dragging
+          const inner = el.querySelector(':scope > .sp-group');
+          if (inner) inner.style.cssText = `transform:scale(${n.w / origin[i].w},${n.h / origin[i].h});transform-origin:0 0;`;
+        }
       });
       this.#liveBox(box);
       this.#drawGuides(guides);
@@ -301,6 +324,105 @@ export class FreeLayer {
         frames[b.id] = { x: round(n.x), y: round(n.y), w: round(n.w), ...(auto[i] ? {} : { h: round(n.h) }) };
       });
       editor.commit(ops.setFrames(editor.deck, frames));
+    });
+  }
+
+  // ---- rotate --------------------------------------------------------------
+
+  #startRotate(e, block) {
+    e.preventDefault();
+    e.stopPropagation();
+    const editor = this.editor;
+    const o = this.boxOf(block);
+    const center = { x: o.x + o.w / 2, y: o.y + o.h / 2 };
+    const el = this.canvas.blockEl(block.id);
+    let angle = block.frame.r ?? 0;
+    this.stage.classList.add('is-gesture');
+    this.canvas.toolbar.hide();
+    this.#track(e, (ev) => {
+      angle = snapAngle(angleTo(center, this.#point(ev)), ev.shiftKey);
+      applyFrame(el, { ...block.frame, r: angle, h: block.frame.h });
+      const box = this.overlay.querySelector('.ed-selbox');
+      if (box) box.style.transform = `rotate(${angle}deg)`;
+      const label = box?.querySelector('.ed-selbox__size');
+      if (label) label.textContent = `${Math.round(angle)} deg`;
+    }, (ev, cancelled) => {
+      this.stage.classList.remove('is-gesture');
+      this.canvas.toolbar.update();
+      if (cancelled) { this.canvas.sync({}); return; }
+      editor.commit(ops.setFrames(editor.deck, { [block.id]: { r: angle } }));
+    });
+  }
+
+  // ---- crop ------------------------------------------------------------------
+
+  get cropId() {
+    return this.cropping?.id ?? null;
+  }
+
+  startCrop(id) {
+    const hit = ops.findBlock(this.editor.deck, id);
+    if (!hit || hit.block.type !== 'image' || !hit.block.props.src) return;
+    if (hit.block.props.fit !== 'cover') this.editor.commit(ops.patchBlockProps(this.editor.deck, id, { fit: 'cover' }));
+    this.cropping = { id };
+    this.editor.select({ blockId: id });
+    this.#showCropUi();
+  }
+
+  #showCropUi() {
+    this.canvas.blockEl(this.cropping.id)?.classList.add('is-cropping');
+    this.overlay?.append(h('div', { class: 'ed-crophint', text: 'Drag to move the picture. Scroll to zoom. Press Enter to finish.' }));
+    this.canvas.toolbar.hide();
+  }
+
+  endCrop() {
+    if (!this.cropping) return;
+    this.canvas.blockEl(this.cropping.id)?.classList.remove('is-cropping');
+    this.overlay?.querySelector('.ed-crophint')?.remove();
+    this.cropping = null;
+    this.canvas.toolbar.update();
+  }
+
+  #cropProps(id) {
+    return ops.findBlock(this.editor.deck, id)?.block.props ?? { zoom: 1, fx: 50, fy: 50 };
+  }
+
+  #paintCrop(id, p) {
+    const img = this.canvas.blockEl(id)?.querySelector('img');
+    if (!img) return;
+    img.style.objectPosition = `${p.fx}% ${p.fy}%`;
+    img.style.transformOrigin = `${p.fx}% ${p.fy}%`;
+    img.style.transform = p.zoom > 1 ? `scale(${p.zoom})` : '';
+  }
+
+  // Scroll over the picture while cropping.
+  cropZoom(deltaY) {
+    if (!this.cropping) return false;
+    const id = this.cropping.id;
+    const p = this.#cropProps(id);
+    const zoom = Math.min(4, Math.max(1, Math.round((p.zoom - deltaY * 0.002) * 100) / 100));
+    this.editor.commit(ops.patchBlockProps(this.editor.deck, id, { zoom }), { coalesce: `crop:${id}` });
+    return true;
+  }
+
+  #startCropPan(e, id) {
+    const start = { x: e.clientX, y: e.clientY };
+    const origin = { ...this.#cropProps(id) };
+    const box = this.boxOf(this.selectedBlocks().find((b) => b.id === id) ?? this.blocks().find((b) => b.id === id));
+    let latest = origin;
+    this.#track(e, (ev) => {
+      const dx = (ev.clientX - start.x) / this.scale;
+      const dy = (ev.clientY - start.y) / this.scale;
+      const k = 100 / Math.max(1, origin.zoom);
+      latest = {
+        ...origin,
+        fx: Math.min(100, Math.max(0, Math.round(origin.fx - (dx / box.w) * k))),
+        fy: Math.min(100, Math.max(0, Math.round(origin.fy - (dy / box.h) * k))),
+      };
+      this.#paintCrop(id, latest);
+    }, (ev, cancelled) => {
+      if (cancelled) { this.#paintCrop(id, origin); return; }
+      this.editor.commit(ops.patchBlockProps(this.editor.deck, id, { fx: latest.fx, fy: latest.fy }));
     });
   }
 

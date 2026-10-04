@@ -44,7 +44,7 @@ export class BlockToolbar {
   update() {
     const ed = this.editor;
     const ids = ed.selectedIds;
-    if (!ids.length || this.canvas.isEditing || this.canvas.gesturing) {
+    if (!ids.length || this.canvas.isEditing || this.canvas.gesturing || this.canvas.free.cropId) {
       this.hide();
       return;
     }
@@ -112,6 +112,7 @@ export class BlockToolbar {
       nodes.push(button({ icon: 'image', label: 'Replace image', variant: 'ghost', onClick: () => ed.pickImage(id, 'src') }));
       if (ed.canCrop?.(id)) nodes.push(button({ label: 'Crop', variant: 'ghost', onClick: () => ed.startCrop(id) }));
     }
+    if (block.type === 'group') nodes.push(button({ label: 'Ungroup', variant: 'ghost', onClick: () => ed.ungroupSelection() }));
     if (nodes.length) nodes.push(this.#sep());
     nodes.push(...this.#common([id], free, block));
     return nodes;
@@ -126,7 +127,7 @@ export class BlockToolbar {
       nodes.push(button({ icon: 'align-center', label: 'Align centres', iconOnly: true, variant: 'ghost', onClick: () => ed.alignSelection('center') }));
       nodes.push(button({ icon: 'align-top', label: 'Align top', iconOnly: true, variant: 'ghost', onClick: () => ed.alignSelection('top') }));
       nodes.push(button({ icon: 'align-middle', label: 'Align middles', iconOnly: true, variant: 'ghost', onClick: () => ed.alignSelection('middle') }));
-      if (ed.groupSelection) nodes.push(button({ label: 'Group', variant: 'ghost', onClick: () => ed.groupSelection() }));
+      nodes.push(button({ label: 'Group', variant: 'ghost', onClick: () => ed.groupSelection() }));
       nodes.push(this.#sep());
     }
     nodes.push(...this.#common(ids, free, null));

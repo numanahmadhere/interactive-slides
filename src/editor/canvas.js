@@ -257,6 +257,10 @@ export class CanvasView {
   }
 
   #onWheel(e) {
+    if (this.free.cropId && this.free.cropZoom(e.deltaY)) {
+      e.preventDefault();
+      return;
+    }
     if (e.ctrlKey || e.metaKey) { // pinch or Ctrl+scroll zooms
       e.preventDefault();
       this.setZoom(this.zoom * Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY);

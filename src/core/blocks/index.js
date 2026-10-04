@@ -30,5 +30,6 @@ import './code-sandbox.js';
 import './shape.js';
 import './icon.js';
 import './diagram.js';
+import './group.js';
 
 export * from './registry.js';

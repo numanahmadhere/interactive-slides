@@ -113,3 +113,36 @@ test('free slides keep frames; other layouts drop them; missing frames get a def
   assert.equal(a.blocks[1].locked, true);
   assert.equal(b.blocks[0].frame, undefined);
 });
+
+import { angleTo, snapAngle, resizeRotated } from '../src/editor/transform.js';
+
+test('angles point up at zero and go clockwise', () => {
+  const c = { x: 0, y: 0 };
+  assert.equal(Math.round(angleTo(c, { x: 0, y: -10 })), 0);
+  assert.equal(Math.round(angleTo(c, { x: 10, y: 0 })), 90);
+  assert.equal(Math.round(angleTo(c, { x: 0, y: 10 })), 180);
+  assert.equal(Math.round(angleTo(c, { x: -10, y: 0 })), 270);
+});
+
+test('angles snap to steps and always to the right angles', () => {
+  assert.equal(snapAngle(47, true), 45);
+  assert.equal(snapAngle(47, false), 47);
+  assert.equal(snapAngle(88.5, false), 90);
+  assert.equal(snapAngle(359, false), 0);
+});
+
+test('a rotated box keeps the far corner still when resized', () => {
+  const box = { x: 100, y: 100, w: 200, h: 100 };
+  const r = 90;
+  // Rotated 90deg: the local east edge faces down, so dragging east handle down by 40 grows the width.
+  const out = resizeRotated(box, r, 'e', 0, 40);
+  assert.equal(Math.round(out.w), 240);
+  assert.equal(Math.round(out.h), 100);
+  // The west edge (opposite) stays at the same place on screen.
+  const west = (b) => ({ x: b.x + b.w / 2 - (b.w / 2) * Math.cos((r * Math.PI) / 180), y: b.y + b.h / 2 - (b.w / 2) * Math.sin((r * Math.PI) / 180) });
+  const before = west(box);
+  const after = west(out);
+  assert.ok(Math.abs(before.x - after.x) < 0.01 && Math.abs(before.y - after.y) < 0.01);
+  // With no rotation it behaves like a plain resize.
+  assert.deepEqual(resizeRotated(box, 0, 'se', 10, 20), { x: 100, y: 100, w: 210, h: 120 });
+});

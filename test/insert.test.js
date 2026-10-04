@@ -7,7 +7,8 @@ import { searchBlocks, QUICK_TYPES } from '../src/editor/insert.js';
 const labels = (q) => searchBlocks(q).map((d) => d.type);
 
 test('an empty search lists every block', () => {
-  assert.equal(searchBlocks('').length, listBlocks().length);
+  assert.equal(searchBlocks('').length, listBlocks().filter((d) => !d.internal).length);
+  assert.ok(!searchBlocks('group').some((d) => d.type === 'group'));
 });
 
 test('search matches labels, groups and everyday words', () => {

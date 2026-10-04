@@ -601,3 +601,9 @@ a.ed-logo .logo { width: 28px; height: 28px; }
 .ed-layer__type { font: 600 12px var(--ed-font); }
 .ed-layer__text { overflow: hidden; color: var(--ed-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .ed-layer .ed-btn { width: 28px; height: 28px; }
+.ed-grip--rot { left: 50%; top: calc(-34px * var(--ed-px)); border-radius: 50%; cursor: grab; }
+.ed-selbox__stem { position: absolute; left: 50%; top: calc(-28px * var(--ed-px)); width: calc(2px * var(--ed-px)); height: calc(28px * var(--ed-px)); margin-left: calc(-1px * var(--ed-px)); background: var(--ed-select); }
+.ed-crophint { position: absolute; left: 50%; bottom: calc(24px * var(--ed-px)); transform: translateX(-50%); padding: calc(8px * var(--ed-px)) calc(16px * var(--ed-px)); border-radius: calc(10px * var(--ed-px)); background: var(--ed-select); color: #fff; font: 600 calc(14px * var(--ed-px)) var(--ed-font); white-space: nowrap; pointer-events: none; }
+.ed-stage .sp-block.is-cropping { cursor: grab; }
+.ed-range { width: 100%; accent-color: var(--ed-accent); }
+.ed-grid2 .ed-field { margin: 0; }

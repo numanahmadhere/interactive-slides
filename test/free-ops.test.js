@@ -106,3 +106,50 @@ test('pasting several blocks inserts them all', () => {
   assert.equal(next.slides[0].blocks.length, 3 + blocks.length);
   assert.equal(next.slides[0].blocks[3].frame.x, deck.slides[0].blocks[0].frame.x + 40);
 });
+
+test('grouping gathers blocks under one frame and ungrouping puts them back', () => {
+  const { deck, a, b } = withTwo();
+  const sid = deck.slides[0].id;
+  const boxes = {};
+  for (const x of deck.slides[0].blocks) boxes[x.id] = { ...x.frame, h: x.frame.h ?? 80 };
+  const grouped = ops.groupBlocks(deck, sid, [a.id, b.id], boxes);
+  const blocks = grouped.slides[0].blocks;
+  const g = blocks.find((x) => x.type === 'group');
+  assert.ok(g && g.props.items[0].blocks.length === 2);
+  assert.ok(!blocks.some((x) => x.id === a.id));
+  const child = g.props.items[0].blocks.find((c) => c.id === a.id);
+  assert.equal(child.frame.x + g.frame.x, deck.slides[0].blocks.find((x) => x.id === a.id).frame.x);
+  const back = ops.ungroupBlock(grouped, sid, g.id);
+  const restored = back.slides[0].blocks.find((x) => x.id === a.id);
+  assert.equal(restored.frame.x, deck.slides[0].blocks.find((x) => x.id === a.id).frame.x);
+  assert.ok(!back.slides[0].blocks.some((x) => x.type === 'group'));
+});
+
+test('resizing a group scales its children', () => {
+  const { deck, a, b } = withTwo();
+  const sid = deck.slides[0].id;
+  const boxes = {};
+  for (const x of deck.slides[0].blocks) boxes[x.id] = { ...x.frame, h: x.frame.h ?? 80 };
+  const grouped = ops.groupBlocks(deck, sid, [a.id, b.id], boxes);
+  const g = grouped.slides[0].blocks.find((x) => x.type === 'group');
+  const bigger = ops.setFrames(grouped, { [g.id]: { w: g.frame.w * 2, h: g.frame.h * 2 } });
+  const g2 = bigger.slides[0].blocks.find((x) => x.type === 'group');
+  const c1 = g.props.items[0].blocks.find((c) => c.id === b.id);
+  const c2 = g2.props.items[0].blocks.find((c) => c.id === b.id);
+  assert.equal(c2.frame.x, c1.frame.x * 2);
+  assert.equal(c2.frame.w, c1.frame.w * 2);
+});
+
+test('image crop values are clamped', async () => {
+  const { normalizeBlock } = await import('../src/core/blocks/index.js');
+  const out = normalizeBlock({ type: 'image', props: { src: '', zoom: 99, fx: -5, fy: 500 } }, { warn() {}, seen: new Set() }, 'x');
+  assert.deepEqual([out.props.zoom, out.props.fx, out.props.fy], [4, 0, 100]);
+});
+
+test('block colour overrides keep only theme tokens and hex colours', async () => {
+  const { normalizeBlock } = await import('../src/core/blocks/index.js');
+  const ok = normalizeBlock({ type: 'text', style: { color: 'accent', fill: '#ff0000' }, props: {} }, { warn() {}, seen: new Set() }, 'x');
+  assert.deepEqual(ok.style, { color: 'accent', fill: '#ff0000' });
+  const bad = normalizeBlock({ type: 'text', style: { color: 'url(javascript:x)', fill: 'red;background:url(x)' }, props: {} }, { warn() {}, seen: new Set() }, 'x');
+  assert.equal(bad.style, undefined);
+});

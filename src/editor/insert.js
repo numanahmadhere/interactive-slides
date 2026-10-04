@@ -49,7 +49,9 @@ const SYNONYMS = {
 
 export const QUICK_TYPES = ['text', 'image', 'shape', 'quiz', 'poll'];
 
-export function searchBlocks(query, defs = listBlocks()) {
+export const insertable = () => listBlocks().filter((d) => !d.internal);
+
+export function searchBlocks(query, defs = insertable()) {
   const words = String(query ?? '').toLowerCase().split(/\s+/).filter(Boolean);
   if (!words.length) return defs;
   const scored = [];

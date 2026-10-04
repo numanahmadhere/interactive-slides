@@ -105,6 +105,13 @@ export function textInput({ value = '', onInput, placeholder, multiline = false,
   return el;
 }
 
+export function rangeInput({ value = 1, min = 0, max = 1, step = 0.05, onInput, label }) {
+  const el = h('input', { class: 'ed-range', type: 'range', min, max, step, 'aria-label': label });
+  el.value = String(value);
+  el.addEventListener('input', () => onInput(Number(el.value)));
+  return el;
+}
+
 export function numberInput({ value = 0, min = 0, max = 99, onInput }) {
   const el = h('input', { class: 'ed-input ed-input--num', type: 'number', min, max, step: 1 });
   el.value = String(value);

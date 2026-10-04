@@ -628,6 +628,38 @@ export class Editor {
     });
   }
 
+  canCrop(id) {
+    const hit = ops.findBlock(this.deck, id);
+    return !!hit && hit.block.type === 'image' && !!hit.block.props.src && getLayout(hit.slide.layout).free && hit.parent === null;
+  }
+
+  startCrop(id) {
+    this.canvas.free.startCrop(id);
+  }
+
+  selectedGroup() {
+    const ids = this.selectedIds;
+    return ids.length === 1 && this.slide.blocks.find((b) => b.id === ids[0])?.type === 'group' ? ids[0] : null;
+  }
+
+  groupSelection() {
+    const picked = this.#picked();
+    if (picked.length < 2) return;
+    const boxes = Object.fromEntries(picked.map((b) => [b.id, this.canvas.free.boxOf(b)]));
+    const before = new Set(this.slide.blocks.map((b) => b.id));
+    if (!this.commit(ops.groupBlocks(this.deck, this.slide.id, picked.map((b) => b.id), boxes))) return;
+    const added = this.slide.blocks.find((b) => !before.has(b.id));
+    if (added) this.select({ blockId: added.id });
+  }
+
+  ungroupSelection() {
+    const id = this.selectedGroup();
+    if (!id) return;
+    const group = this.slide.blocks.find((b) => b.id === id);
+    const childIds = group.props.items[0].blocks.map((c) => c.id);
+    if (this.commit(ops.ungroupBlock(this.deck, this.slide.id, id))) this.selectMany(childIds);
+  }
+
   // ---- clipboard -----------------------------------------------------------
 
   #blocksForClip() {
@@ -766,7 +798,7 @@ export class Editor {
     const items = [];
     let group = null;
     for (const def of listBlocks()) {
-      if (exclude.includes(def.type)) continue;
+      if (exclude.includes(def.type) || def.internal) continue;
       if (def.group !== group) {
         group = def.group;
         items.push({ heading: group });
@@ -1068,6 +1100,11 @@ export class Editor {
       e.preventDefault();
       const step = xf.nudgeStep(e.shiftKey);
       this.nudge(arrows[0] * step, arrows[1] * step);
+      return;
+    }
+    if (this.canvas.free.cropId && (e.key === 'Enter' || e.key === 'Escape')) {
+      e.preventDefault();
+      this.canvas.free.endCrop();
       return;
     }
     switch (e.key) {
