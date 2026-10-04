@@ -40,6 +40,11 @@ const ICONS = {
   remote: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   export: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
   design: '<circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 22a10 10 0 1 1 10-10c0 2-2 3-4 3h-2a2 2 0 0 0-1 3.7c.5.8.3 3.3-3 3.3z"/>',
+  bars: '<path d="M5 20V11M12 20V4M19 20v-7"/>',
+  grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
+  upload: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',
+  cap: '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5M22 9v6"/>',
+  briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/>',
   shield: '<path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
   trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 21h7M10 17h4"/>',
   team: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.5a3 3 0 0 1 0 5.5M18 14.5c1.8.7 3 2.4 3 4.5"/>',
@@ -93,9 +98,25 @@ ${index ? '' : '<meta name="robots" content="noindex">\n'}<link rel="canonical" 
 <header class="top"><div class="wrap">
 <a class="brand" href="/">${LOGO}<span>${NAME}</span></a>
 <nav class="main" aria-label="Main">
-<details class="dd dd--wide"><summary>Product</summary><div class="dd__panel dd__panel--wide"><div class="dd__col"><span class="dd__h">Ask your audience</span><a href="/#tutorial"><b>Polls, quizzes, word clouds</b><small>Try them live on this page</small></a><a href="/learn/#live-session"><b>Live sessions</b><small>Codes, phones and results</small></a><a href="/learn/#moderation"><b>Moderation and privacy</b><small>Swear filter, approve first, private mode</small></a></div><div class="dd__col"><span class="dd__h">Build and share</span><a href="/templates/"><b>Ready-made slides</b><small>${TEMPLATES.length} to start from</small></a><a href="/learn/#import"><b>Import PowerPoint</b><small>Bring the deck you have</small></a><a href="/learn/#course"><b>Self-paced courses</b><small>Completion list and certificates</small></a><a href="/learn/#team"><b>Teams</b><small>Shared decks, comments, brand</small></a></div></div></details>
+<details class="dd dd--wide"><summary>Product</summary><div class="dd__panel mm" role="group" aria-label="Product">
+<div class="mm__cols"><div class="mm__col"><span class="mm__h">Ask your audience</span>
+<a class="mm__item" href="/#tutorial"><span class="mm__ico mm__ico--a">${ico('bars')}</span><span class="mm__txt"><b>Polls, quizzes, word clouds</b><small>Try them live on this page</small></span></a>
+<a class="mm__item" href="/learn/#live-session"><span class="mm__ico mm__ico--b">${ico('live')}</span><span class="mm__txt"><b>Live sessions</b><small>Codes, phones and results</small></span></a>
+<a class="mm__item" href="/learn/#moderation"><span class="mm__ico mm__ico--c">${ico('shield')}</span><span class="mm__txt"><b>Moderation and privacy</b><small>Swear filter, approve first, private mode</small></span></a>
+</div><div class="mm__col"><span class="mm__h">Build and share</span>
+<a class="mm__item" href="/templates/"><span class="mm__ico mm__ico--d">${ico('grid')}</span><span class="mm__txt"><b>Ready-made slides</b><small>${TEMPLATES.length} to start from</small></span></a>
+<a class="mm__item" href="/learn/#import"><span class="mm__ico mm__ico--a">${ico('upload')}</span><span class="mm__txt"><b>Import PowerPoint</b><small>Bring the deck you have</small></span></a>
+<a class="mm__item" href="/learn/#course"><span class="mm__ico mm__ico--b">${ico('cap')}</span><span class="mm__txt"><b>Self-paced courses</b><small>Completion list and certificates</small></span></a>
+<a class="mm__item" href="/learn/#team"><span class="mm__ico mm__ico--c">${ico('team')}</span><span class="mm__txt"><b>Teams</b><small>Shared decks, comments, brand</small></span></a>
+</div></div>
+<a class="mm__feat" href="/#tutorial"><span class="mm__badge">Live demo</span><b>Answer on a phone and watch it land on the big screen</b><span class="mm__mini" aria-hidden="true"><i style="--w:72%"></i><i style="--w:48%"></i><i style="--w:30%"></i></span><span class="mm__go">Try it now <span aria-hidden="true">&rarr;</span></span></a>
+</div></details>
+<details class="dd"><summary>Solutions</summary><div class="dd__panel mm mm--solutions" role="group" aria-label="Solutions">
+<a class="mm__card mm__card--a" href="/training/"><span class="mm__ico mm__ico--a">${ico('briefcase')}</span><b>Training and meetings</b><small>Workshops, town halls, client briefings and onboarding where the room answers.</small><span class="mm__tags"><i>Workshops</i><i>Town halls</i><i>Courses</i></span><span class="mm__go">See how teams use it <span aria-hidden="true">&rarr;</span></span></a>
+<a class="mm__card mm__card--b" href="/education/"><span class="mm__ico mm__ico--b">${ico('cap')}</span><b>Education</b><small>Lectures, seminars and classrooms. Students join with a code and never need an account.</small><span class="mm__tags"><i>Lectures</i><i>Quizzes</i><i>Seminars</i></span><span class="mm__go">See classroom uses <span aria-hidden="true">&rarr;</span></span></a>
+<a class="mm__foot" href="/templates/"><span>Not sure where to start?</span><b>Browse ${TEMPLATES.length} ready-made slides <span aria-hidden="true">&rarr;</span></b></a>
+</div></details>
 <a href="/#features">Features</a>
-<details class="dd"><summary>Solutions</summary><div class="dd__panel"><a href="/training/"><b>Training and meetings</b><small>Workshops, town halls, briefings</small></a><a href="/education/"><b>Education</b><small>Lectures, lessons, assessments</small></a></div></details>
 <a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/learn/">Guides</a></nav>
 <span class="grow"></span>
 <a class="link-quiet" href="/app/account">Sign in</a><a class="btn sm" href="/app/">Start building</a>
@@ -118,6 +139,7 @@ ${body}
 <a class="stickycta" id="stickycta" href="/app/" hidden>Start building free</a>
 <script>
 (function(){var b=document.getElementById('stickycta');if(!b||!document.getElementById('tutorial'))return;function f(){b.hidden=scrollY<700}f();addEventListener('scroll',f,{passive:true})})();
+(function(){var dds=[].slice.call(document.querySelectorAll('details.dd'));if(!dds.length)return;var fine=matchMedia('(hover: hover)').matches;dds.forEach(function(d){var t=0;d.addEventListener('toggle',function(){if(d.open)dds.forEach(function(o){if(o!==d)o.open=false})});if(fine){d.addEventListener('mouseenter',function(){clearTimeout(t);t=setTimeout(function(){d.open=true},90)});d.addEventListener('mouseleave',function(){clearTimeout(t);t=setTimeout(function(){d.open=false},220)})}d.addEventListener('keydown',function(e){if(e.key==='Escape'&&d.open){d.open=false;d.querySelector('summary').focus()}})})})();
 document.addEventListener('click',function(e){document.querySelectorAll('details.dd[open]').forEach(function(d){if(!d.contains(e.target))d.open=false})});
 if(/[?&]account-deleted=1/.test(location.search))document.getElementById('flash').hidden=false;
 (function(){var f=document.getElementById('joincode');if(f)f.addEventListener('input',function(){f.value=f.value.toUpperCase().replace(/[^A-Z0-9]/g,'')})})();
