@@ -1,200 +1,111 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Poll, cleanOptions, cleanQuestion, pickWeighted, crowdWeights, STEPS, Flow, JOIN_CODE, cleanCode, MAX_OPTIONS, CROWD_SIZE } from '../site/tutorial.js';
-
-// A seeded random source so the "crowd" is the same in every run.
-const seeded = (seed) => () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
-
-test('options are trimmed, de-duplicated, capped, and never fewer than two', () => {
-  assert.deepEqual(cleanOptions(['  A  ', 'a', '', 'B', null, 'C', 'D', 'E']), ['A', 'B', 'C', 'D']);
-  assert.equal(cleanOptions(['a', 'b', 'c', 'd', 'e', 'f']).length, MAX_OPTIONS);
-  assert.deepEqual(cleanOptions([]), ['Option A', 'Option B']);
-  assert.deepEqual(cleanOptions(['Only']), ['Only', 'Option A']);
-  assert.deepEqual(cleanOptions('not an array'), ['Option A', 'Option B']);
-  assert.equal(cleanOptions(['x'.repeat(200), 'y'])[0].length, 60);
-  assert.equal(cleanQuestion('   '), 'Which topic should we cover first?');
-  assert.equal(cleanQuestion('a\n  b'), 'a b');
-  assert.equal(cleanQuestion('q'.repeat(500)).length, 120);
-});
-
-test('your vote counts once and can be changed', () => {
-  const p = new Poll('Q', ['A', 'B', 'C']);
-  assert.equal(p.total, 0);
-  assert.equal(p.percent(0), 0);
-  assert.equal(p.leader, null);
-  p.setYou(1);
-  assert.deepEqual(p.counts, [0, 1, 0]);
-  p.setYou(2);
-  assert.deepEqual(p.counts, [0, 0, 1], 'changing your answer moves the vote');
-  p.setYou(9);
-  p.setYou(-1);
-  p.setYou('x');
-  assert.equal(p.you, 2, 'impossible answers are ignored');
-  assert.equal(p.total, 1);
-});
-
-test('the crowd adds up and percentages stay sensible', () => {
-  const p = new Poll('Q', ['A', 'B', 'C']);
-  const weights = crowdWeights(3);
-  assert.ok(weights[0] > weights[1] && weights[1] > weights[2], 'the room leans to the first options');
-  const rand = seeded(7);
-  for (let i = 0; i < CROWD_SIZE; i++) p.addCrowd(pickWeighted(weights, rand));
-  p.setYou(2);
-  assert.equal(p.total, CROWD_SIZE + 1);
-  const pct = p.options.map((_, i) => p.percent(i));
-  assert.ok(Math.abs(pct.reduce((a, b) => a + b, 0) - 100) <= 2, `percentages sum to about 100: ${pct}`);
-  assert.equal(p.leader, p.counts.indexOf(Math.max(...p.counts)));
-  p.addCrowd(99);
-  p.addCrowd(-3);
-  assert.equal(p.total, CROWD_SIZE + 1, 'out-of-range votes are ignored');
-});
-
-test('weighted picking covers the whole range and respects the weights', () => {
-  assert.equal(pickWeighted([1, 0, 0], () => 0.99), 0);
-  assert.equal(pickWeighted([0, 0, 1], () => 0), 2);
-  assert.equal(pickWeighted([1, 1], () => 0.5), 1);
-  const rand = seeded(3);
-  const hits = [0, 0];
-  for (let i = 0; i < 2000; i++) hits[pickWeighted([3, 1], rand)]++;
-  assert.ok(hits[0] > hits[1] * 2, `3:1 weights give roughly 3:1 picks (${hits})`);
-});
-
-test('editing the wording keeps votes where the options still exist', () => {
-  const p = new Poll('Q', ['A', 'B', 'C']);
-  p.addCrowd(0); p.addCrowd(2); p.setYou(2);
-  p.edit('New question?', ['A', 'B']);
-  assert.equal(p.question, 'New question?');
-  assert.deepEqual(p.options, ['A', 'B']);
-  assert.equal(p.you, null, 'your vote was on an option that no longer exists');
-  assert.deepEqual(p.crowd, [1, 0]);
-  p.edit('', ['', '']);
-  assert.equal(p.question, 'Which topic should we cover first?');
-  assert.deepEqual(p.options, ['Option A', 'Option B']);
-  p.reset();
-  assert.equal(p.total, 0);
-});
-
-test('the four steps are in order and have text', () => {
-  assert.deepEqual(STEPS.map((s) => s.id), [1, 2, 3, 4]);
-  for (const s of STEPS) assert.ok(s.title && s.hint);
-});
-
-test('codes are cleaned the way a phone keyboard would need', () => {
-  assert.equal(cleanCode(' 5f5-blz '), '5F5BLZ');
-  assert.equal(cleanCode('5f5blz999'), '5F5BLZ');
-  assert.equal(cleanCode(null), '');
-  assert.equal(cleanCode('!!'), '');
-});
-
-test('the phone only joins with the right code, and only once the session runs', () => {
-  const f = new Flow();
-  assert.equal(f.join('5F5'), 'short');
-  assert.equal(f.join('AAAAAA'), 'wrong');
-  assert.equal(f.join(JOIN_CODE), 'early', 'the right code before the session starts');
-  assert.equal(f.joined, false);
-  f.start();
-  assert.equal(f.join('aaaaaa'), 'wrong');
-  assert.equal(f.join(' 5f5blz '), 'ok');
-  assert.equal(f.joined, true);
-});
-
-test('the main button always moves forward and never dead-ends', () => {
-  const f = new Flow();
-  const seen = [];
-  for (let i = 0; i < 12; i++) {
-    const next = f.primary();
-    seen.push(`${f.step}:${next.do}`);
-    if (next.do === 'go') f.go(next.to);
-    else if (next.do === 'start') f.start();
-    else if (next.do === 'join-for-me') f.join(JOIN_CODE);
-    else if (next.do === 'crowd') f.crowded = true;
-    else break;
-  }
-  assert.deepEqual(seen, ['1:go', '2:start', '2:join-for-me', '2:go', '3:go', '4:crowd', '4:open-app']);
-});
-
-test('jumping ahead never leaves a dead phone', () => {
-  for (const n of [3, 4]) {
-    const f = new Flow();
-    f.go(n);
-    assert.ok(f.started && f.joined, `step ${n}`);
-  }
-  const f = new Flow();
-  f.go(2);
-  assert.ok(!f.started, 'step two waits for you to start');
-  assert.equal(f.go(99), 4);
-  assert.equal(f.go(-5), 1);
-  assert.equal(f.go('x'), 1);
-});
-
-test('going back to step one keeps the session, and a reset starts clean', () => {
-  const f = new Flow();
-  f.go(4);
-  f.crowded = true;
-  f.go(1);
-  assert.ok(f.started, 'the session is still running');
-  f.reset();
-  assert.deepEqual([f.step, f.started, f.joined, f.crowded], [1, false, false, false]);
-});
-
-test('every state has an instruction and a button label, and the end offers the app', () => {
-  const f = new Flow();
-  const states = [[1, false, false, false], [2, false, false, false], [2, true, false, false], [2, true, true, false], [3, true, true, false], [4, true, true, false], [4, true, true, true]];
-  for (const [step, started, joined, crowded] of states) {
-    Object.assign(f, { step, started, joined, crowded });
-    for (const voted of [false, true]) {
-      const v = f.view({ voted });
-      assert.ok(v.task.length > 20 && v.label, `${step}/${started}/${joined}/${crowded}`);
-      assert.ok(!/undefined|NaN/.test(v.task + v.label));
-    }
-  }
-  const end = f.view({ total: 25 });
-  assert.equal(end.label, 'Build your own poll');
-  assert.match(end.task, /room of 25/);
-  assert.match(f.view({ total: 24 }).task, /room of 24/, 'the count is the real one, even if you skipped voting');
-  assert.ok(end.replay && end.back);
-  assert.equal(new Flow().view().back, false);
-  assert.equal(f.view({ voted: false }).replay, true);
-});
-
-test('step three says what to do before and after you vote', () => {
-  const f = new Flow();
-  f.go(3);
-  assert.match(f.view({ voted: false }).task, /Tap an answer/);
-  assert.equal(f.view({ voted: false }).label, 'Skip voting');
-  assert.match(f.view({ voted: true }).task, /landed/);
-  assert.equal(f.view({ voted: true }).label, 'Next: watch the room');
-});
-
-test('while people are joining the button says so and the ending is not shown yet', () => {
-  const f = new Flow();
-  f.go(4);
-  const busy = f.view({ busy: true });
-  assert.equal(busy.label, 'People are joining...');
-  assert.equal(busy.replay, false);
-});
-
 import { readFileSync } from 'node:fs';
+import { CloudDemo, PollDemo, QuizDemo, OpenDemo, makeDemo, quizPoints, cleanWord, cleanText, TYPES, SCENES, JOIN_CODE } from '../site/tutorial.js';
 import { buildSite } from '../tools/site.mjs';
 
-test('every element the tutorial script looks for is on the home page', () => {
-  const home = buildSite()['index.html'];
-  const src = readFileSync(new URL('../site/tutorial.js', import.meta.url), 'utf8');
-  const ids = [...src.matchAll(/\$\('([\w-]+)'\)/g)].map((m) => m[1]);
-  assert.ok(ids.length > 15);
-  for (const id of ids) assert.ok(home.includes(`id="${id}"`), `#${id} is missing from the page`);
-  for (const sel of ['data-go="1"', 'data-go="2"', 'data-go="3"', 'data-go="4"', 'data-opt']) assert.ok(home.includes(sel), sel);
-  assert.equal([...home.matchAll(/data-opt /g)].length, 4, 'four answer fields');
-  assert.ok(home.includes('id="tut"') && home.includes('/tutorial.js'));
-});
+const seq = (...v) => { let i = 0; return () => v[i++ % v.length]; };
 
-test('the tutorial never uses a feature the product lacks, and shows the join code once', () => {
-  const home = buildSite()['index.html'];
-  assert.ok(!/word cloud|AI/.test(home.slice(home.indexOf('id="tutorial"'), home.indexOf('id="features"'))));
+test('the four question types are listed, in order, and each has a scene and a demo', () => {
+  assert.deepEqual(TYPES.map((t) => t.id), ['cloud', 'quiz', 'poll', 'open']);
+  for (const t of TYPES) {
+    assert.ok(t.name && t.blurb && SCENES[t.id].question, t.id);
+    assert.ok(makeDemo(t.id));
+  }
+  assert.throws(() => makeDemo('nope'));
   assert.equal(JOIN_CODE.length, 6);
 });
 
-test('the script is plain and safe: it renders text with textContent only', () => {
+test('word cloud: words are cleaned, counted, capped per person, and sized by popularity', () => {
+  assert.equal(cleanWord('  Hello   WORLD '), 'hello world');
+  assert.equal(cleanWord('x'.repeat(50)).length, 24);
+  assert.equal(cleanWord(null), '');
+  const c = new CloudDemo([['big', 9], ['small', 1]]);
+  assert.equal(c.add('   '), null);
+  assert.equal(c.add('Mine', true), 'mine');
+  assert.equal(c.add('mine', true), null, 'the same word twice does not count again');
+  c.add('two', true); c.add('three', true);
+  assert.equal(c.add('four', true), null, 'three words per person');
+  assert.equal(c.total, 9 + 1 + 3);
+  const words = c.layout();
+  const big = words.find((w) => w.word === 'big');
+  const small = words.find((w) => w.word === 'small');
+  assert.ok(big.size > small.size && big.size <= 2.9);
+  assert.ok(words.find((w) => w.word === 'mine').mine);
+  assert.deepEqual(c.layout().map((w) => w.word), words.map((w) => w.word), 'the cloud does not reshuffle');
+  c.crowdStep(['a', 'b']);
+  c.crowdStep(['a', 'b']);
+  assert.equal(c.counts.get('a'), 1);
+  assert.equal(c.counts.get('b'), 1);
+});
+
+test('poll: one vote each that can be changed, percentages add up, the room leans to the first options', () => {
+  const p = new PollDemo(['A', 'B', 'C'], [1, 1, 1]);
+  assert.equal(p.vote(1), true);
+  assert.equal(p.vote(1), false, 'same option again changes nothing');
+  assert.deepEqual(p.counts, [1, 2, 1]);
+  assert.equal(p.vote(2), true);
+  assert.deepEqual(p.counts, [1, 1, 2], 'moving your vote takes it from the old option');
+  assert.equal(p.total, 4);
+  assert.equal(p.vote(9), false);
+  assert.equal(p.vote(-1), false);
+  assert.equal(p.percent(2), 50);
+  const q = new PollDemo(['A', 'B'], [0, 0]);
+  q.crowdStep(() => 0); q.crowdStep(() => 0.999);
+  assert.deepEqual(q.counts, [1, 1]);
+  assert.equal(new PollDemo(['A', 'B'], [0, 0]).percent(0), 0);
+});
+
+test('quiz: points fall from 1000 to 500 with time, wrong answers score nothing, answers lock', () => {
+  assert.equal(quizPoints(true, 0, 15), 1000);
+  assert.equal(quizPoints(true, 15, 15), 500);
+  assert.equal(quizPoints(true, 99, 15), 500);
+  assert.equal(quizPoints(false, 0, 15), 0);
+  const q = new QuizDemo({ options: ['a', 'b', 'c'], correct: 1, timeLimit: 10, room: 2 });
+  assert.equal(q.answer(1, 5), true);
+  assert.equal(q.points, 750);
+  assert.equal(q.answer(0, 6), false, 'the first answer stands');
+  assert.equal(q.everyone, false);
+  q.crowdStep(() => 0.1); // right
+  q.crowdStep(() => 0.9); // wrong
+  assert.equal(q.voted, 3);
+  assert.equal(q.everyone, true);
+  q.crowdStep(() => 0.1);
+  assert.equal(q.voted, 3, 'nobody votes past the room');
+  q.reveal();
+  assert.equal(new QuizDemo({ options: ['a', 'b'], correct: 0, timeLimit: 10, room: 1 }).answer(5), false);
+  const late = new QuizDemo({ options: ['a', 'b'], correct: 0, timeLimit: 10, room: 1 });
+  late.reveal();
+  assert.equal(late.answer(0), false, 'no answers after the reveal');
+});
+
+test('open ended: newest first, trimmed, capped, three of your own', () => {
+  assert.equal(cleanText('  a   b  '), 'a b');
+  const o = new OpenDemo(['first']);
+  assert.equal(o.add('   '), null);
+  assert.equal(o.add('Mine', true), 'Mine');
+  assert.equal(o.items[0].mine, true);
+  o.add('2', true); o.add('3', true);
+  assert.equal(o.add('4', true), null);
+  for (let i = 0; i < 20; i++) o.add(`n${i}`);
+  assert.ok(o.items.length <= 8);
+  const c = new OpenDemo([]);
+  c.crowdStep(['x']); c.crowdStep(['x']);
+  assert.equal(c.items.length, 1, 'the simulated room runs out of things to say');
+});
+
+test('the home page leads with the tutorial, wired to the script, with the real question types', () => {
+  const home = buildSite()['index.html'];
+  for (const id of ['id="show"', 'id="show-slide"', 'id="show-phone"', 'id="show-announce"', 'src="/tutorial.js"', 'data-type="cloud"', 'data-type="quiz"', 'data-type="poll"', 'data-type="open"']) assert.ok(home.includes(id), `missing ${id}`);
   const src = readFileSync(new URL('../site/tutorial.js', import.meta.url), 'utf8');
-  assert.ok(!/innerHTML|insertAdjacentHTML|eval\(|document\.write/.test(src), 'typed text must never be parsed as HTML');
+  for (const m of src.matchAll(/\$\('([^']+)'\)/g)) if (m[1] !== '#show-input') assert.ok(home.includes(`id="${m[1].replace(/^#/, '')}"`), `the script looks for ${m[1]}`);
+  assert.ok(home.indexOf('id="tutorial"') < home.indexOf('id="compare"'));
+  assert.ok(home.includes('paid plan'), 'it says which of these need a paid plan');
+  assert.ok(home.includes('<noscript>'), 'a text fallback without JavaScript');
+  assert.ok((home.match(/<svg[^>]+role="img"[^>]+aria-label=/g) ?? []).length >= 6, 'block drawings are labelled');
+});
+
+test('the script renders typed text as text only, never as markup', () => {
+  const src = readFileSync(new URL('../site/tutorial.js', import.meta.url), 'utf8');
+  assert.ok(!/innerHTML|insertAdjacentHTML|eval\(|document\.write/.test(src));
 });

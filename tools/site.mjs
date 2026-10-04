@@ -141,37 +141,25 @@ const home = () => layout({
 <section id="tutorial" class="hero tuthero"><div class="wrap">
 <header class="tuthero__head">
 <h1>Presentations your audience can <em>answer.</em></h1>
-<p class="lead">Add live polls, quizzes and questions to the presentations you already give. Try it right here: nothing below is a recording. Type, click and tap, and it behaves like the real thing.</p>
+<p class="lead">Add live polls, quizzes and questions to the presentations you already give. Pick a question type below and use it: answer on the phone and watch your own answer appear on the big screen.</p>
 </header>
-<div class="tut reveal" id="tut">
-<div class="tut__side">
-<ol class="tut__nav" aria-label="Tutorial steps">
-<li><button type="button" data-go="1"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg></span><span><b>Write the question</b><small>Edit the slide</small></span></button></li>
-<li><button type="button" data-go="2"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M7.8 7.8a6 6 0 000 8.4M16.2 7.8a6 6 0 010 8.4M4.9 4.9a10 10 0 000 14.2M19.1 4.9a10 10 0 010 14.2"/></svg></span><span><b>Start the session</b><small>Get a join code</small></span></button></li>
-<li><button type="button" data-go="3"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></span><span><b>Answer from a phone</b><small>Tap an option</small></span></button></li>
-<li><button type="button" data-go="4"><span class="ico"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></span><span><b>Watch the room</b><small>See results build</small></span></button></li>
-</ol>
-<div class="tut__actions"><button type="button" class="btn ghost" id="tut-back">Back</button><button type="button" class="btn" id="tut-act">Next</button><a class="btn" id="tut-open" href="/app/" hidden>Build your own poll</a><button type="button" class="btn ghost" id="tut-replay" hidden>Replay</button></div>
+<div class="show reveal" id="show">
+<ul class="show__cards" aria-label="Question types">
+<li class="show__card"><button type="button" class="show__pick" data-type="cloud" aria-pressed="false"><svg class="show__ico" viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17a4 4 0 01-.6-7.96A5.5 5.5 0 0117 8.5a3.8 3.8 0 01.5 7.5H7z"/><path d="M9.5 13.5l1.3-3 1.3 3M10 12.6h1.6M14 11v3M14 12.2c.8-.9 1.9-.4 1.9.6"/></svg><span><b>Word Cloud</b><small>Visualize what people think, in real time</small></span></button><a class="show__create" href="/app/">Create</a></li>
+<li class="show__card"><button type="button" class="show__pick" data-type="quiz" aria-pressed="false"><svg class="show__ico" viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="11" height="16" rx="1.5"/><path d="M8 8h5M8 11.5h5M8 15h3"/><path d="M15 15l5-6 1.5 1.2-5 6L14 17z"/></svg><span><b>Quiz</b><small>Test participants with questions that have set correct answers</small></span></button><a class="show__create" href="/app/">Create</a></li>
+<li class="show__card"><button type="button" class="show__pick" data-type="poll" aria-pressed="false"><svg class="show__ico" viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12h4v8M10 20V5h4v15M16 20V9h4v11"/><path d="M3 20h18"/></svg><span><b>Poll</b><small>Let your participants vote on set options</small></span></button><a class="show__create" href="/app/">Create</a></li>
+<li class="show__card"><button type="button" class="show__pick" data-type="open" aria-pressed="false"><svg class="show__ico" viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 016.5 4h11A2.5 2.5 0 0120 6.5v7a2.5 2.5 0 01-2.5 2.5H11l-4.5 4v-4h0A2.5 2.5 0 014 13.5z"/><path d="M8.5 10h.01M12 10h.01M15.5 10h.01" stroke-width="2.4"/></svg><span><b>Open Ended</b><small>Collect and display responses in their own words</small></span></button><a class="show__create" href="/app/">Create</a></li>
+</ul>
+<div class="show__stage">
+<span class="show__tag show__tag--screen" aria-hidden="true">Your screen<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v15M6 13l6 6 6-6"/></svg></span>
+<span class="show__tag show__tag--phone" aria-hidden="true">Participant&rsquo;s screen<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5c0 6 3 9 9 10M10 11l4 4-4 4"/></svg></span>
+<div class="show__screen"><p class="show__join">Join with the code <b>5F5BLZ</b></p><div id="show-slide" class="show__slide"></div></div>
+<div class="show__phone"><div class="show__phonebrand">Densight Slides</div><div id="show-phone" class="show__phonebody"></div></div>
 </div>
-<div class="tut__main">
-<p class="tut__task" id="tut-task" role="status" aria-live="polite"></p>
-<p class="sr" id="tut-announce" role="status" aria-live="polite"></p>
-<div class="tut__stage">
-<span class="tut__tag tut__tag--screen" aria-hidden="true">Your screen<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v15M6 13l6 6 6-6"/></svg></span>
-<span class="tut__tag tut__tag--phone" aria-hidden="true">Participant&rsquo;s screen<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5c0 6 3 9 9 10M10 11l4 4-4 4"/></svg></span>
-<div class="tut__screen"><div class="tut__bar"><span>Presenter screen</span><span id="tut-code" data-live="false">Not started</span></div>
-<h3 id="tut-q" class="tut__q"></h3><ul id="tut-bars" class="tbars"></ul><p id="tut-count" class="tut__count"></p></div>
-<div class="tut__phone"><p class="phone__brand">Audience phone</p>
-<form class="tjoin" id="tut-join" onsubmit="return false"><label for="tut-code-in">Join code</label><div class="tjoin__row"><input id="tut-code-in" type="text" inputmode="text" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="6 characters"><button type="submit" class="btn sm">Join</button></div><p class="tjoin__msg" id="tut-join-msg"></p><button type="button" class="tjoin__fill" id="tut-fill" hidden>Use the code on screen</button></form>
-<div id="tut-joined" hidden><p id="tut-phone-q" class="phone__q"></p><div id="tut-opts" class="topts"></div><p id="tut-phone-state" class="tut__pstate"></p></div></div>
+<p class="sr" id="show-announce" role="status" aria-live="polite"></p>
 </div>
-<form class="tut__form" id="tut-form" onsubmit="return false">
-<label>Question<input id="tut-question" type="text" maxlength="120" autocomplete="off"></label>
-<fieldset><legend>Answers (two to four)</legend>
-<input data-opt type="text" maxlength="60" autocomplete="off" aria-label="Answer 1"><input data-opt type="text" maxlength="60" autocomplete="off" aria-label="Answer 2"><input data-opt type="text" maxlength="60" autocomplete="off" aria-label="Answer 3"><input data-opt type="text" maxlength="60" autocomplete="off" placeholder="Optional fourth answer" aria-label="Answer 4">
-</fieldset></form>
-</div></div>
-<noscript><p class="note">The tutorial needs JavaScript. The <a href="/learn/">guides</a> cover the same steps in text.</p></noscript>
+<p class="show__fine">Word clouds and open answers in a live room come with a paid plan; polls and quizzes are free.</p>
+<noscript><p class="note">The demo needs JavaScript. The <a href="/learn/">guides</a> cover the same steps in text.</p></noscript>
 <p class="cta tuthero__cta"><a class="btn lg" href="/app/">Start building</a><span class="assure">Free to start. Nothing to install. No account needed to try it.</span></p>
 <dl class="facts">
 <div><dt>${BLOCK_COUNT}</dt><dd>interactive and design blocks</dd></div>

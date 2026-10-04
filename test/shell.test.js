@@ -164,13 +164,6 @@ test('type: both faces are self-hosted and the headlines use the serif', () => {
   assert.ok(home.includes('/fonts.css') && home.includes('rel="preload"'), 'the page loads and preloads its fonts');
 });
 
-test('the interactive tutorial is on the home page and wired up', () => {
-  const home = buildSite()['index.html'];
-  for (const id of ['id="tut"', 'id="tut-question"', 'id="tut-bars"', 'id="tut-opts"', 'id="tut-act"', 'id="tut-back"', 'src="/tutorial.js"']) assert.ok(home.includes(id), `missing ${id}`);
-  assert.equal((home.match(/data-go="/g) ?? []).length, 4, 'four steps');
-  assert.ok(home.includes('<noscript>'), 'a text fallback without JavaScript');
-  assert.ok((home.match(/<svg[^>]+role="img"[^>]+aria-label=/g) ?? []).length >= 6, 'block drawings are labelled');
-});
 
 // ---- the comparison table must tell the truth about us ---------------------------------
 
