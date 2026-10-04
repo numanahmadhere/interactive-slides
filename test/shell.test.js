@@ -243,3 +243,13 @@ test('the pricing section prints the real plans, prices and trial, and links eac
   assert.ok(pricing.includes(`${PLANS.free.cloudDecks} decks online`) && pricing.includes(`${PLANS.free.livePhones} phones`));
   assert.ok(!/unlimited/i.test(pricing), 'nothing here is unlimited, so the page must not say so');
 });
+
+test('the thank-you page exists, is kept out of search, and sends people to their account', () => {
+  const site = buildSite();
+  const page = site['welcome/index.html'];
+  assert.ok(page, '/welcome/ exists');
+  assert.ok(page.includes('noindex'));
+  assert.ok(page.includes('/app/account?welcome=1'));
+  assert.ok(site['robots.txt'].includes('Disallow: /welcome/'));
+  assert.ok(!site['sitemap.xml'].includes('welcome'));
+});

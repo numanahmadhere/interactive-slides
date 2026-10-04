@@ -184,3 +184,21 @@ test('the catalog matches the plans and prices, and every live price is recognis
   const all = Object.values(CATALOG.live).flatMap((p) => Object.values(p));
   assert.equal(new Set(all).size, 6);
 });
+
+import { readFileSync } from 'node:fs';
+
+test('the page never computes or reformats a price Paddle gives it, and never touches a server key', () => {
+  const picker = readFileSync(new URL('../src/billing/picker.js', import.meta.url), 'utf8');
+  const checkout = readFileSync(new URL('../src/billing/checkout.js', import.meta.url), 'utf8');
+  // any line that handles a price Paddle returned must not format, round or add it
+  for (const [name, src] of [['picker', picker], ['checkout', checkout]]) {
+    const lines = src.split('\n').filter((l) => /paddlePrice|formattedTotals|PricePreview|local\.get/.test(l));
+    assert.ok(lines.length, `${name} handles Paddle prices`);
+    assert.ok(!lines.some((l) => /Intl\.NumberFormat|toFixed|toLocaleString|Math\.|parseFloat|parseInt|Number\(/.test(l)), `${name}: no arithmetic or reformatting of Paddle's strings`);
+  }
+  assert.match(checkout, /formattedTotals\?\.total/);
+  assert.ok(!/countryCode|address:/.test(checkout), 'no country is passed; Paddle works it out from the visitor');
+  assert.match(checkout, /displayMode: 'overlay', variant: 'one-page'/);
+  assert.match(checkout, /successUrl: `\$\{location\.origin\}\/welcome`/);
+  assert.ok(!/pdl_|SERVICE_ROLE/.test(picker + checkout + readFileSync(new URL('../src/billing/config.js', import.meta.url), 'utf8')), 'no server key anywhere in the page code');
+});

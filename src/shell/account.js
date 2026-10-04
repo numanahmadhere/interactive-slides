@@ -131,6 +131,11 @@ export async function mountAccount(root) {
 
   await billing.refresh();
   await render();
+  // Coming back from Paddle's checkout: the webhook may still be on its way, so wait for the plan to change.
+  if (new URLSearchParams(location.search).get('welcome') && cloud?.user && billing.plan === 'free') {
+    toast('Thank you. Switching your plan on...', { timeout: 6000 });
+    if ((await billing.waitForChange()) !== 'free') { toast(`You are on the ${PLANS[billing.plan].name} plan.`); await render(); }
+  }
   const flash = takeFlash();
   if (flash) toast(flash.text, { kind: flash.kind });
 }

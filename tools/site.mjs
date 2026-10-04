@@ -320,6 +320,17 @@ ${FIGS.map(([t, d, svg]) => `<figure class="fig reveal">${svg}<figcaption><b>${t
 </script>`,
 });
 
+const welcome = () => layout({
+  path: '/welcome/',
+  title: `Thank you: ${NAME}`,
+  description: 'Your payment went through.',
+  index: false,
+  body: `<div class="doc"><h1>Thank you</h1><p class="meta">Your payment went through and your plan is being switched on.</p>
+<p>It usually takes a few seconds. We are taking you to your account now; if nothing happens, <a href="/app/account?welcome=1">open your account</a>.</p>
+<p>A receipt is on its way to your email from Paddle, who handle payments for us. Questions? Write to <a href="${mailto('My payment')}">${SUPPORT}</a>.</p></div>
+<script>setTimeout(function(){location.replace('/app/account?welcome=1')},2500)</script>`,
+});
+
 const guides = [
   ['Make your first deck', '<ol><li>Open <a href="/app/">My decks</a> and choose <strong>Blank deck</strong>.</li><li>Click the title text on the slide and type. Click it again to edit in place.</li><li>Press <strong>Insert</strong> above the slide (or type <kbd>/</kbd>) to add text, images, quizzes and more, then drag them where you want. Double-click empty space to type there.</li><li>Your deck saves on your device as you work. Rename it with the title box at the top.</li></ol>'],
   ['Add a quiz or poll', '<p>Press <strong>Insert</strong> or type <kbd>/</kbd>, then choose <em>Quiz question</em> or <em>Live poll</em>. Type the question, edit the choices, and tick which choice is correct for a quiz. Add a <em>Score summary</em> block on a later slide to total every quiz.</p>'],
@@ -384,8 +395,9 @@ export function buildSite() {
     'learn/index.html': learn(),
     'privacy/index.html': privacy(),
     'terms/index.html': terms(),
+    'welcome/index.html': welcome(),
     '404.html': notFound(),
-    'robots.txt': `User-agent: *\nAllow: /\nDisallow: /app/\n\nSitemap: ${SITE}/sitemap.xml\n`,
+    'robots.txt': `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /welcome/\n\nSitemap: ${SITE}/sitemap.xml\n`,
     'sitemap.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', '/learn/', '/privacy/', '/terms/'].map((p) => `<url><loc>${SITE}${p}</loc></url>`).join('\n')}\n</urlset>\n`,
   };
   return pages;
