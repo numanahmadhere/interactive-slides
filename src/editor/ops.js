@@ -635,3 +635,20 @@ export function duplicateSlides(deck, ids) {
   slides.splice(last + 1, 0, ...copies);
   return { deck: { ...deck, slides }, copies };
 }
+
+// patch: { anim?: name | '', animDelay?: ms }
+export function setBlockAnimation(deck, blockId, patch) {
+  return updateBlock(deck, blockId, (block) => {
+    const next = { ...block };
+    if ('anim' in patch) {
+      if (patch.anim) next.anim = patch.anim;
+      else { delete next.anim; delete next.animDelay; }
+    }
+    if ('animDelay' in patch && next.anim) {
+      const d = Math.min(5000, Math.max(0, Math.round(patch.animDelay / 100) * 100));
+      if (d) next.animDelay = d;
+      else delete next.animDelay;
+    }
+    return JSON.stringify(next) === JSON.stringify(block) ? block : next;
+  });
+}

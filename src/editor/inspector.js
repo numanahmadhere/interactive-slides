@@ -15,6 +15,8 @@ import { svgIcon } from '../core/dom.js';
 import { ASPECTS, TRANSITIONS, slideTitle } from '../core/schema.js';
 import { safeImageUrl } from '../core/sanitize.js';
 import * as ops from './ops.js';
+import { ARRANGEMENTS } from './arrange.js';
+import { stageThumb } from './insert.js';
 import { button, field, segmented, toggle, select, textInput, numberInput, rangeInput, listEditor, colorInput } from './ui.js';
 
 const TRANSITION_LABELS = { fade: 'Fade', slide: 'Slide', zoom: 'Zoom', none: 'None' };
@@ -198,11 +200,38 @@ export class Inspector {
         })));
       }
     }
+    if (hit.parent === null) placement.append(...this.#animationControls(block));
     placement.append(button({
       icon: 'plus', label: 'Add block below', variant: 'wide',
       onClick: (e, el) => this.editor.openBlockMenu(el, { afterBlockId: id }, { exclude: this.editor.excludedInside(hit.parent?.block) }),
     }));
     return [settings, placement];
+  }
+
+  // How the block arrives when its slide appears (or when its step is revealed).
+  #animationControls(block) {
+    const ed = this.editor;
+    const id = block.id;
+    const options = [
+      { value: '', label: 'None' }, { value: 'fade', label: 'Fade in' }, { value: 'rise', label: 'Rise' },
+      { value: 'zoom', label: 'Zoom in' }, { value: 'left', label: 'Slide from left' }, { value: 'right', label: 'Slide from right' },
+    ];
+    const nodes = [field('Entrance animation', select({
+      options, value: block.anim ?? '',
+      onChange: (v) => {
+        this.#rebuilding(ops.setBlockAnimation(ed.deck, id, { anim: v }));
+        if (v) ed.canvas.previewAnimation(id);
+      },
+    }), 'Plays when you present. Blocks that appear on a click animate when they appear.')];
+    if (block.anim) {
+      nodes.push(
+        field('Delay (ms)', numberInput({
+          value: block.animDelay ?? 0, min: 0, max: 5000,
+          onInput: (n) => this.#live(ops.setBlockAnimation(ed.deck, id, { animDelay: n }), `insp:${id}:animDelay`),
+        })),
+        button({ label: 'Preview animation', variant: 'wide', onClick: () => ed.canvas.previewAnimation(id) }));
+    }
+    return nodes;
   }
 
   // Position and size as numbers, layer order, lock and hide: the precise side of dragging.
@@ -443,6 +472,7 @@ export class Inspector {
     }
 
     const background = this.#backgroundSection(slide);
+    const arrange = layout.free ? this.#arrangeSection() : null;
     const content = section('Add content');
     for (const slot of layout.slots) {
       const count = slide.blocks.filter((b) => b.slot === slot.id).length;
@@ -451,7 +481,28 @@ export class Inspector {
         button({ icon: 'plus', label: `Add to ${slot.label}`, iconOnly: true, onClick: (e, el) => this.editor.openBlockMenu(el, { slot: slot.id }) }));
       content.append(row);
     }
-    return [setup, background, content];
+    return [setup, arrange, background, content].filter(Boolean);
+  }
+
+  // Mini diagrams of each arrangement; clicking one lays the slide out that way.
+  #arrangeSection() {
+    const grid = h('div', { class: 'ed-arrange' });
+    for (const preset of ARRANGEMENTS) {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 1920 1080');
+      svg.setAttribute('aria-hidden', 'true');
+      for (const [key, a] of Object.entries(preset.areas)) {
+        const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        const height = a.h ?? (key === 'title' || key === 'sub' ? 150 : 300);
+        for (const [k, v] of Object.entries({ x: a.x, y: a.y, width: a.w, height, rx: 24 })) r.setAttribute(k, String(v));
+        r.setAttribute('class', key === 'media' ? 'ed-arrange__media' : 'ed-arrange__box');
+        svg.append(r);
+      }
+      const b = h('button', { type: 'button', class: 'ed-arrange__btn', title: preset.name, 'aria-label': `Arrange: ${preset.name}` }, svg, h('span', { text: preset.name }));
+      b.addEventListener('click', () => this.editor.applyArrangement(preset.id));
+      grid.append(b);
+    }
+    return section('Arrange', grid, h('p', { class: 'ed-hint', text: 'Lays out the blocks already on the slide. You can still drag anything afterwards.' }));
   }
 
 
@@ -570,11 +621,16 @@ export class Inspector {
     const { deck } = this.editor;
     const themes = h('div', { class: 'ed-themes' });
     for (const t of listThemes()) {
-      const b = h('button', { class: 'ed-theme', type: 'button', 'aria-pressed': String(deck.theme.id === t.id) },
-        h('span', { class: 'ed-theme__swatch' },
-          ...[t.tokens.bg, t.tokens.accent, t.tokens.fg].map((c) => h('span', { style: `background:${c}` }))),
+      // The current slide, drawn in this theme, so the choice is not a guess.
+      const sample = stageThumb(this.editor, this.editor.slide, 128, undefined, { ...deck, theme: { id: t.id, overrides: {} } });
+      const b = h('button', { class: 'ed-theme', type: 'button', 'aria-pressed': String(deck.theme.id === t.id), 'aria-label': `Theme: ${t.name}` },
+        sample,
         h('span', { text: t.name }));
-      b.addEventListener('click', () => this.#rebuilding(ops.setTheme(this.editor.deck, t.id)));
+      b.addEventListener('click', () => { this.editor.canvas.previewTheme(null); this.#rebuilding(ops.setTheme(this.editor.deck, t.id)); });
+      b.addEventListener('pointerenter', () => this.editor.canvas.previewTheme(t.id));
+      b.addEventListener('pointerleave', () => this.editor.canvas.previewTheme(null));
+      b.addEventListener('focus', () => this.editor.canvas.previewTheme(t.id));
+      b.addEventListener('blur', () => this.editor.canvas.previewTheme(null));
       themes.append(b);
     }
 

@@ -10,6 +10,7 @@ import { applyTheme } from '../core/theme.js';
 import { createSlide, ASPECTS } from '../core/schema.js';
 import { defaultFrame } from './ops.js';
 import { openPopover } from './ui.js';
+import { TEMPLATES } from '../library/templates.js';
 
 export const INSERT_MIME = 'application/x-densight-insert';
 
@@ -70,8 +71,8 @@ export function searchBlocks(query, defs = insertable()) {
 
 // A real rendering of a one-block slide, scaled into `width` px.
 // `region` is how many slide pixels wide the card shows (the whole slide when omitted).
-function stageThumb(editor, slide, width, region) {
-  const deck = editor.deck;
+export function stageThumb(editor, slide, width, region, deckOverride) {
+  const deck = deckOverride ?? editor.deck;
   const { width: w, height: hgt } = ASPECTS[deck.aspect];
   const shown = region ?? w;
   const box = h('div', { class: 'ed-pv', 'aria-hidden': 'true', inert: true });
@@ -223,20 +224,31 @@ export function openPalette(editor, anchor) {
 
 export function openLayoutPicker(editor, anchor, onPick) {
   const grid = h('div', { class: 'ed-layouts' });
-  for (const layout of listLayouts()) {
-    const card = h('button', { type: 'button', class: 'ed-card', title: layout.name },
-      layoutPreview(editor, layout.id, 148),
-      h('span', { class: 'ed-card__label', text: layout.id === 'free' ? 'Blank canvas' : layout.name }));
-    card.addEventListener('click', () => {
+  const card = (key, label, preview, title) => {
+    const el = h('button', { type: 'button', class: 'ed-card', title }, preview, h('span', { class: 'ed-card__label', text: label }));
+    el.addEventListener('click', () => {
       handle.close();
-      onPick(layout.id);
+      onPick(key);
     });
-    grid.append(card);
+    return el;
+  };
+  let group = null;
+  for (const t of TEMPLATES) {
+    if (t.group !== group) {
+      group = t.group;
+      grid.append(h('h3', { class: 'ed-insert__group ed-layouts__heading', text: group === 'Basics' ? 'Templates' : group }));
+    }
+    grid.append(card(`t:${t.id}`, t.name, stageThumb(editor, t.make(), 148), t.name));
+  }
+  grid.append(h('h3', { class: 'ed-insert__group ed-layouts__heading', text: 'Fixed layouts' }));
+  for (const layout of listLayouts()) {
+    if (layout.free) continue;
+    grid.append(card(layout.id, layout.name, layoutPreview(editor, layout.id, 148), layout.name));
   }
   const content = h('div', { class: 'ed-insert' },
     h('div', { class: 'ed-pop__head' }, h('h2', { class: 'ed-pop__title', text: 'New slide' })),
     h('div', { class: 'ed-insert__scroll' }, grid),
-    h('p', { class: 'ed-pop__foot', text: 'A blank canvas lets you place anything anywhere. The others start with ready-made columns.' }));
+    h('p', { class: 'ed-pop__foot', text: 'Templates are free-form: everything on them can be moved, restyled or deleted.' }));
   const handle = openPopover({ anchor, content, label: 'New slide', className: 'ed-pop--layouts', focus: grid.querySelector('.ed-card') });
   handle.place();
   return handle;

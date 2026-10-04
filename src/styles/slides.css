@@ -988,3 +988,33 @@ button.sp-poll__row:focus-visible { outline: 5px solid var(--sp-accent-text); ou
 /* Groups: children are positioned against the group's own top-left corner. */
 .sp-group { position: relative; width: 100%; height: 100%; }
 .sp-image.is-cropped { overflow: hidden; }
+
+/* ---- entrance animations ----
+   They use the individual translate/scale properties so they combine with a
+   block's own rotation. They play only while presenting (.is-playing) or when the
+   editor previews one (.is-previewing); exports and thumbnails stay still. */
+@keyframes sp-in-fade { from { opacity: 0; } }
+@keyframes sp-in-rise { from { opacity: 0; translate: 0 48px; } }
+@keyframes sp-in-zoom { from { opacity: 0; scale: 0.88; } }
+@keyframes sp-in-left { from { opacity: 0; translate: -96px 0; } }
+@keyframes sp-in-right { from { opacity: 0; translate: 96px 0; } }
+
+.sp-slide.is-playing [data-anim]:not([data-step]),
+.sp-slide.is-playing [data-anim][data-step].is-revealed,
+.sp-slide [data-anim].is-previewing {
+  animation: var(--sp-anim-name) 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) var(--sp-anim-delay, 0ms) both;
+}
+[data-anim='fade'] { --sp-anim-name: sp-in-fade; }
+[data-anim='rise'] { --sp-anim-name: sp-in-rise; }
+[data-anim='zoom'] { --sp-anim-name: sp-in-zoom; }
+[data-anim='left'] { --sp-anim-name: sp-in-left; }
+[data-anim='right'] { --sp-anim-name: sp-in-right; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sp-slide.is-playing [data-anim], .sp-slide [data-anim].is-previewing { animation: none; }
+}
+
+/* Shapes on free-form slides fill their frame. */
+.sp-free > .sp-block[data-type='shape'] { display: flex; flex-direction: column; }
+.sp-free > .sp-block[data-type='shape'] > .sp-shape:not(.sp-shape--line) { width: 100%; height: 100%; min-height: 0; align-self: stretch; }
+.sp-free > .sp-block[data-type='shape'] > .sp-shape--line { align-self: stretch; margin: auto 0; }

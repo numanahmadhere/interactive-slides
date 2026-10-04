@@ -371,7 +371,7 @@ export class Player {
   // the page and detached when it leaves.
   #activate(el) {
     this.#deactivate();
-    this.disposeSlide = activateSlide(el);
+    this.disposeSlide = activateSlide(el, { play: true });
   }
 
   #deactivate() {

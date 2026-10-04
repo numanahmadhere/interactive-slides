@@ -199,6 +199,9 @@ select.ed-input { appearance: none; padding-right: 28px; background-image: linea
 .ed-slot-empty:hover { background: rgb(143 143 255 / 0.1); }
 
 .ed-stage [data-placeholder]:empty::before { content: attr(data-placeholder); opacity: 0.35; }
+/* Empty text inside a shape only hints at itself once the shape is picked. */
+.ed-stage .sp-shape__text[data-placeholder]:empty::before { content: ''; }
+.ed-stage .sp-block.ed-selected .sp-shape__text[data-placeholder]:empty::before, .ed-stage .sp-shape__text.is-editing[data-placeholder]:empty::before { content: attr(data-placeholder); }
 .ed-stage .is-editing {
   outline: 6px solid #fff;
   outline-offset: 10px;
@@ -522,7 +525,7 @@ a.ed-logo .logo { width: 28px; height: 28px; }
 .ed-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
 
 /* ---- quick-add bar ---- */
-.ed-quick { position: absolute; z-index: 5; inset: 0 0 auto 0; height: 52px; display: flex; align-items: center; gap: 4px; padding: 0 14px; background: var(--ed-panel); border-bottom: 1px solid var(--ed-border); }
+.ed-quick { position: absolute; z-index: 5; inset: 0 0 auto 0; height: 52px; display: flex; align-items: center; gap: 4px; padding: 0 14px; overflow-x: auto; scrollbar-width: none; background: var(--ed-panel); border-bottom: 1px solid var(--ed-border); }
 .ed-quick .ed-btn { height: 34px; }
 
 /* ---- insert panel, palette, layout chooser ---- */
@@ -625,3 +628,21 @@ a.ed-logo .logo { width: 28px; height: 28px; }
 .ed-gtile__preview { position: relative; overflow: hidden; border-radius: 6px; box-shadow: 0 0 0 1px var(--ed-border-strong); pointer-events: none; }
 .ed-gtile__num { display: block; margin-top: 6px; color: var(--ed-muted); font: 500 12px var(--ed-font); }
 .ed-gridlist:focus-visible { box-shadow: inset 0 0 0 2px var(--ed-focus); }
+
+/* ---- arrangements ---- */
+.ed-arrange { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.ed-arrange__btn { display: grid; gap: 4px; padding: 6px; border: 1px solid var(--ed-border); border-radius: 10px; background: var(--ed-panel-2, var(--ed-panel)); color: var(--ed-text); font: 500 11px var(--ed-font); text-align: left; cursor: pointer; }
+.ed-arrange__btn:hover, .ed-arrange__btn:focus-visible { border-color: var(--ed-focus); background: var(--ed-hover); outline: none; }
+.ed-arrange__btn svg { width: 100%; height: auto; border-radius: 4px; background: var(--ed-canvas); }
+.ed-arrange__box { fill: var(--ed-select); opacity: 0.55; }
+.ed-arrange__media { fill: var(--ed-muted); opacity: 0.5; }
+.ed-layouts__heading { grid-column: 1 / -1; margin: 12px 0 0; }
+.ed-layouts__heading:first-child { margin-top: 2px; }
+
+/* ---- shortcuts dialog ---- */
+.ed-keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px 28px; }
+.ed-keys__title { margin: 0 0 8px; color: var(--ed-muted); font: 600 11px var(--ed-font); letter-spacing: 0.05em; text-transform: uppercase; }
+.ed-keys__list { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; margin: 0; align-items: baseline; }
+.ed-keys__list dt { margin: 0; }
+.ed-keys__list dd { margin: 0; color: var(--ed-muted); font-size: 13px; }
+.ed-keys kbd { padding: 2px 7px; border: 1px solid var(--ed-border-strong); border-radius: 6px; background: var(--ed-field); font: 500 12px var(--ed-font); white-space: nowrap; }

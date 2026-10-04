@@ -76,6 +76,10 @@ export function renderBlock(block, ctx, { reveal = true } = {}) {
   if (block.hidden && ctx.mode !== 'edit') wrap.hidden = true;
   if (block.hidden) wrap.dataset.hidden = 'true';
   if (block.locked) wrap.dataset.locked = 'true';
+  if (block.anim) {
+    wrap.dataset.anim = block.anim;
+    if (block.animDelay) wrap.style.setProperty('--sp-anim-delay', `${block.animDelay}ms`);
+  }
   if (block.frame) applyFrame(wrap, block.frame);
   if (block.style) applyStyle(wrap, block.style, ctx.deck);
   if (!def) {
@@ -132,8 +136,12 @@ export function renderSlide(deck, slide, { mode = 'present', resolveAsset, index
 
 // Attach behaviour to a slide element that is now in the document. Returns a
 // function that detaches it (timers, document listeners).
-export function activateSlide(el) {
+export function activateSlide(el, { play = false } = {}) {
   const disposers = [];
+  if (play) { // entrance animations only run while presenting
+    el.classList.add('is-playing');
+    disposers.push(() => el.classList.remove('is-playing'));
+  }
   for (const mount of mounts.get(el) ?? []) {
     try {
       const dispose = mount();

@@ -76,6 +76,22 @@ export class CanvasView {
     this.resizeObserver.observe(host);
   }
 
+  // Try a theme on the open slide without changing the deck; null puts the real one back.
+  previewTheme(id) {
+    const deck = this.editor.deck;
+    applyTheme(this.stage, id ? { id, overrides: {} } : deck.theme);
+  }
+
+  // Play a block's entrance animation once, to see what it does.
+  previewAnimation(blockId) {
+    const el = this.blockEl(blockId);
+    if (!el?.dataset.anim) return;
+    el.classList.remove('is-previewing');
+    void el.offsetWidth; // restart
+    el.classList.add('is-previewing');
+    el.addEventListener('animationend', () => el.classList.remove('is-previewing'), { once: true });
+  }
+
   get gesturing() {
     return this.stage.classList.contains('is-gesture');
   }
@@ -439,7 +455,9 @@ export class CanvasView {
     const plain = field.kind === 'code' || field.kind === 'plain';
     el.contentEditable = plain && PLAINTEXT ? 'plaintext-only' : 'true';
     el.spellcheck = field.kind !== 'code';
-    el.setAttribute('role', 'textbox');
+    // Headings may not take the textbox role; a contenteditable heading is announced as editable anyway.
+    if (!/^H[1-6]$/.test(el.tagName)) el.setAttribute('role', 'textbox');
+    el.setAttribute('aria-label', `Edit ${field.placeholder || 'text'}`);
     el.classList.add('is-editing');
 
     const session = {

@@ -84,7 +84,16 @@ src/player/autoplay.js   kiosk timer
 src/editor/ops.js        pure deck edits (insert, move, patch...), structurally shared
 src/editor/store.js      current deck + undo/redo with coalescing
 src/editor/editor.js     controller: selection, actions, shortcuts, autosave, import/export
-src/editor/canvas.js     edit-mode slide, click-to-edit text, format bar
+src/editor/canvas.js     edit-mode slide, click-to-edit text, format bar, zoom
+src/editor/free.js       free-form gestures: move, resize, rotate, marquee, crop, snapping guides
+src/editor/transform.js  pure geometry (resize, align, distribute, rotate)
+src/editor/snap.js       pure snapping guides
+src/editor/arrange.js    one-click arrangements (title, two columns, ...)
+src/editor/toolbar.js    floating per-block toolbar
+src/editor/insert.js     Insert panel, / palette, new-slide picker
+src/editor/grid.js       all-slides grid
+src/editor/clipboard.js  copy and paste of blocks
+src/library/templates.js ready-made slides
 src/editor/sidebar.js    thumbnails, drag-to-reorder
 src/editor/inspector.js  settings panel generated from each block's `fields`
 src/editor/persist.js    IndexedDB (decks + images), localStorage and memory fallbacks
@@ -100,17 +109,51 @@ src/offline.js           registers it in production builds
 
 ## Editor
 
-Click a block to select it, click it again (or press Enter) to type in place.
-Pasted text is always plain. Settings for the selection are in the right panel.
+New slides are **free-form**: every block sits on the canvas at its own position, like in
+Canva or Google Slides. The older fixed layouts (title, two columns, ...) still work and
+can be turned into free-form slides in one click; nothing moves when you do.
+
+**Placing things**
+
+- Drag a block to move it. Pink guides and a gentle snap line it up with other blocks and
+  the slide centre (hold Alt to switch snapping off, Shift to keep to one direction).
+- Eight handles resize; the round handle rotates (Shift: 15 degree steps). Arrow keys nudge
+  (Shift: further). Drag on empty canvas to select several; Ctrl/Cmd+A selects all.
+- With several selected the right panel aligns, spreads and matches them. Ctrl/Cmd+G groups,
+  Ctrl/Cmd+Shift+G ungroups. Lock a block to stop it moving; hide it without deleting it.
+- The Layers tab lists everything on the slide: select, hide, lock, drag to reorder.
+- Copy, cut and paste work between slides, decks and browser tabs. Pasting text, a link or a
+  picture address makes the right block; pasting a picture makes an image block.
+
+**Adding things**
+
+- **Insert** (top of the canvas) searches every block type, each shown as it will look.
+  Click a card, or drag it onto the slide. Text, Image, Shape, Quiz and Poll are one click.
+- Press `/` and type to add a block from the keyboard. Double-click empty canvas to add text there.
+- The **+** above the slide strip, or the **+** that appears between slides on hover, adds a
+  slide from a template or a fixed layout.
+
+**Making it look right**
+
+- A small toolbar floats over the selection: size, alignment, theme colours (plus recent and
+  custom ones), picture replace and crop (drag to move, scroll to zoom), duplicate, lock, layer order.
+- **Arrange** (Slide tab) lays out the blocks on a slide as a title, two columns, picture left...
+- **Theme** (Deck tab) shows your current slide in each theme; hover to preview on the canvas.
+- Each block can have an **entrance animation** (Block tab), played when presenting.
+- Zoom with the buttons above the slide or Ctrl/Cmd +, -, 0. Speaker notes sit under the slide.
+- **All slides** shows the whole deck as a grid. Shift/Ctrl-click slides to select several,
+  then drag, duplicate or delete them together.
+
+`?` lists every shortcut.
 
 | Keys | Action |
 | --- | --- |
 | Enter / F2 | edit the selected block |
 | Esc | finish editing, then deselect |
 | Ctrl/Cmd+B, I, K | bold, italic, link (while editing rich text) |
-| Delete | delete the selected block |
+| Delete | delete the selection |
 | Ctrl/Cmd+Z, Shift+Z | undo, redo (a whole typing session is one step) |
-| Ctrl/Cmd+D | duplicate the selected block, or the slide |
+| Ctrl/Cmd+C, X, V, D | copy, cut, paste, duplicate |
 | PageUp / PageDown | previous / next slide |
 | Alt+Up / Down (in the slide list) | move the slide |
 | Ctrl/Cmd+Enter | present (add Shift for the presenter view) |

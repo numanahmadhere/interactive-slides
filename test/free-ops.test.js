@@ -188,3 +188,55 @@ test('duplicating several slides puts the copies after the last original', () =>
   assert.equal(out.deck.slides[5].id, d);
   assert.notEqual(out.copies[0].id, a);
 });
+
+import { arrange, ARRANGEMENTS } from '../src/editor/arrange.js';
+import { setBlockAnimation } from '../src/editor/ops.js';
+
+test('arrangements hand the heading to the title and the rest to the content', () => {
+  const { deck, a, b } = withTwo();
+  const blocks = deck.slides[0].blocks;
+  const heading = blocks.find((x) => x.type === 'heading');
+  const frames = arrange(blocks, 'content', { [a.id]: { h: 90 }, [b.id]: { h: 360 } });
+  assert.deepEqual([frames[heading.id].x, frames[heading.id].y], [128, 96]);
+  assert.equal(frames[a.id].x, 128);
+  assert.ok(frames[a.id].y >= 280, 'content sits below the title');
+  assert.ok(frames[b.id].y > frames[a.id].y, 'later blocks stack below earlier ones');
+  assert.equal(arrange(blocks, 'nope'), null);
+});
+
+test('picture layouts give the first picture the picture area', () => {
+  const picture = { ...createBlock('image'), slot: 'free', frame: { x: 5, y: 5, w: 100, h: 100 } };
+  const text = { ...createBlock('text'), slot: 'free', frame: { x: 5, y: 200, w: 100 } };
+  const frames = arrange([picture, text], 'image-text');
+  assert.deepEqual([frames[picture.id].x, frames[picture.id].w, frames[picture.id].h], [0, 960, 1080]);
+  assert.ok(frames[text.id].x >= 960);
+  const bleed = arrange([picture], 'full-bleed');
+  assert.deepEqual([bleed[picture.id].w, bleed[picture.id].h], [1920, 1080]);
+});
+
+test('every arrangement places every unlocked block and none are dropped', () => {
+  const { deck } = withTwo();
+  const blocks = deck.slides[0].blocks;
+  for (const preset of ARRANGEMENTS) {
+    const frames = arrange(blocks, preset.id);
+    for (const b of blocks) assert.ok(frames[b.id], `${preset.id} placed ${b.type}`);
+  }
+});
+
+test('locked blocks stay where they are', () => {
+  const { deck, a } = withTwo();
+  const locked = ops.setBlockFlags(deck, [a.id], { locked: true });
+  const frames = arrange(locked.slides[0].blocks, 'two-column');
+  assert.equal(frames[a.id], undefined);
+});
+
+test('animations set, clear and clamp their delay', () => {
+  const { deck, a } = withTwo();
+  const on = setBlockAnimation(deck, a.id, { anim: 'rise' });
+  assert.equal(on.slides[0].blocks.find((x) => x.id === a.id).anim, 'rise');
+  const delayed = setBlockAnimation(on, a.id, { animDelay: 123456 });
+  assert.equal(delayed.slides[0].blocks.find((x) => x.id === a.id).animDelay, 5000);
+  const off = setBlockAnimation(delayed, a.id, { anim: '' });
+  const block = off.slides[0].blocks.find((x) => x.id === a.id);
+  assert.equal('anim' in block || 'animDelay' in block, false);
+});

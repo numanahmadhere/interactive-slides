@@ -80,6 +80,9 @@ export function walkDeck(deck, fn) {
 // ---- normalisation ----------------------------------------------------------
 
 // A free-form block's place on the 1920-wide canvas. h is optional (auto height).
+// Entrance animations a block can play when its slide appears (or when its step is revealed).
+export const ANIMATIONS = ['fade', 'rise', 'zoom', 'left', 'right'];
+
 export const FRAME_LIMITS = { min: 8, max: 6000 };
 export function normalizeFrame(raw) {
   if (!isObject(raw)) return null;
@@ -128,6 +131,11 @@ export function normalizeBlock(raw, state, path, depth = 0) {
 
   const frame = normalizeFrame(raw.frame);
   if (frame) block.frame = frame;
+  if (ANIMATIONS.includes(raw.anim)) {
+    block.anim = raw.anim;
+    const delay = Number.isFinite(Number(raw.animDelay)) ? clamp(Math.round(Number(raw.animDelay) / 100) * 100, 0, 5000) : 0;
+    if (delay > 0) block.animDelay = delay;
+  }
   const style = normalizeStyle(raw.style);
   if (style) block.style = style;
   if (raw.locked === true) block.locked = true;

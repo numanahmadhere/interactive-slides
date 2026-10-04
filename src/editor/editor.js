@@ -22,6 +22,7 @@ import { openPresenter } from './presenter.js';
 import { button, openMenu, toast } from './ui.js';
 import { openExportDialog } from './export-dialog.js';
 import { openFindDialog } from './find-dialog.js';
+import { openShortcuts } from './shortcuts-dialog.js';
 import { openLiveDialog } from './live-dialog.js';
 import { openCloudDialog } from './cloud-dialog.js';
 import { getCloud } from '../cloud/instance.js';
@@ -31,6 +32,8 @@ import { createTransport } from '../live/transport.js';
 import { newRoom, cleanSavedSession } from '../live/protocol.js';
 import { Exporter } from './exporter.js';
 import { GridView } from './grid.js';
+import { arrange } from './arrange.js';
+import { getTemplate } from '../library/templates.js';
 import { openInsertPanel, openPalette, openLayoutPicker, QUICK_TYPES } from './insert.js';
 import { slideToPng } from '../export/png.js';
 import { setThemePref, themePref } from '../styles/theme.js';
@@ -453,8 +456,11 @@ export class Editor {
     this.store.redo();
   }
 
+  // layoutId: a fixed layout id, 'free', or 't:<template id>'.
   addSlide(layoutId = 'free', index = this.slideIndex + 1) {
-    const slide = createSlide(layoutId);
+    const template = layoutId.startsWith('t:') ? getTemplate(layoutId.slice(2)) : null;
+    const slide = template ? template.make() : createSlide(layoutId === 'free' ? 'free' : layoutId);
+    if (template && !slide.blocks.length) slide.blocks = [];
     this.commit(ops.insertSlide(this.deck, index, slide));
     this.select({ slideId: slide.id });
   }
@@ -681,6 +687,15 @@ export class Editor {
         acts[v]?.();
       },
     });
+  }
+
+  // One-click layouts for free-form slides (title, two columns, picture left...).
+  applyArrangement(presetId) {
+    if (!this.isFree) return;
+    const measured = Object.fromEntries(this.slide.blocks.map((b) => [b.id, { h: this.canvas.free.boxOf(b).h }]));
+    const frames = arrange(this.slide.blocks, presetId, measured);
+    if (!frames || !this.commit(ops.setFrames(this.deck, frames))) return;
+    toast('Arranged. Undo (Ctrl+Z) puts everything back.', { timeout: 2500 });
   }
 
   canCrop(id) {
@@ -938,6 +953,7 @@ export class Editor {
         { label: 'Import deck...', value: 'import', hint: 'JSON' },
         { label: 'Cloud: save, open, share...', value: 'cloud', hint: 'Account' },
         { label: 'Find and replace...', value: 'find', hint: 'Ctrl+H' },
+        { label: 'Keyboard shortcuts', value: 'keys', hint: '?' },
         { label: 'Export...', value: 'export', hint: 'HTML, PDF, PNG, PPTX' },
         { label: 'Contact support', value: 'support', hint: SUPPORT_EMAIL },
         { label: `Appearance: ${{ system: 'follows device', light: 'light', dark: 'dark' }[themePref()]}`, value: 'theme', hint: 'Change' },
@@ -949,6 +965,7 @@ export class Editor {
         else if (value === 'interactive') this.openAsNew(demoDeckCopy());
         else if (value === 'import') this.#pickImportFile();
         else if (value === 'find') openFindDialog(this);
+        else if (value === 'keys') openShortcuts();
         else if (value === 'cloud') openCloudDialog(this);
         else if (value === 'support') location.href = supportHref(`Help with "${this.deck.meta.title}"`);
         else if (value === 'theme') { const next = { system: 'light', light: 'dark', dark: 'system' }[themePref()]; setThemePref(next); toast(`Appearance: ${{ system: 'follows your device', light: 'light', dark: 'dark' }[next]}.`); }
@@ -1144,6 +1161,11 @@ export class Editor {
     }
 
     const onCanvas = e.target === document.body || !!e.target.closest?.('.ed-main');
+    if (e.key === '?' && onCanvas && !mod && !document.querySelector('.ed-dialog-backdrop')) {
+      e.preventDefault();
+      openShortcuts();
+      return;
+    }
     if (e.key === '/' && onCanvas && !mod && !document.querySelector('.ed-dialog-backdrop')) {
       e.preventDefault();
       this.openPalette();
