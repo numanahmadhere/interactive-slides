@@ -296,3 +296,30 @@ test('the environment a subscription came from is kept, so the portal talks to t
   assert.equal(await apply('env1', '2026-10-07T00:00:00Z', rec({ paddle_env: 'sandbox', paddle_subscription_id: 'sub_SB' })), 'applied');
   assert.equal((await db.query('select paddle_env from subscriptions where user_id = $1', [B])).rows[0].paddle_env, 'sandbox');
 });
+
+test('course completions: visitors can add one for a shared deck only, and only the owner can read the list', async () => {
+  const T = 'K'.repeat(22);
+  const [deck] = await as(A, `insert into decks (title, data) values ('Course', '{}') returning id`);
+  const record = (who, t, name) => as(who, 'select public.record_completion($1, $2) as ok', [t, name]);
+
+  assert.equal((await record(null, T, 'Sam'))[0].ok, false, 'not shared yet');
+  await as(A, `update decks set share_token = $2 where id = $1`, [deck.id, T]);
+  assert.equal((await record(null, T, '  Sam  '))[0].ok, true, 'a visitor with no account can record');
+  assert.equal((await record(null, T, '   '))[0].ok, false, 'a blank name is refused');
+  assert.equal((await record(null, 'Z'.repeat(22), 'Sam'))[0].ok, false, 'a wrong token is refused');
+  assert.equal((await record(null, null, 'Sam'))[0].ok, false);
+  assert.equal((await record(B, T, `Bo\nb${'x'.repeat(200)}`))[0].ok, true);
+
+  const mine = await as(A, 'select name from completions where deck_id = $1 order by id', [deck.id]);
+  assert.equal(mine[0].name, 'Sam', 'trimmed');
+  assert.ok(mine[1].name.length <= 80 && !/\n/.test(mine[1].name), 'long names are cut and control characters removed');
+  assert.deepEqual(await as(B, 'select name from completions'), [], 'another account sees nothing');
+  assert.match((await as(null, 'select * from completions')).error ?? '', /permission denied/i);
+  assert.ok((await as(B, `insert into completions (deck_id, name) values ($1, 'forged')`, [deck.id])).error, 'no direct inserts from the browser');
+  assert.ok((await as(A, `insert into completions (deck_id, name) values ($1, 'forged')`, [deck.id])).error, 'not even the owner');
+
+  await as(A, `update decks set share_token = null where id = $1`, [deck.id]);
+  assert.equal((await record(null, T, 'Late'))[0].ok, false, 'stopped sharing');
+  await as(A, 'delete from decks where id = $1', [deck.id]);
+  assert.equal((await db.query('select count(*)::int as n from completions')).rows[0].n, 0, 'deleting the deck deletes its list');
+});

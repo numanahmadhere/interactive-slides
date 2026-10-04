@@ -254,3 +254,37 @@ begin
   return case when n = 0 then 'no_subscription_yet' else 'applied' end;
 end $$;
 revoke all on function public.paddle_apply_transaction(text, text, timestamptz, jsonb) from public, anon, authenticated;
+
+-- Self-paced courses: someone who finishes a shared deck can leave their name, and the deck's owner sees the list.
+-- Visitors can only add a row through record_completion() for a deck that is shared right now; they cannot read anything back.
+create table if not exists public.completions (
+  id           bigint generated always as identity primary key,
+  deck_id      uuid not null references public.decks (id) on delete cascade,
+  name         text not null check (char_length(name) between 1 and 80),
+  completed_at timestamptz not null default now()
+);
+create index if not exists completions_deck_idx on public.completions (deck_id, completed_at desc);
+
+alter table public.completions enable row level security;
+drop policy if exists "completions: owner reads"   on public.completions;
+drop policy if exists "completions: owner deletes" on public.completions;
+create policy "completions: owner reads"   on public.completions for select to authenticated
+  using (exists (select 1 from public.decks d where d.id = deck_id and d.owner = auth.uid()));
+create policy "completions: owner deletes" on public.completions for delete to authenticated
+  using (exists (select 1 from public.decks d where d.id = deck_id and d.owner = auth.uid()));
+revoke all on public.completions from anon;
+revoke insert, update on public.completions from authenticated;
+
+create or replace function public.record_completion(t text, who text) returns boolean
+language plpgsql security definer set search_path = public as $$
+declare d uuid; n text := left(btrim(regexp_replace(coalesce(who, ''), '[[:cntrl:]]', ' ', 'g')), 80);
+begin
+  if t is null or char_length(t) < 22 or n = '' then return false; end if;
+  select id into d from public.decks where share_token = t;
+  if d is null then return false; end if;
+  if (select count(*) from public.completions where deck_id = d) >= 5000 then return false; end if; -- a ceiling, not a feature
+  insert into public.completions (deck_id, name) values (d, n);
+  return true;
+end $$;
+revoke all on function public.record_completion(text, text) from public;
+grant execute on function public.record_completion(text, text) to anon, authenticated;

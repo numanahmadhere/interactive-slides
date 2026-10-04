@@ -259,6 +259,16 @@ export class Cloud {
     return data;
   }
 
+  // Someone finished a shared self-paced deck. Works signed out; the database only accepts it for a deck that is shared.
+  async recordCompletion(token, name) {
+    return (await this.#call('/rest/v1/rpc/record_completion', { method: 'POST', body: { t: token, who: name }, auth: 'anon' })) === true;
+  }
+
+  // The owner's list of people who finished (newest first).
+  async listCompletions(deckId) {
+    return this.#rest(`/rest/v1/completions?deck_id=eq.${encodeURIComponent(deckId)}&select=name,completed_at&order=completed_at.desc&limit=2000`);
+  }
+
   // ---- plumbing --------------------------------------------------------------------
 
   async #rest(path, { method = 'GET', body, prefer } = {}) {

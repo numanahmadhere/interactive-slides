@@ -5,6 +5,8 @@
 // control yourself.
 
 import { h } from '../core/dom.js';
+import * as ops from './ops.js';
+import { completionsCsv } from '../cloud/course.js';
 import { BUILT_IN_PROJECT } from '../cloud/defaults.js';
 import { loadProject, saveProject } from '../cloud/config.js';
 import { signInPanel } from '../cloud/sign-in-panel.js';
@@ -90,6 +92,7 @@ export function openCloudDialog(editor) {
 
   // ---- 3. signed in: this deck's online state, sharing, conflicts ------------------
 
+  let completions = null;
   let shareToken = undefined; // undefined = not looked up yet, null = not shared
 
   async function loadShare() {
@@ -156,6 +159,32 @@ export function openCloudDialog(editor) {
           button({ label: 'Copy link', onClick: async () => {
             try { await navigator.clipboard.writeText(link); toast('Link copied.'); } catch { toast('Could not copy. Select the link and copy it by hand.', { kind: 'error' }); }
           } })) : null));
+    }
+
+    if (linked && shareToken) {
+      const course = editor.deck.course ?? { on: false, certificate: true };
+      const rows = completions;
+      out.push(h('div', { class: 'ed-cloud__row' },
+        h('div', { class: 'ed-cloud__main' },
+          h('div', { class: 'ed-xrow__title', text: 'Self-paced course' }),
+          h('div', { class: 'ed-xrow__desc', text: course.on ? 'The share link tracks which slides each visitor has seen, then lets them leave their name and print a certificate.' : 'Off. Visitors simply view the deck.' })),
+        h('div', { class: 'ed-xrow__actions' },
+          button({ label: course.on ? 'Turn off' : 'Turn on', onClick: () => {
+            if (!course.on && !editor.requirePlan((p) => p.selfPaced, 'Self-paced courses are not part of your plan.')) return;
+            editor.commit(ops.setCourse(editor.deck, { on: !course.on }), { source: 'ui' });
+            say(course.on ? 'Self-paced mode is off. Save the deck to update the link.' : 'Self-paced mode is on. Save the deck to update the link.');
+            render();
+          } })),
+        course.on ? h('div', { class: 'ed-cloud__share' },
+          button({ label: course.certificate ? 'Certificate: on' : 'Certificate: off', onClick: () => { editor.commit(ops.setCourse(editor.deck, { certificate: !course.certificate }), { source: 'ui' }); render(); } }),
+          button({ label: rows ? 'Refresh the list' : 'Who has finished', onClick: run('Loading...', async () => { completions = await cloud.listCompletions(editor.cloudId); render(); }) }),
+          rows?.length ? button({ label: 'Download list', onClick: () => {
+            const url = URL.createObjectURL(new Blob([completionsCsv(rows)], { type: 'text/csv' }));
+            const a = h('a', { href: url, download: 'completions.csv' });
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+          } }) : null) : null,
+        course.on && rows ? h('p', { class: 'ed-hint', text: rows.length ? `${rows.length} ${rows.length === 1 ? 'person has' : 'people have'} finished. Latest: ${rows.slice(0, 5).map((r) => r.name).join(', ')}.` : 'Nobody has finished yet.' }) : null));
     }
 
     out.push(h('div', { class: 'ed-live__actions' }, button({ label: 'All my decks', onClick: () => location.assign(DASHBOARD_PATH) })));

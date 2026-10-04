@@ -46,6 +46,7 @@ export function createDeck({ title = 'Untitled deck', theme = DEFAULT_THEME, asp
     transition: 'fade',
     autoplay: { seconds: 0, loop: true },
     brand: { logo: '', position: 'bottom-right', size: 'md' },
+    course: { on: false, certificate: true },
     slides: [createSlide('title')],
   };
 }
@@ -106,6 +107,13 @@ function normalizeBackground(raw) {
   return bg;
 }
 
+// Self-paced course: when on, a shared link tracks which slides each visitor has seen and offers a
+// completion record and a certificate at the end.
+function normalizeCourse(raw) {
+  const c = isObject(raw) ? raw : {};
+  return { on: c.on === true, certificate: c.certificate !== false };
+}
+
 function normalizeBrand(raw) {
   const b = isObject(raw) ? raw : {};
   return {
@@ -161,6 +169,7 @@ export function normalizeDeck(raw) {
     transition: oneOf(raw.transition, TRANSITIONS, 'fade'),
     autoplay: normalizeAutoplay(raw.autoplay),
     brand: normalizeBrand(raw.brand),
+    course: normalizeCourse(raw.course),
     slides,
   };
   return { deck, warnings };

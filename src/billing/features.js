@@ -25,10 +25,11 @@ export function highlights(id) {
   lines.push(`${n(plan.cloudDecks)} decks online`);
   lines.push(`Live rooms up to ${n(plan.livePhones)} phones`);
   const newKinds = plan.kinds.filter((k) => !below.kinds.includes(k));
-  if (newKinds.length) lines.push('Word cloud, open answers, ranking and audience Q&A');
+  if (newKinds.length) lines.push('Word cloud, open answers, ranking, pins on a picture and audience Q&A');
   if (plan.brand && !below.brand) lines.push('Your own logo, colours and font');
   if (plan.csv && !below.csv) lines.push('Download results as a spreadsheet');
   if (plan.reports && !below.reports) lines.push('Save session reports on your device');
+  if (plan.selfPaced && !below.selfPaced) lines.push('Self-paced courses with completion list and certificates');
   if (plan.leaderboard && !below.leaderboard) lines.push('Timed quizzes with names, teams and a leaderboard');
   const newExports = plan.exports.filter((e) => !below.exports.includes(e));
   if (newExports.length) lines.push(`Export as ${list(newExports.map((e) => EXPORT_NAMES[e]))}`);

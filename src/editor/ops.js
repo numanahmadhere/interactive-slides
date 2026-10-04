@@ -147,6 +147,11 @@ export function setAutoplay(deck, patch) {
   return same(next, deck.autoplay) ? deck : { ...deck, autoplay: next };
 }
 
+export function setCourse(deck, patch) {
+  const next = { on: false, certificate: true, ...deck.course, ...patch };
+  return same(next, deck.course) ? deck : { ...deck, course: next };
+}
+
 export function setDeckTransition(deck, transition) {
   return deck.transition === transition ? deck : { ...deck, transition };
 }
