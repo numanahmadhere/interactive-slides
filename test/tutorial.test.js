@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Poll, cleanOptions, cleanQuestion, pickWeighted, crowdWeights, STEPS, MAX_OPTIONS, CROWD_SIZE } from '../site/tutorial.js';
+import { Poll, cleanOptions, cleanQuestion, pickWeighted, crowdWeights, STEPS, Flow, JOIN_CODE, cleanCode, MAX_OPTIONS, CROWD_SIZE } from '../site/tutorial.js';
 
 // A seeded random source so the "crowd" is the same in every run.
 const seeded = (seed) => () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
@@ -76,5 +76,126 @@ test('editing the wording keeps votes where the options still exist', () => {
 
 test('the four steps are in order and have text', () => {
   assert.deepEqual(STEPS.map((s) => s.id), [1, 2, 3, 4]);
-  for (const s of STEPS) assert.ok(s.title && s.hint && s.task && s.next);
+  for (const s of STEPS) assert.ok(s.title && s.hint);
+});
+
+test('codes are cleaned the way a phone keyboard would need', () => {
+  assert.equal(cleanCode(' 5f5-blz '), '5F5BLZ');
+  assert.equal(cleanCode('5f5blz999'), '5F5BLZ');
+  assert.equal(cleanCode(null), '');
+  assert.equal(cleanCode('!!'), '');
+});
+
+test('the phone only joins with the right code, and only once the session runs', () => {
+  const f = new Flow();
+  assert.equal(f.join('5F5'), 'short');
+  assert.equal(f.join('AAAAAA'), 'wrong');
+  assert.equal(f.join(JOIN_CODE), 'early', 'the right code before the session starts');
+  assert.equal(f.joined, false);
+  f.start();
+  assert.equal(f.join('aaaaaa'), 'wrong');
+  assert.equal(f.join(' 5f5blz '), 'ok');
+  assert.equal(f.joined, true);
+});
+
+test('the main button always moves forward and never dead-ends', () => {
+  const f = new Flow();
+  const seen = [];
+  for (let i = 0; i < 12; i++) {
+    const next = f.primary();
+    seen.push(`${f.step}:${next.do}`);
+    if (next.do === 'go') f.go(next.to);
+    else if (next.do === 'start') f.start();
+    else if (next.do === 'join-for-me') f.join(JOIN_CODE);
+    else if (next.do === 'crowd') f.crowded = true;
+    else break;
+  }
+  assert.deepEqual(seen, ['1:go', '2:start', '2:join-for-me', '2:go', '3:go', '4:crowd', '4:open-app']);
+});
+
+test('jumping ahead never leaves a dead phone', () => {
+  for (const n of [3, 4]) {
+    const f = new Flow();
+    f.go(n);
+    assert.ok(f.started && f.joined, `step ${n}`);
+  }
+  const f = new Flow();
+  f.go(2);
+  assert.ok(!f.started, 'step two waits for you to start');
+  assert.equal(f.go(99), 4);
+  assert.equal(f.go(-5), 1);
+  assert.equal(f.go('x'), 1);
+});
+
+test('going back to step one keeps the session, and a reset starts clean', () => {
+  const f = new Flow();
+  f.go(4);
+  f.crowded = true;
+  f.go(1);
+  assert.ok(f.started, 'the session is still running');
+  f.reset();
+  assert.deepEqual([f.step, f.started, f.joined, f.crowded], [1, false, false, false]);
+});
+
+test('every state has an instruction and a button label, and the end offers the app', () => {
+  const f = new Flow();
+  const states = [[1, false, false, false], [2, false, false, false], [2, true, false, false], [2, true, true, false], [3, true, true, false], [4, true, true, false], [4, true, true, true]];
+  for (const [step, started, joined, crowded] of states) {
+    Object.assign(f, { step, started, joined, crowded });
+    for (const voted of [false, true]) {
+      const v = f.view({ voted });
+      assert.ok(v.task.length > 20 && v.label, `${step}/${started}/${joined}/${crowded}`);
+      assert.ok(!/undefined|NaN/.test(v.task + v.label));
+    }
+  }
+  const end = f.view({ total: 25 });
+  assert.equal(end.label, 'Build your own poll');
+  assert.match(end.task, /room of 25/);
+  assert.match(f.view({ total: 24 }).task, /room of 24/, 'the count is the real one, even if you skipped voting');
+  assert.ok(end.replay && end.back);
+  assert.equal(new Flow().view().back, false);
+  assert.equal(f.view({ voted: false }).replay, true);
+});
+
+test('step three says what to do before and after you vote', () => {
+  const f = new Flow();
+  f.go(3);
+  assert.match(f.view({ voted: false }).task, /Tap an answer/);
+  assert.equal(f.view({ voted: false }).label, 'Skip voting');
+  assert.match(f.view({ voted: true }).task, /landed/);
+  assert.equal(f.view({ voted: true }).label, 'Next: watch the room');
+});
+
+test('while people are joining the button says so and the ending is not shown yet', () => {
+  const f = new Flow();
+  f.go(4);
+  const busy = f.view({ busy: true });
+  assert.equal(busy.label, 'People are joining...');
+  assert.equal(busy.replay, false);
+});
+
+import { readFileSync } from 'node:fs';
+import { buildSite } from '../tools/site.mjs';
+
+test('every element the tutorial script looks for is on the home page', () => {
+  const home = buildSite()['index.html'];
+  const src = readFileSync(new URL('../site/tutorial.js', import.meta.url), 'utf8');
+  const ids = [...src.matchAll(/\$\('([\w-]+)'\)/g)].map((m) => m[1]);
+  assert.ok(ids.length > 15);
+  for (const id of ids) assert.ok(home.includes(`id="${id}"`), `#${id} is missing from the page`);
+  for (const sel of ['data-go="1"', 'data-go="2"', 'data-go="3"', 'data-go="4"', 'data-opt']) assert.ok(home.includes(sel), sel);
+  assert.equal([...home.matchAll(/data-opt /g)].length, 4, 'four answer fields');
+  assert.ok(home.includes('id="tut"') && home.includes('/tutorial.js'));
+});
+
+test('the tutorial never uses a feature the product lacks, and shows the join code once', () => {
+  const home = buildSite()['index.html'];
+  assert.ok(!/word cloud|AI/.test(home.slice(home.indexOf('id="tutorial"'), home.indexOf('id="features"'))));
+  assert.equal(JOIN_CODE.length, 6);
+  assert.ok(home.includes('5F5BLZ'), 'the hero shows the same sample code');
+});
+
+test('the script is plain and safe: it renders text with textContent only', () => {
+  const src = readFileSync(new URL('../site/tutorial.js', import.meta.url), 'utf8');
+  assert.ok(!/innerHTML|insertAdjacentHTML|eval\(|document\.write/.test(src), 'typed text must never be parsed as HTML');
 });

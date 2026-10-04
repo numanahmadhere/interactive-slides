@@ -154,18 +154,20 @@ const home = () => layout({
 </ol>
 <div class="tut__main">
 <p class="tut__task" id="tut-task" role="status" aria-live="polite"></p>
+<div class="tut__actions"><button type="button" class="btn ghost" id="tut-back">Back</button><button type="button" class="btn" id="tut-act">Next</button><a class="btn" id="tut-open" href="/app/" hidden>Build your own poll</a><button type="button" class="btn ghost" id="tut-replay" hidden>Replay</button></div>
+<p class="sr" id="tut-announce" role="status" aria-live="polite"></p>
 <div class="tut__stage">
 <div class="tut__screen"><div class="tut__bar"><span>Presenter screen</span><span id="tut-code" data-live="false">Not started</span></div>
-<h3 id="tut-q" class="tut__q"></h3><ul id="tut-bars" class="tbars"></ul><p id="tut-count" class="tut__count" role="status" aria-live="polite"></p></div>
-<div class="tut__phone"><p class="phone__brand">Audience phone</p><p id="tut-phone-q" class="phone__q"></p><div id="tut-opts" class="topts"></div><p id="tut-phone-state" class="tut__pstate"></p></div>
+<h3 id="tut-q" class="tut__q"></h3><ul id="tut-bars" class="tbars"></ul><p id="tut-count" class="tut__count"></p></div>
+<div class="tut__phone"><p class="phone__brand">Audience phone</p>
+<form class="tjoin" id="tut-join" onsubmit="return false"><label for="tut-code-in">Join code</label><div class="tjoin__row"><input id="tut-code-in" type="text" inputmode="text" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="6 characters"><button type="submit" class="btn sm">Join</button></div><p class="tjoin__msg" id="tut-join-msg"></p><button type="button" class="tjoin__fill" id="tut-fill" hidden>Use the code on screen</button></form>
+<div id="tut-joined" hidden><p id="tut-phone-q" class="phone__q"></p><div id="tut-opts" class="topts"></div><p id="tut-phone-state" class="tut__pstate"></p></div></div>
 </div>
 <form class="tut__form" id="tut-form" onsubmit="return false">
 <label>Question<input id="tut-question" type="text" maxlength="120" autocomplete="off"></label>
-<fieldset><legend>Options (two to four)</legend>
-<input data-opt type="text" maxlength="60" autocomplete="off"><input data-opt type="text" maxlength="60" autocomplete="off"><input data-opt type="text" maxlength="60" autocomplete="off"><input data-opt type="text" maxlength="60" autocomplete="off" placeholder="Optional fourth option">
+<fieldset><legend>Answers (two to four)</legend>
+<input data-opt type="text" maxlength="60" autocomplete="off" aria-label="Answer 1"><input data-opt type="text" maxlength="60" autocomplete="off" aria-label="Answer 2"><input data-opt type="text" maxlength="60" autocomplete="off" aria-label="Answer 3"><input data-opt type="text" maxlength="60" autocomplete="off" placeholder="Optional fourth answer" aria-label="Answer 4">
 </fieldset></form>
-<div class="tut__actions"><button type="button" class="btn ghost" id="tut-back">Back</button><button type="button" class="btn" id="tut-act">Next</button>
-<a class="textlink" id="tut-done" href="/app/" hidden>Do this for real in the app &rarr;</a></div>
 </div></div>
 <noscript><p class="note">The tutorial needs JavaScript. The <a href="/learn/">guides</a> cover the same steps in text.</p></noscript>
 </div></section>

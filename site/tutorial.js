@@ -3,6 +3,7 @@
 // the real thing, so people can try it before they sign up.
 //
 // The first half is pure logic (tested in Node); the second half wires it to the page.
+// Flow is the state machine for the four steps; mount() only draws what it says.
 
 export const MAX_OPTIONS = 4;
 export const MIN_OPTIONS = 2;
@@ -93,59 +94,164 @@ export class Poll {
   }
 }
 
+export const JOIN_CODE = '5F5BLZ';
+
+// What people type into the phone: letters and digits, upper case, six at most.
+export const cleanCode = (raw) => String(raw ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+
 export const STEPS = [
-  { id: 1, title: 'Write the question', hint: 'Edit the slide', task: 'Change the question or the options below. The slide and the phone update as you type.', next: 'Next: start the session' },
-  { id: 2, title: 'Start the session', hint: 'Get a join code', task: 'Starting a session shows a join code. Phones that enter it see your question.', next: 'Next: answer from a phone' },
-  { id: 3, title: 'Answer from a phone', hint: 'Tap an option', task: 'You are the audience now. Tap an option on the phone and watch your vote land on the slide.', next: 'Next: watch the room' },
-  { id: 4, title: 'Watch the room', hint: 'See results build', task: 'A real room adds up quickly. Add 24 more people and watch the totals settle.', next: 'Add 24 people' },
+  { id: 1, title: 'Write the question', hint: 'Edit the slide' },
+  { id: 2, title: 'Start the session', hint: 'Get a join code' },
+  { id: 3, title: 'Answer from a phone', hint: 'Tap an option' },
+  { id: 4, title: 'Watch the room', hint: 'See results build' },
 ];
 
+// The four steps as a small state machine. It never touches the page, so every path
+// through the tutorial can be tested: step, whether the session is running, whether the
+// phone has joined, and whether the crowd has arrived.
+export class Flow {
+  constructor() {
+    this.reset();
+  }
+
+  reset() {
+    this.step = 1;
+    this.started = false;
+    this.joined = false;
+    this.crowded = false;
+  }
+
+  // Jumping ahead should never leave a dead phone: later steps assume a running session.
+  go(n) {
+    this.step = Math.min(STEPS.length, Math.max(1, Math.trunc(Number(n)) || 1));
+    if (this.step >= 3) {
+      this.started = true;
+      this.joined = true;
+    }
+    return this.step;
+  }
+
+  start() {
+    this.started = true;
+  }
+
+  // Try a code on the phone. -> 'ok' | 'wrong' | 'early' | 'short'
+  join(raw) {
+    const code = cleanCode(raw);
+    if (code.length < 6) return 'short';
+    if (code !== JOIN_CODE) return 'wrong';
+    if (!this.started) return 'early';
+    this.joined = true;
+    return 'ok';
+  }
+
+  // The main button. -> what the page should do next.
+  primary() {
+    if (this.step === 1) return { do: 'go', to: 2 };
+    if (this.step === 2) {
+      if (!this.started) return { do: 'start' };
+      if (!this.joined) return { do: 'join-for-me' };
+      return { do: 'go', to: 3 };
+    }
+    if (this.step === 3) return { do: 'go', to: 4 };
+    return this.crowded ? { do: 'open-app' } : { do: 'crowd' };
+  }
+
+  // Everything the page shows that depends on where you are. `voted`: you have tapped an answer.
+  view({ voted = false, total = 25, busy = false } = {}) {
+    const v = { step: this.step, back: this.step > 1, replay: this.step === 4 && this.crowded };
+    if (this.step === 1) {
+      v.task = 'Write your question and up to four answers. The slide and the phone change as you type.';
+      v.label = 'Next: start the session';
+    } else if (this.step === 2) {
+      if (!this.started) {
+        v.task = 'Press Start session. A join code appears on your screen for the room to type in.';
+        v.label = 'Start session';
+      } else if (!this.joined) {
+        v.task = 'The code is on the presenter screen. Type it into the phone and press Join, just as your audience would.';
+        v.label = 'Join the phone for me';
+      } else {
+        v.task = 'Connected. Anyone who joins sees your question the moment you show the slide.';
+        v.label = 'Next: answer from the phone';
+      }
+    } else if (this.step === 3) {
+      v.task = voted
+        ? 'Your vote has landed on the slide. Tap another answer to change it, or carry on.'
+        : 'You are the audience now. Tap an answer on the phone and watch it land on the slide.';
+      v.label = voted ? 'Next: watch the room' : 'Skip voting';
+    } else {
+      v.task = this.crowded
+        ? `That is a room of ${total}. Everyone answered from their own phone and nothing was installed.`
+        : 'A real room adds up quickly. Add 24 more people and watch the totals settle.';
+      v.label = this.crowded ? 'Build your own poll' : busy ? 'People are joining...' : 'Add 24 people';
+    }
+    return v;
+  }
+}
+
 // ---- the page ------------------------------------------------------------------------
+
+const JOIN_MESSAGES = {
+  short: 'Codes have six characters.',
+  wrong: 'That code does not match. Check the presenter screen.',
+  early: 'No session is running yet. Start one on the presenter screen first.',
+};
 
 function mount(root) {
   const $ = (id) => root.querySelector(`#${id}`);
   const poll = new Poll();
-  const state = { step: 1, started: false, crowded: false, timers: [] };
+  const flow = new Flow();
+  const timers = [];
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const code = '5F5BLZ';
 
   const els = {
     nav: [...root.querySelectorAll('[data-go]')],
-    task: $('tut-task'), q: $('tut-q'), bars: $('tut-bars'), count: $('tut-count'), code: $('tut-code'),
-    phoneState: $('tut-phone-state'), phoneQ: $('tut-phone-q'), opts: $('tut-opts'),
+    task: $('tut-task'), q: $('tut-q'), bars: $('tut-bars'), count: $('tut-count'), code: $('tut-code'), announce: $('tut-announce'),
+    joinForm: $('tut-join'), joinInput: $('tut-code-in'), joinMsg: $('tut-join-msg'), fill: $('tut-fill'), joined: $('tut-joined'),
+    phoneQ: $('tut-phone-q'), phoneState: $('tut-phone-state'), opts: $('tut-opts'),
     form: $('tut-form'), question: $('tut-question'), optionInputs: [...root.querySelectorAll('[data-opt]')],
-    back: $('tut-back'), act: $('tut-act'), done: $('tut-done'),
+    back: $('tut-back'), act: $('tut-act'), open: $('tut-open'), replay: $('tut-replay'),
   };
+  let joinMessage = '';
+  let crowdBusy = false;
 
-  const clearTimers = () => { state.timers.forEach(clearTimeout); state.timers = []; };
+  const clearTimers = () => { timers.splice(0).forEach(clearTimeout); crowdBusy = false; };
+  const say = (text) => { els.announce.textContent = ''; setTimeout(() => { els.announce.textContent = text; }, 40); };
+  const summary = () => (poll.total > 1 && poll.leader !== null
+    ? `${poll.total} responses. Leading: ${poll.options[poll.leader]}, ${poll.percent(poll.leader)}%.`
+    : poll.total ? '1 response.' : 'Waiting for responses.');
 
   function renderScreen() {
     els.q.textContent = poll.question;
-    els.code.textContent = state.started ? `Join with ${code}` : 'Not started';
-    els.code.dataset.live = String(state.started);
+    els.code.textContent = flow.started ? `Join with ${JOIN_CODE}` : 'Not started';
+    els.code.dataset.live = String(flow.started);
     els.bars.replaceChildren(...poll.options.map((text, i) => {
       const row = document.createElement('li');
       row.className = 'tbar';
-      row.style.setProperty('--w', `${poll.percent(i)}%`);
-      if (poll.leader === i && poll.total > 1) row.dataset.lead = 'true';
+      row.style.setProperty('--w', `${flow.started ? poll.percent(i) : 0}%`);
+      if (flow.started && poll.leader === i && poll.total > 1) row.dataset.lead = 'true';
       const label = document.createElement('span');
       label.className = 'tbar__label';
       label.textContent = text;
       const pct = document.createElement('b');
-      pct.textContent = state.started && poll.total ? `${poll.percent(i)}%` : '';
+      pct.textContent = flow.started && poll.total ? `${poll.percent(i)}%` : '';
       row.append(label, pct);
       return row;
     }));
-    const n = poll.total;
-    els.count.textContent = !state.started ? 'Session not started'
-      : n ? `${n} ${n === 1 ? 'response' : 'responses'}${poll.leader !== null && n > 1 ? `. Leading: ${poll.options[poll.leader]}, ${poll.percent(poll.leader)}%.` : '.'}`
-        : 'Waiting for responses.';
+    els.count.textContent = !flow.started ? 'Session not started' : summary();
   }
 
   function renderPhone() {
-    els.phoneQ.textContent = state.started ? poll.question : '';
-    els.phoneState.textContent = !state.started ? 'Enter the join code to connect.' : poll.you === null ? 'Tap your answer.' : 'Answer sent. Tap another option to change it.';
-    els.opts.replaceChildren(...(state.started ? poll.options : []).map((text, i) => {
+    const joined = flow.joined;
+    els.joinForm.hidden = joined;
+    els.joined.hidden = !joined;
+    els.fill.hidden = !flow.started || joined;
+    els.joinMsg.textContent = joinMessage;
+    if (!joined) return;
+    els.phoneQ.textContent = poll.question;
+    els.phoneState.textContent = poll.you === null ? 'Tap your answer.' : 'Answer sent. Tap another to change it.';
+    els.opts.dataset.nudge = String(flow.step === 3 && poll.you === null);
+    els.opts.replaceChildren(...poll.options.map((text, i) => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'topt';
@@ -153,73 +259,100 @@ function mount(root) {
       const key = document.createElement('i');
       key.textContent = String.fromCharCode(65 + i);
       b.append(key, document.createTextNode(text));
-      b.addEventListener('click', () => { poll.setYou(i); render(); });
+      b.addEventListener('click', () => {
+        const first = poll.you === null;
+        poll.setYou(i);
+        render();
+        say(first ? `Answer sent: ${text}. ${summary()}` : `Changed to ${text}.`);
+      });
       return b;
     }));
   }
 
-  function renderForm() {
-    els.form.hidden = state.step !== 1;
-    els.optionInputs.forEach((input, i) => { input.hidden = false; input.setAttribute('aria-label', `Option ${i + 1}`); });
-  }
-
-  function renderNav() {
+  function renderNav(view) {
     els.nav.forEach((b) => {
       const n = Number(b.dataset.go);
-      b.setAttribute('aria-current', n === state.step ? 'step' : 'false');
-      b.dataset.done = String(n < state.step);
+      b.setAttribute('aria-current', n === flow.step ? 'step' : 'false');
+      b.dataset.done = String(n < flow.step);
     });
-    const step = STEPS[state.step - 1];
-    els.task.textContent = step.task;
-    els.back.disabled = state.step === 1;
-    els.act.textContent = state.step === 4 && state.crowded ? 'Start over' : state.step === 2 && !state.started ? 'Start session' : step.next;
-    els.done.hidden = !(state.step === 4 && state.crowded);
+    els.task.textContent = view.task;
+    els.back.disabled = !view.back;
+    const final = view.step === 4 && flow.crowded;
+    els.act.hidden = final;
+    els.open.hidden = !final;
+    els.replay.hidden = !view.replay;
+    els.act.textContent = view.label;
+    els.act.disabled = crowdBusy;
+    els.act.dataset.quiet = String(view.step === 3 && poll.you === null);
+    els.form.hidden = flow.step !== 1;
   }
 
   function render() {
-    renderNav();
-    renderForm();
+    renderNav(flow.view({ voted: poll.you !== null, total: poll.total, busy: crowdBusy }));
     renderScreen();
     renderPhone();
   }
 
   function go(n) {
-    state.step = Math.min(4, Math.max(1, n));
-    if (state.step >= 3) state.started = true; // jumping ahead should not leave a dead phone
+    clearTimers();
+    flow.go(n);
+    joinMessage = '';
     render();
   }
 
   function addCrowd() {
+    if (crowdBusy) return;
     clearTimers();
-    state.crowded = true;
     const weights = crowdWeights(poll.options.length);
     const votes = Array.from({ length: CROWD_SIZE }, () => pickWeighted(weights));
-    if (reduced) { votes.forEach((v) => poll.addCrowd(v)); render(); return; }
-    votes.forEach((v, k) => state.timers.push(setTimeout(() => { poll.addCrowd(v); renderScreen(); }, 90 * k)));
-    state.timers.push(setTimeout(render, 90 * CROWD_SIZE + 20));
+    const finish = () => { crowdBusy = false; flow.crowded = true; render(); say(`The room has answered. ${summary()}`); els.open.focus(); };
+    if (reduced) { votes.forEach((v) => poll.addCrowd(v)); finish(); return; }
+    crowdBusy = true;
+    votes.forEach((v, k) => timers.push(setTimeout(() => { poll.addCrowd(v); renderScreen(); }, 90 * k)));
+    timers.push(setTimeout(finish, 90 * CROWD_SIZE + 20));
     render();
   }
 
   function restart() {
     clearTimers();
     poll.reset();
-    state.started = false;
-    state.crowded = false;
-    go(1);
+    flow.reset();
+    joinMessage = '';
+    els.joinInput.value = '';
+    render();
+    els.act.focus();
+  }
+
+  function tryJoin() {
+    const result = flow.join(els.joinInput.value);
+    joinMessage = result === 'ok' ? '' : JOIN_MESSAGES[result];
+    render();
+    if (result === 'ok') { say('Connected to the session.'); els.opts.querySelector('button')?.focus?.(); }
+    else els.joinInput.focus();
   }
 
   els.nav.forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.go))));
-  els.back.addEventListener('click', () => go(state.step - 1));
+  els.back.addEventListener('click', () => go(flow.step - 1));
   els.act.addEventListener('click', () => {
-    if (state.step === 1) go(2);
-    else if (state.step === 2) { if (!state.started) { state.started = true; render(); } else go(3); }
-    else if (state.step === 3) go(4);
-    else if (!state.crowded) addCrowd();
-    else restart();
+    const next = flow.primary();
+    if (next.do === 'go') go(next.to);
+    else if (next.do === 'start') { flow.start(); joinMessage = ''; render(); say(`Session started. The join code is ${JOIN_CODE.split('').join(' ')}.`); }
+    else if (next.do === 'join-for-me') { els.joinInput.value = JOIN_CODE; tryJoin(); }
+    else if (next.do === 'crowd') addCrowd();
+  });
+  els.replay.addEventListener('click', restart);
+  els.fill.addEventListener('click', () => { els.joinInput.value = JOIN_CODE; els.joinInput.focus(); });
+  els.joinForm.addEventListener('submit', (e) => { e.preventDefault(); tryJoin(); });
+  els.joinInput.addEventListener('input', () => {
+    const at = els.joinInput.selectionStart;
+    els.joinInput.value = cleanCode(els.joinInput.value);
+    els.joinInput.setSelectionRange(at, at);
+    if (joinMessage) { joinMessage = ''; els.joinMsg.textContent = ''; }
   });
   const onEdit = () => { poll.edit(els.question.value, els.optionInputs.map((i) => i.value)); renderScreen(); renderPhone(); };
   els.question.addEventListener('input', onEdit);
   els.optionInputs.forEach((i) => i.addEventListener('input', onEdit));
+  els.form.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); els.act.click(); } });
 
   els.question.value = poll.question;
   els.optionInputs.forEach((input, i) => { input.value = poll.options[i] ?? ''; });
