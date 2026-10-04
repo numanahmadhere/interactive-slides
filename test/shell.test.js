@@ -84,7 +84,7 @@ test('the public pages are complete, small and honest', () => {
   const site = buildSite();
   for (const f of ['index.html', 'learn/index.html', 'privacy/index.html', 'terms/index.html', '404.html', 'sitemap.xml', 'robots.txt']) assert.ok(site[f], f);
   const home = site['index.html'];
-  assert.ok(home.length < 48 * 1024, `home page is ${home.length} bytes`);
+  assert.ok(home.length < 56 * 1024, `home page is ${home.length} bytes`);
   assert.match(home, /<title>[^<]+<\/title>/);
   assert.match(home, /<meta name="description"/);
   assert.match(home, /<h1>.+?<\/h1>/);
@@ -176,7 +176,13 @@ test('the interactive tutorial is on the home page and wired up', () => {
 
 import { GROUPS, VENDORS } from '../tools/compare.mjs';
 import { getBlock } from '../src/core/blocks/index.js';
-import { canUseKind, canCsv, PLANS, PRICES, TRIAL_DAYS } from '../src/billing/plans.js';
+import { canUseKind, canCsv, canLeaderboard, canReports, canSelfPace, canTeam, PLANS, PRICES, TRIAL_DAYS } from '../src/billing/plans.js';
+import { isProfane } from '../src/live/profanity.js';
+import { parsePptx } from '../src/import/pptx.js';
+import { certificateHtml } from '../src/cloud/course.js';
+import { normalizeDeck } from '../src/core/schema.js';
+
+const probeHost = (extra = {}) => new LiveHost({ transport: { open() { return { send() {}, close() {} }; }, close() {} }, room: { code: 'ABCDEF', key: 'k'.repeat(22) }, ...extra });
 
 test('the comparison table is complete and every claim about us is backed by the product', () => {
   const rows = GROUPS.flatMap((g) => g.rows);
@@ -194,6 +200,14 @@ test('the comparison table is complete and every claim about us is backed by the
     wordcloud: () => getBlock('wordcloud'), 'open-answers': () => getBlock('open-answers'), rating: () => getBlock('rating'),
     ranking: () => getBlock('ranking'), qna: () => getBlock('qna'),
     csv: () => typeof LiveHost.prototype.exportResults === 'function',
+    pin: () => getBlock('pin') && typeof probeHost().setImage === 'function',
+    leaderboard: () => getBlock('leaderboard') && getBlock('quiz').normalize({ ...getBlock('quiz').defaults(), timeLimit: 30 }).timeLimit === 30 && typeof probeHost().leaderboard === 'function',
+    moderation: () => isProfane('shit') && typeof probeHost().approve === 'function',
+    reports: () => typeof LiveHost.prototype.report === 'function',
+    import: () => typeof parsePptx === 'function',
+    'self-paced': () => normalizeDeck({ slides: [], course: { on: true } }).deck.course.on === true && typeof certificateHtml === 'function',
+    private: () => probeHost({ privacy: true, names: true, plan: 'advanced' }).names === false,
+    teams: () => /create table if not exists public\.teams/.test(readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8')) && /deck_comments/.test(readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8')),
     'free-form': () => getBlock('shape') && getLayout('free'),
     offline: () => readFileSync(new URL('../src/sw-template.js', import.meta.url), 'utf8').includes('fetch'),
     'no-storage': () => !/\.insert\(|from\('decks'\)/.test(readFileSync(new URL('../src/live/host.js', import.meta.url), 'utf8')),
@@ -208,6 +222,11 @@ test('the comparison table is complete and every claim about us is backed by the
     'kind:ranking': () => !canUseKind('free', 'ranking') && canUseKind('starter', 'ranking'),
     'kind:qna': () => !canUseKind('free', 'qna') && canUseKind('starter', 'qna'),
     csv: () => !canCsv('free') && canCsv('starter'),
+    'kind:pin': () => !canUseKind('free', 'pin') && canUseKind('starter', 'pin'),
+    leaderboard: () => !canLeaderboard('free') && canLeaderboard('starter'),
+    reports: () => !canReports('free') && canReports('starter'),
+    'self-paced': () => !canSelfPace('free') && canSelfPace('starter'),
+    teams: () => !canTeam('free') && !canTeam('starter') && canTeam('pro'),
   };
   for (const row of rows.filter((r) => r.cells[0] === 'paid')) {
     assert.ok(row.gated?.length, `${row.name}: says paid but names no lock`);

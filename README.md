@@ -471,3 +471,22 @@ Paddle for a portal session for that live or sandbox account. It needs `PADDLE_A
 Known limits: switching between paid plans is done through support for now (a plan change needs
 Paddle's subscription API, which needs a server key); the page asks you to write to support. Team
 workspaces and single sign-on do not exist yet, so the Advanced plan sells room size and priority support only.
+
+## More features and what they need
+
+All of these are in the code and covered by tests. None needs a new server; the ones marked "SQL" need `supabase/schema.sql` to be run again (it is safe to re-run).
+
+- **Import** (`src/import/`): a `.pptx` file (also what Google Slides gives you under File > Download > Microsoft PowerPoint) becomes a new free-form deck. Text boxes, titles, bullet lists, pictures, tables (as plain text), positions and speaker notes come across; charts, SmartArt, video, animations and master styling do not, and the import says which it skipped. The zip and XML readers are small and have size limits against hostile files. Plain `DecompressionStream`, no library.
+- **Moderation** (`src/live/profanity.js`, `boards.js`): word clouds, open answers and Q&A can filter swearing (default), hold everything until approved, or show everything.
+- **Timed quizzes, names, teams, leaderboard** (`src/live/scoring.js`): Starter and above. Points are 1000 for a right answer, or 500 plus up to 500 for speed on a timed question. Answer keys never leave the presenter page.
+- **Session reports** (`src/live/report.js`, `/app/reports`): stored in the browser on the presenter's device (IndexedDB), downloadable as CSV or printed as PDF. Starter and above.
+- **Pin on image**: phones tap a small JPEG thumbnail made by the presenter page (at most 40,000 characters, so it fits in a realtime message). Starter and above.
+- **Reactions and hand raise, tables, 2x2 matrix**: ordinary blocks. Reactions are a poll underneath, so they are free.
+- **Self-paced courses** (`src/cloud/course.js`; SQL): turn on File > Cloud > Self-paced course for a shared deck. The share link remembers which slides each visitor has seen (on their device), and when all are seen they can leave a name (stored through `record_completion`, which only works for a deck that is shared right now) and print a certificate. The owner reads the list. Starter and above. "Complete" means every slide was viewed; it does not grade quizzes.
+- **Private session** (Live dialog): no names or teams, no report, no spreadsheet, and the phones are told. Answers only ever existed in the presenter page and the message relay, as before.
+- **Team workspaces** (SQL): `create_team` (Pro and Advanced only, enforced in the database), invite links that work once and expire in seven days, seat limits (Pro 5, Advanced 25, checked in `team_seats()` and against `plans.js` by a test), decks shared into a team (members can edit; only the maker can delete, publish a link, or move it), comments on slides, and a shared brand kit (logo, colours, font). People join with a link and need no plan of their own. A team owner who downgrades keeps existing members but cannot invite more.
+- **Slides library**: 15 more ready-made slides (audience, tables, matrices, feedback).
+
+### Not built (and marked "Not yet" on the home page)
+
+Add-ins for PowerPoint and Google Slides (they need store review), single sign-on (needs an identity provider and a paid Supabase feature), and editing the same deck at the same moment in real time (a different architecture: conflict-free editing over a server).

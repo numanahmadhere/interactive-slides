@@ -196,11 +196,11 @@ const home = () => layout({
 
 <section id="compare"><div class="wrap">
 <header class="head reveal"><p class="label">How we compare</p><h2>Pick the right tool, not just ours.</h2>
-<p class="sub">Four well-known audience tools next to Densight Slides. Where we are missing something, it says so. Read from each vendor's public pages in ${CHECKED}; plans change, so confirm anything that decides a purchase.</p></header>
+<p class="sub">Four well-known audience tools next to Densight Slides. Where we are missing something, it says so, and where a feature needs a paid plan, it says that too. Read from each vendor's public pages in ${CHECKED}; plans change, so confirm anything that decides a purchase.</p></header>
 <div class="reveal">
 ${renderTable()}
 <ul class="cmp__key" aria-label="Key"><li><span class="cmp__mark cmp__yes"></span>Included</li><li><span class="cmp__mark cmp__paid"></span>Paid plan only</li><li><span class="cmp__mark cmp__part"></span>Partly</li><li><span class="cmp__mark cmp__no"></span>Not offered, as far as we could find</li><li><span class="cmp__mark cmp__soon"></span>Not yet (ours)</li><li><span class="cmp__mark cmp__check"></span>Could not confirm</li></ul>
-<p class="cmp__note">Where we win: slides, questions and results in one place, working offline, with answers that stay in your browser. Where others lead today: add-ins for PowerPoint and Google Slides, team workspaces and timed leaderboards. <a href="/app/">Try it free</a> and judge for yourself.</p>
+<p class="cmp__note">Where we win: slides, questions and results in one place, working offline, with answers that stay in your browser. Where others lead today: add-ins for PowerPoint and Google Slides, single sign-on and editing the same deck together in real time. Those are not built yet, and we would rather say so. <a href="/app/">Try it free</a> and judge for yourself.</p>
 </div>
 </div></section>
 
@@ -217,17 +217,20 @@ ${planCards()}
 <header class="head reveal"><p class="label">Features</p><h2>Everything a live presentation needs.</h2>
 <p class="sub">Built for rooms where people are expected to take part, not just watch.</p></header>
 <div class="rules">
-<article class="item reveal"><span class="no">01</span><h3>Interactive blocks</h3><p>Quizzes, polls, word clouds, open answers, ratings, rankings, audience Q&A, matching, flip cards, hotspots, timelines, charts, calculators and a live code lab, all inside your slides.</p></article>
+<article class="item reveal"><span class="no">01</span><h3>Interactive blocks</h3><p>Timed quizzes, polls, word clouds, open answers, ratings, rankings, audience Q&A, pins on a picture, reactions and hand raise, tables, 2x2 matrices, matching, flip cards, hotspots, timelines, charts, calculators and a live code lab, all inside your slides.</p></article>
 <article class="item reveal"><span class="no">02</span><h3>Live audience</h3><p>Show a code or QR. People answer on their phones and watch the results build on your screen. Nothing for them to install.</p></article>
 <article class="item reveal"><span class="no">03</span><h3>Phone remote</h3><p>Move the slides from your phone and read your speaker notes and the next slide while you talk.</p></article>
-<article class="item reveal"><span class="no">04</span><h3>Drag, drop, done</h3><p>Place anything anywhere, with guides that snap things into line. Start from a template, then change the theme, colours, logo and backgrounds. Text stays readable on any colour you pick.</p></article>
-<article class="item reveal"><span class="no">05</span><h3>Present or export anywhere</h3><p>Present in the browser, even offline. Export to a standalone web page, PDF, images or PowerPoint.</p></article>
+<article class="item reveal"><span class="no">04</span><h3>Drag, drop, done</h3><p>Place anything anywhere, with guides that snap things into line. Start from one of the ready-made slides, then change the theme, colours, logo and backgrounds. Text stays readable on any colour you pick.</p></article>
+<article class="item reveal"><span class="no">05</span><h3>Present or export anywhere</h3><p>Present in the browser, even offline. Export to a standalone web page, PDF, images or PowerPoint. Already have slides? Import a PowerPoint or Google Slides file (text, pictures and notes come across).</p></article>
 <article class="item reveal"><span class="no">06</span><h3>Save and share</h3><p>Decks save on your device automatically. Sign in to keep them online, open them anywhere, and share a link anyone can view.</p></article>
+<article class="item reveal"><span class="no">07</span><h3>Moderation and privacy</h3><p>A swear filter is on by default, or hold every answer until you approve it. Start a private session and nothing is kept: no names, no report, and answers vanish when you end it.</p></article>
+<article class="item reveal"><span class="no">08</span><h3>Games, reports and courses</h3><p>Timed quizzes with names, teams and a leaderboard. Save a session report on your device. Share a deck as a self-paced course that lists who finished and prints a certificate.</p></article>
+<article class="item reveal"><span class="no">09</span><h3>Teams</h3><p>On Pro and Advanced, share decks with your team, comment on slides, and keep one logo and colour set for everyone. People join with a link.</p></article>
 </div></div></section>
 
 <section id="live" class="dark"><div class="wrap split">
 <div class="reveal"><p class="label on-dark">Live audience</p><h2>Your audience joins in seconds.</h2>
-<p class="sub">No sign-up, no app, no names. They scan, they answer, you see it happen.</p>
+<p class="sub">No sign-up and no app. Names only if you ask for them. They scan, they answer, you see it happen.</p>
 <ul class="checks">
 <li>${CHECK}<span><b>Scan or type a code.</b> A QR code and a six-character code, shown on your screen.</span></li>
 <li>${CHECK}<span><b>Answers appear live.</b> Bars grow on your slide as votes arrive.</span></li>

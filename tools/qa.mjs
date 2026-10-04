@@ -33,7 +33,7 @@ const sw = existsSync('dist/sw.js') ? readFileSync('dist/sw.js', 'utf8') : '';
 
 // 3. the app files are all there and wired together
 check('the app page loads /app.js and /app.css', appHtml.includes('src="/app.js"') && appHtml.includes('href="/app.css"'));
-check('the home page is small (under 48 KB, no app bundle)', html.length < 48 * 1024 && !html.includes('app.js'), `${(html.length / 1024).toFixed(1)} KB`);
+check('the home page is small (under 56 KB, no app bundle)', html.length < 56 * 1024 && !html.includes('app.js'), `${(html.length / 1024).toFixed(1)} KB`);
 check('privacy, terms, learn, sitemap and robots exist', ['privacy', 'terms', 'learn'].every((d) => existsSync(`dist/${d}/index.html`)) && existsSync('dist/sitemap.xml') && existsSync('dist/robots.txt'));
 check('service worker was generated with a versioned cache', /const CACHE = "interactive-slides-[0-9a-f]{12}"/.test(sw));
 check('/app/* is rewritten to the app page', /from\s*=\s*"\/app\/\*"[\s\S]*?to\s*=\s*"\/app\/index\.html"[\s\S]*?status\s*=\s*200/.test(existsSync('netlify.toml') ? readFileSync('netlify.toml', 'utf8') : ''));
@@ -75,7 +75,7 @@ check('no unexpected third-party hosts in the bundle', unexpected.length === 0, 
 // 8. size budgets (gzip is what people download)
 const kb = (n) => `${(n / 1024).toFixed(0)} KB`;
 const gz = gzipSync(js).length;
-check('app.js under 1.3 MB (and 400 KB gzipped)', js.length < 1.3 * 1024 * 1024 && gz < 400 * 1024, `${kb(js.length)}, ${kb(gz)} gzipped`);
+check('app.js under 1.5 MB (and 450 KB gzipped)', js.length < 1.5 * 1024 * 1024 && gz < 450 * 1024, `${kb(js.length)}, ${kb(gz)} gzipped`);
 check('app.css under 200 KB', css.length < 200 * 1024, kb(css.length));
 
 // 9. deploy config
