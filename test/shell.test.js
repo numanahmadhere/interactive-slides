@@ -237,7 +237,7 @@ test('the comparison table is complete and every claim about us is backed by the
 test('the tutorial is the first thing on the home page and the table comes right after it', () => {
   const home = buildSite()['index.html'];
   const order = [...home.matchAll(/<section[^>]*?(?:id="([a-z]+)"|class="(hero)")/g)].map((m) => m[1] ?? m[2]);
-  assert.deepEqual(order.slice(0, 5), ['tutorial', 'clients', 'loop', 'products', 'compare']);
+  assert.deepEqual(order.slice(0, 6), ['tutorial', 'clients', 'loop', 'products', 'stats', 'compare']);
   assert.ok(home.includes('Not yet') && home.includes('Paid plan'), 'it admits what we lack');
   assert.ok(home.includes('<caption'), 'the table has a caption');
 });
@@ -311,7 +311,7 @@ test('the new pages exist, are in the sitemap, and the nav leads to them', () =>
 
 test('the funnel sections are on the home page in order, with one repeated main action', () => {
   const home = buildSite()['index.html'];
-  const order = ['id="tutorial"', 'id="clients"', 'id="loop"', 'id="products"', 'id="compare"', 'id="pricing"', 'id="features"', 'id="usecases"', 'id="start"', 'id="faq"'];
+  const order = ['id="tutorial"', 'id="clients"', 'id="loop"', 'id="products"', 'id="stats"', 'id="compare"', 'id="pricing"', 'id="features"', 'id="usecases"', 'id="start"', 'id="faq"'];
   let at = -1;
   for (const marker of order) { const i = home.indexOf(marker); assert.ok(i > at, `${marker} out of order`); at = i; }
   assert.ok((home.match(/Start building free/g) ?? []).length >= 2);

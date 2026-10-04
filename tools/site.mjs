@@ -40,6 +40,9 @@ const ICONS = {
   remote: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   export: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
   design: '<circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 22a10 10 0 1 1 10-10c0 2-2 3-4 3h-2a2 2 0 0 0-1 3.7c.5.8.3 3.3-3 3.3z"/>',
+  shield: '<path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+  trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 21h7M10 17h4"/>',
+  team: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.5a3 3 0 0 1 0 5.5M18 14.5c1.8.7 3 2.4 3 4.5"/>',
   share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>',
 };
 const ico = (n) => `<span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONS[n]}</svg></span>`;
@@ -86,33 +89,41 @@ ${index ? '' : '<meta name="robots" content="noindex">\n'}<link rel="canonical" 
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
+<form class="joinbar" action="/app/" method="get" aria-label="Join a live session"><label for="joincode">Have a code? Join a live session</label><input id="joincode" name="join" type="text" inputmode="text" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="6 characters" pattern="[A-Za-z0-9]{6}" required><button type="submit">Join</button></form>
 <header class="top"><div class="wrap">
 <a class="brand" href="/">${LOGO}<span>${NAME}</span></a>
-<nav class="main" aria-label="Main"><a href="/#features">Features</a>
+<nav class="main" aria-label="Main">
+<details class="dd dd--wide"><summary>Product</summary><div class="dd__panel dd__panel--wide"><div class="dd__col"><span class="dd__h">Ask your audience</span><a href="/#tutorial"><b>Polls, quizzes, word clouds</b><small>Try them live on this page</small></a><a href="/learn/#live-session"><b>Live sessions</b><small>Codes, phones and results</small></a><a href="/learn/#moderation"><b>Moderation and privacy</b><small>Swear filter, approve first, private mode</small></a></div><div class="dd__col"><span class="dd__h">Build and share</span><a href="/templates/"><b>Ready-made slides</b><small>${TEMPLATES.length} to start from</small></a><a href="/learn/#import"><b>Import PowerPoint</b><small>Bring the deck you have</small></a><a href="/learn/#course"><b>Self-paced courses</b><small>Completion list and certificates</small></a><a href="/learn/#team"><b>Teams</b><small>Shared decks, comments, brand</small></a></div></div></details>
+<a href="/#features">Features</a>
 <details class="dd"><summary>Solutions</summary><div class="dd__panel"><a href="/training/"><b>Training and meetings</b><small>Workshops, town halls, briefings</small></a><a href="/education/"><b>Education</b><small>Lectures, lessons, assessments</small></a></div></details>
 <a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/learn/">Guides</a></nav>
 <span class="grow"></span>
 <a class="link-quiet" href="/app/account">Sign in</a><a class="btn sm" href="/app/">Start building</a>
 <details class="menu"><summary aria-label="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
-<div class="menu__panel"><a href="/#features">Features</a><a href="/training/">Training and meetings</a><a href="/education/">Education</a><a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/security/">Security</a><a href="/learn/">Guides</a><a href="/app/account">Sign in</a></div></details>
+<div class="menu__panel"><a href="/#tutorial">Try it</a><a href="/#features">Features</a><a href="/training/">Training and meetings</a><a href="/education/">Education</a><a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/security/">Security</a><a href="/learn/">Guides</a><a href="/app/account">Sign in</a></div></details>
 </div></header>
 <div class="flash" id="flash" role="status" hidden>Your account and online decks were deleted. Decks on this device were kept.</div>
 <main id="main">
 ${body}
 </main>
-<footer class="site"><div class="wrap">
+<footer class="site"><div class="wrap foot-top"><div><p class="foot-lead">Make your next presentation a conversation.</p><p class="foot-sub">Free to start. Nothing for your audience to install.</p></div><a class="btn lg light" href="/app/">Start building free</a></div>
+<div class="wrap foot-cols">
 <div class="foot-brand"><a class="brand" href="/">${LOGO_DARK_BG}<span>${NAME}</span></a>
 <p>Interactive presentations your audience can answer. A product of <a href="${COMPANY}">Densight Labs</a>, an applied AI firm.</p></div>
-<div><h3 class="foot-h">Product</h3><a href="/#features">Features</a><a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/#live">Live audience</a><a href="/app/">Open the app</a></div>
-<div><h3 class="foot-h">Solutions</h3><a href="/training/">Training and meetings</a><a href="/education/">Education</a></div>
-<div><h3 class="foot-h">Resources</h3><a href="/learn/">Guides</a><a href="/#faq">FAQ</a><a href="/security/">Security</a></div>
-<div><h3 class="foot-h">Company</h3><a href="${COMPANY}">Densight Labs</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/refund/">Refunds</a><a href="${mailto()}">Support: ${SUPPORT}</a></div>
-</div><div class="wrap foot-end"><span>&copy; ${new Date().getFullYear()} <a href="${COMPANY}">Densight Labs</a>. All rights reserved.</span><a href="${mailto()}">${SUPPORT}</a></div></footer>
+<div><h3 class="foot-h">Product</h3><a href="/#tutorial">Try it live</a><a href="/#features">Features</a><a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/learn/#import">Import PowerPoint</a><a href="/app/">Open the app</a></div>
+<div><h3 class="foot-h">Solutions</h3><a href="/training/">Training and meetings</a><a href="/education/">Education</a><a href="/learn/#course">Courses</a><a href="/learn/#team">Teams</a></div>
+<div><h3 class="foot-h">Resources</h3><a href="/learn/">Guides</a><a href="/#faq">FAQ</a><a href="/security/">Security</a><a href="/#compare">How we compare</a></div>
+<div><h3 class="foot-h">Company</h3><a href="${COMPANY}">Densight Labs</a><a href="${mailto()}">Contact</a><a href="${mailto('Security report')}">Report a security issue</a></div>
+</div><div class="wrap foot-end"><span>&copy; ${new Date().getFullYear()} <a href="${COMPANY}">Densight Labs</a>. All rights reserved.</span><span class="foot-legal"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/refund/">Refunds</a><a href="${mailto()}">${SUPPORT}</a></span></div></footer>
 <a class="stickycta" id="stickycta" href="/app/" hidden>Start building free</a>
 <script>
 (function(){var b=document.getElementById('stickycta');if(!b||!document.getElementById('tutorial'))return;function f(){b.hidden=scrollY<700}f();addEventListener('scroll',f,{passive:true})})();
 document.addEventListener('click',function(e){document.querySelectorAll('details.dd[open]').forEach(function(d){if(!d.contains(e.target))d.open=false})});
 if(/[?&]account-deleted=1/.test(location.search))document.getElementById('flash').hidden=false;
+(function(){var f=document.getElementById('joincode');if(f)f.addEventListener('input',function(){f.value=f.value.toUpperCase().replace(/[^A-Z0-9]/g,'')})})();
+(function(){document.querySelectorAll('.reveal').forEach(function(e,i){var sib=e.parentElement?[].filter.call(e.parentElement.children,function(c){return c.classList.contains('reveal')}):[e];e.style.setProperty('--i',String(Math.max(0,sib.indexOf(e))))})})();
+(function(){var st=document.getElementById('story');if(!st)return;var steps=[].slice.call(st.querySelectorAll('[data-step]')),panels=[].slice.call(st.querySelectorAll('[data-panel]'));function set(n){steps.forEach(function(b){if(b.dataset.step===String(n))b.setAttribute('aria-current','step');else b.removeAttribute('aria-current')});panels.forEach(function(p){p.classList.toggle('is-on',p.dataset.panel===String(n))})}set(1);steps.forEach(function(b){b.addEventListener('click',function(){var p=st.querySelector('[data-panel="'+b.dataset.step+'"]');set(b.dataset.step);if(p&&matchMedia('(max-width: 980px)').matches===false)p.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'})})});if(!('IntersectionObserver' in window))return;var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting)set(e.target.dataset.panel)})},{rootMargin:'-45% 0px -45% 0px'});panels.forEach(function(p){io.observe(p)})})();
+(function(){var els=document.querySelectorAll('[data-count]');if(!els.length||!('IntersectionObserver' in window)||matchMedia('(prefers-reduced-motion: reduce)').matches)return;var io=new IntersectionObserver(function(es){es.forEach(function(e){if(!e.isIntersecting)return;io.unobserve(e.target);var el=e.target,to=+el.dataset.count,t0=performance.now();(function tick(t){var k=Math.min(1,(t-t0)/1100);el.textContent=Math.round(to*(1-Math.pow(1-k,3))).toLocaleString('en-US');if(k<1)requestAnimationFrame(tick)})(t0)})},{threshold:.6});els.forEach(function(e){io.observe(e)})})();
 (function(){var els=document.querySelectorAll('.reveal');if(!('IntersectionObserver' in window)||matchMedia('(prefers-reduced-motion: reduce)').matches){els.forEach(function(e){e.classList.add('in')});return}
 var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{rootMargin:'0px 0px -8% 0px'});els.forEach(function(e){io.observe(e)})})();
 document.querySelectorAll('.menu__panel a').forEach(function(a){a.addEventListener('click',function(){document.querySelector('.menu').open=false})});
@@ -126,19 +137,22 @@ const CHECK = '<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d=
 
 const pollBars = (rows) => rows.map(([label, w]) => `<div class="bar" style="--w:${w}%"><span>${label}</span><b>${w}%</b></div>`).join('');
 
-// Small drawings of the kinds of blocks a deck can hold. Colours come from CSS classes,
-// so they follow light and dark.
-const FIGS = [
-  ['Quiz', 'Instant feedback on every answer', `<svg viewBox="0 0 240 150" role="img" aria-label="A quiz question with three options, one marked correct"><rect class="ik" x="16" y="14" width="150" height="9" rx="2"/><rect class="tx" x="16" y="30" width="96" height="6" rx="2"/><rect class="ln" x="16" y="52" width="208" height="26" rx="6"/><rect class="bs" x="16" y="52" width="208" height="26" rx="6"/><rect class="bl" x="26" y="61" width="8" height="8" rx="2"/><path class="ck" d="M190 65l5 5 11-12"/><rect class="ln" x="16" y="86" width="208" height="26" rx="6"/><rect class="ln" x="16" y="120" width="208" height="26" rx="6"/></svg>`],
-  ['Chart', 'From pasted data, with a table for screen readers', `<svg viewBox="0 0 240 150" role="img" aria-label="A bar chart"><path class="ln" d="M24 16v118h200"/><rect class="bs" x="40" y="86" width="26" height="48"/><rect class="bl" x="80" y="52" width="26" height="82"/><rect class="bs" x="120" y="72" width="26" height="62"/><rect class="bl" x="160" y="30" width="26" height="104"/><rect class="bs" x="198" y="96" width="20" height="38"/></svg>`],
-  ['Timeline', 'Step through stages one at a time', `<svg viewBox="0 0 240 150" role="img" aria-label="A timeline with four stages"><path class="ln" d="M24 72h192"/><circle class="bl" cx="40" cy="72" r="9"/><circle class="bl" cx="100" cy="72" r="9"/><circle class="dotb" cx="160" cy="72" r="9"/><circle class="dotb" cx="212" cy="72" r="9"/><rect class="ik" x="26" y="94" width="30" height="6" rx="2"/><rect class="tx" x="86" y="94" width="30" height="6" rx="2"/><rect class="tx" x="146" y="94" width="30" height="6" rx="2"/><rect class="tx" x="198" y="94" width="30" height="6" rx="2"/><rect class="ik" x="26" y="40" width="64" height="8" rx="2"/></svg>`],
-  ['Diagram', 'Rows, columns or a cycle with arrows', `<svg viewBox="0 0 240 150" role="img" aria-label="A cycle diagram with four steps"><ellipse class="ln" cx="120" cy="75" rx="74" ry="46" fill="none"/><rect class="bl" x="92" y="14" width="56" height="22" rx="5"/><rect class="bs" x="160" y="64" width="56" height="22" rx="5"/><rect class="bs" x="92" y="114" width="56" height="22" rx="5"/><rect class="bs" x="24" y="64" width="56" height="22" rx="5"/></svg>`],
-  ['Matching', 'Pair ideas by drawing them together', `<svg viewBox="0 0 240 150" role="img" aria-label="Two columns of items joined by lines"><rect class="ln" x="16" y="20" width="76" height="24" rx="5"/><rect class="ln" x="16" y="63" width="76" height="24" rx="5"/><rect class="ln" x="16" y="106" width="76" height="24" rx="5"/><rect class="ln" x="148" y="20" width="76" height="24" rx="5"/><rect class="ln" x="148" y="63" width="76" height="24" rx="5"/><rect class="ln" x="148" y="106" width="76" height="24" rx="5"/><path class="cn" d="M92 32L148 118M92 75L148 32M92 118L148 75"/></svg>`],
-  ['Hotspots', 'Numbered notes on a picture', `<svg viewBox="0 0 240 150" role="img" aria-label="A picture with three numbered markers"><rect class="bs" x="16" y="12" width="208" height="126" rx="6"/><path class="ln" d="M16 112l56-44 40 30 36-26 76 50" fill="none"/><circle class="bl" cx="70" cy="58" r="11"/><circle class="bl" cx="140" cy="86" r="11"/><circle class="bl" cx="190" cy="44" r="11"/><text class="nm" x="70" y="62" text-anchor="middle">1</text><text class="nm" x="140" y="90" text-anchor="middle">2</text><text class="nm" x="190" y="48" text-anchor="middle">3</text></svg>`],
-  ['Word cloud', 'The most common answers grow biggest', `<svg viewBox="0 0 240 150" role="img" aria-label="A cloud of words in different sizes"><text class="bl" x="120" y="64" text-anchor="middle" font-size="30" font-weight="700">clarity</text><text class="ik" x="58" y="98" text-anchor="middle" font-size="18" font-weight="700">speed</text><text class="bl" x="170" y="100" text-anchor="middle" font-size="22" font-weight="700">trust</text><text class="ik" x="64" y="38" text-anchor="middle" font-size="13" font-weight="700">fun</text><text class="ik" x="190" y="40" text-anchor="middle" font-size="12" font-weight="700">simple</text><text class="ik" x="120" y="128" text-anchor="middle" font-size="14" font-weight="700">teamwork</text></svg>`],
-  ['Audience Q&A', 'Questions rise with upvotes', `<svg viewBox="0 0 240 150" role="img" aria-label="Three audience questions with vote counts"><rect class="bl" x="16" y="16" width="34" height="26" rx="6"/><text class="nm" x="33" y="34" text-anchor="middle">12</text><rect class="tx" x="60" y="22" width="150" height="9" rx="2"/><rect class="bl" x="16" y="62" width="34" height="26" rx="6"/><text class="nm" x="33" y="80" text-anchor="middle">7</text><rect class="tx" x="60" y="68" width="120" height="9" rx="2"/><rect class="bs" x="16" y="108" width="34" height="26" rx="6"/><text class="ik" x="33" y="126" text-anchor="middle" font-size="12" font-weight="700">3</text><rect class="tx" x="60" y="114" width="90" height="9" rx="2"/></svg>`],
-  ['Ranking', 'The room puts items in order', `<svg viewBox="0 0 240 150" role="img" aria-label="Four items in ranked order with bars"><rect class="bl" x="16" y="16" width="200" height="22" rx="4"/><rect class="bl" x="16" y="48" width="150" height="22" rx="4"/><rect class="bs" x="16" y="80" width="104" height="22" rx="4"/><rect class="bs" x="16" y="112" width="60" height="22" rx="4"/></svg>`],
-];
+// ---- small product mock-ups, drawn from the real product's words and shapes (decorative, so hidden from screen readers) ----
+
+const MK_DOTS = '<i></i><i></i><i></i>';
+const mkWin = (title, inner, cls = '') => `<div class="mk ${cls}" aria-hidden="true"><div class="mk__bar">${MK_DOTS}<span>${title}</span></div>${inner}</div>`;
+const mkPhone = (q, opts, picked = -1, foot = '') => `<div class="mkp" aria-hidden="true"><b>Densight Slides</b><p>${q}</p>${opts.map((o, i) => `<span class="${i === picked ? 'on' : ''}">${o}</span>`).join('')}${foot ? `<small>${foot}</small>` : ''}</div>`;
+const tpl = (id) => thumb(TEMPLATES.find((t) => t.id === id).make());
+
+const mockEditor = () => mkWin('Team update', `<div class="mke"><div class="mke__rail">${['title', 'quiz', 'icebreaker'].map((id, i) => `<div class="${i === 2 ? 'on' : ''}">${tpl(id)}</div>`).join('')}</div><div class="mke__main">${tpl('icebreaker')}</div><div class="mke__panel"><u>Word cloud</u><i></i><i style="width:70%"></i><u>Words each person can send</u><span>1</span><span>2</span><span class="on">3</span><u>Swearing</u><i style="width:55%"></i></div></div>`);
+
+const mockResults = () => `<div class="dev">${mkWin('Presenting', `<div class="mkr"><p class="mkr__q">Which topic should we cover first?</p>${pollBars([['Budget review', 46], ['Hiring plan', 31], ['Client feedback', 23]])}<small>38 responses &middot; Join with 5F5BLZ</small></div>`)}${mkPhone('Which topic should we cover first?', ['Budget review', 'Hiring plan', 'Client feedback'], 1, 'Answer sent')}</div>`;
+
+const mockReport = () => mkWin('Session report', `<div class="mkx"><div class="mkx__stats"><div><b>38</b><span>people</span></div><div><b>6</b><span>questions</span></div><div><b>42</b><span>minutes</span></div></div>${['How did the session land?', 'What should we change?', 'Rank your priorities'].map((q, i) => `<div class="mkx__row"><span>${q}</span><i style="width:${[82, 61, 44][i]}%"></i></div>`).join('')}<div class="mkx__btns"><span>Download CSV</span><span>Print or save as PDF</span></div></div>`);
+
+const mockCourse = () => mkWin('Safety basics', `<div class="mkc"><p class="mkc__t">5 of 8 slides seen</p><div class="mkc__bar"><i style="width:62%"></i></div><div class="mkc__cert"><small>Certificate of completion</small><b>Sam Rivera</b><span>completed every part of this course</span></div></div>`);
+
+const mockTeam = () => mkWin('Comments', `<div class="mkt"><div class="mkt__c"><span class="mkt__a">AK</span><div><b>Amira</b><p>Make the chart bigger and drop the footer.</p></div></div><div class="mkt__c"><span class="mkt__a mkt__a--2">JO</span><div><b>Jo</b><p>Done. The brand colours are applied too.</p></div></div><div class="mkt__seats"><span>Team seats</span><b>3 of 5</b></div></div>`);
 
 const home = () => layout({
   path: '/',
@@ -182,23 +196,37 @@ const home = () => layout({
 </ul>
 </div></section>
 
-<section id="loop"><div class="wrap">
-<header class="head reveal"><p class="label">Why it works</p><h2>Good questions, great <em>insights.</em></h2>
+<section id="loop" class="story-sec"><div class="wrap">
+<header class="head head--center reveal"><p class="label">Why it works</p><h2>Good questions, great <em>insights.</em></h2>
 <p class="sub">Start with a question. See the answers arrive. Act on what the room just told you.</p></header>
-<ol class="steps">
-<li class="reveal"><span class="num">1</span><h3>Ask</h3><p>Put a poll, quiz, word cloud or open question on any slide, between the slides you already have.</p></li>
-<li class="reveal"><span class="num">2</span><h3>See</h3><p>People answer from their phones and the results build on your screen as they arrive. No app, no sign-up.</p></li>
-<li class="reveal"><span class="num">3</span><h3>Act</h3><p>Change direction on the spot, answer the top questions, then save a report or share the deck afterwards.</p></li>
-</ol></div></section>
+<div class="story" id="story">
+<div class="story__side"><ol class="story__steps" aria-label="Three steps">
+<li><button type="button" data-step="1" aria-current="step"><span class="story__n">01</span><span><b>Ask</b><small>Put a poll, quiz, word cloud or open question on any slide, between the slides you already have.</small></span></button></li>
+<li><button type="button" data-step="2"><span class="story__n">02</span><span><b>See</b><small>People answer from their phones and the results build on your screen as they arrive. No app, no sign-up.</small></span></button></li>
+<li><button type="button" data-step="3"><span class="story__n">03</span><span><b>Act</b><small>Change direction on the spot, answer the top questions, then save a report or share the deck afterwards.</small></span></button></li>
+</ol></div>
+<div class="story__panels">
+<div class="story__panel" data-panel="1">${mockEditor()}</div>
+<div class="story__panel" data-panel="2">${mockResults()}</div>
+<div class="story__panel" data-panel="3">${mockReport()}</div>
+</div></div></div></section>
 
-<section id="products" class="alt"><div class="wrap">
-<header class="head reveal"><p class="label">One account</p><h2>Three ways to <em>engage.</em></h2>
+<section id="products"><div class="wrap">
+<header class="head head--center reveal"><p class="label">One account</p><h2>Three ways to <em>engage.</em></h2>
 <p class="sub">The same slides work in the room, on their own, and across a team.</p></header>
-<div class="rules">
-<article class="item prod reveal"><h3>Present live</h3><p>Polls, quizzes, word clouds, open answers and audience Q&amp;A, in the room or online. Works on any phone, with no app and no login for the audience.</p><a class="prod__go" href="/learn/#live-session">Discover live sessions <span aria-hidden="true">&rarr;</span></a></article>
-<article class="item prod reveal"><h3>Run a course</h3><p>Share a deck as a self-paced course. Learners go through it in their own time, you see who finished, and they can print a certificate. Starter plan and above.</p><a class="prod__go" href="/learn/#course">Discover courses <span aria-hidden="true">&rarr;</span></a></article>
-<article class="item prod reveal"><h3>Work as a team</h3><p>Share decks with colleagues, comment on slides, and keep one logo and colour set for everyone. People join with a link. Pro plan and above.</p><a class="prod__go" href="/learn/#team">Discover teams <span aria-hidden="true">&rarr;</span></a></article>
+<div class="pcards">
+<article class="pcard pcard--a reveal"><div class="pcard__vis">${mockResults()}</div><h3>Present live</h3><p>Polls, quizzes, word clouds, open answers and audience Q&amp;A, in the room or online. Any phone, no app, no login for the audience.</p><a class="prod__go" href="/learn/#live-session">Discover live sessions <span aria-hidden="true">&rarr;</span></a></article>
+<article class="pcard pcard--b reveal"><div class="pcard__vis">${mockCourse()}</div><h3>Run a course</h3><p>Share a deck as a self-paced course. Learners go through it in their own time, you see who finished, and they can print a certificate. Starter plan and above.</p><a class="prod__go" href="/learn/#course">Discover courses <span aria-hidden="true">&rarr;</span></a></article>
+<article class="pcard pcard--c reveal"><div class="pcard__vis">${mockTeam()}</div><h3>Work as a team</h3><p>Share decks with colleagues, comment on slides, and keep one logo and colour set for everyone. People join with a link. Pro plan and above.</p><a class="prod__go" href="/learn/#team">Discover teams <span aria-hidden="true">&rarr;</span></a></article>
 </div></div></section>
+
+<section id="stats" class="band-ink"><div class="wrap">
+<ul class="stats">
+<li class="reveal"><b data-count="${BLOCK_COUNT}">${BLOCK_COUNT}</b><span>kinds of interactive and design block</span></li>
+<li class="reveal"><b data-count="${TEMPLATES.length}">${TEMPLATES.length}</b><span>ready-made slides to start from</span></li>
+<li class="reveal"><b data-count="0">0</b><span>apps for your audience to install</span></li>
+<li class="reveal"><b data-count="${PLANS.advanced.livePhones}">${PLANS.advanced.livePhones.toLocaleString('en-US')}</b><span>phones in one live room, at most</span></li>
+</ul></div></section>
 
 <section id="compare"><div class="wrap">
 <header class="head reveal"><p class="label">How we compare</p><h2>Pick the right tool, not just ours.</h2>
@@ -219,19 +247,19 @@ ${planCards()}
 <p class="bp__fine">Prices are in US dollars. Checkout shows your local price and any tax. Questions about plans? <a href="${mailto('Plans and pricing')}">${SUPPORT}</a>. <a href="/pricing/">Monthly or yearly, and common questions</a>.</p></div>
 </div></section>
 
-<section id="features"><div class="wrap">
-<header class="head reveal"><p class="label">Features</p><h2>Everything a live presentation needs.</h2>
+<section id="features" class="band-paper"><div class="wrap">
+<header class="head head--center reveal"><p class="label">Features</p><h2>Everything a live presentation <em>needs.</em></h2>
 <p class="sub">Built for rooms where people are expected to take part, not just watch.</p></header>
-<div class="rules">
-<article class="item reveal"><span class="no">01</span><h3>Interactive blocks</h3><p>Timed quizzes, polls, word clouds, open answers, ratings, rankings, audience Q&A, pins on a picture, reactions and hand raise, tables, 2x2 matrices, matching, flip cards, hotspots, timelines, charts, calculators and a live code lab, all inside your slides.</p></article>
-<article class="item reveal"><span class="no">02</span><h3>Live audience</h3><p>Show a code or QR. People answer on their phones and watch the results build on your screen. Nothing for them to install.</p></article>
-<article class="item reveal"><span class="no">03</span><h3>Phone remote</h3><p>Move the slides from your phone and read your speaker notes and the next slide while you talk.</p></article>
-<article class="item reveal"><span class="no">04</span><h3>Drag, drop, done</h3><p>Place anything anywhere, with guides that snap things into line. Start from one of the ready-made slides, then change the theme, colours, logo and backgrounds. Text stays readable on any colour you pick.</p></article>
-<article class="item reveal"><span class="no">05</span><h3>Present or export anywhere</h3><p>Present in the browser, even offline. Export to a standalone web page, PDF, images or PowerPoint. Already have slides? Import a PowerPoint or Google Slides file (text, pictures and notes come across).</p></article>
-<article class="item reveal"><span class="no">06</span><h3>Save and share</h3><p>Decks save on your device automatically. Sign in to keep them online, open them anywhere, and share a link anyone can view.</p></article>
-<article class="item reveal"><span class="no">07</span><h3>Moderation and privacy</h3><p>A swear filter is on by default, or hold every answer until you approve it. Start a private session and nothing is kept: no names, no report, and answers vanish when you end it.</p></article>
-<article class="item reveal"><span class="no">08</span><h3>Games, reports and courses</h3><p>Timed quizzes with names, teams and a leaderboard. Save a session report on your device. Share a deck as a self-paced course that lists who finished and prints a certificate.</p></article>
-<article class="item reveal"><span class="no">09</span><h3>Teams</h3><p>On Pro and Advanced, share decks with your team, comment on slides, and keep one logo and colour set for everyone. People join with a link.</p></article>
+<div class="fcards">
+<article class="fcard reveal"><span class="fcard__ico">${ico('quiz')}</span><h3>Interactive blocks</h3><p>Timed quizzes, polls, word clouds, open answers, ratings, rankings, audience Q&amp;A, pins on a picture, reactions, tables, 2x2 matrices, matching, flip cards, hotspots, timelines, charts and calculators, all inside your slides.</p></article>
+<article class="fcard reveal"><span class="fcard__ico">${ico('live')}</span><h3>Live audience</h3><p>Show a code or QR. People answer on their phones and watch the results build on your screen. Nothing for them to install.</p></article>
+<article class="fcard reveal"><span class="fcard__ico">${ico('remote')}</span><h3>Phone remote</h3><p>Move the slides from your phone and read your speaker notes and the next slide while you talk.</p></article>
+<article class="fcard reveal"><span class="fcard__ico">${ico('design')}</span><h3>Drag, drop, done</h3><p>Place anything anywhere, with guides that snap things into line. Start from a ready-made slide, then change the theme, colours, logo and backgrounds.</p></article>
+<article class="fcard reveal"><span class="fcard__ico">${ico('export')}</span><h3>Present or export anywhere</h3><p>Present in the browser, even offline. Export to a web page, PDF, images or PowerPoint, or import a PowerPoint or Google Slides file.</p></article>
+<article class="fcard reveal"><span class="fcard__ico">${ico('share')}</span><h3>Save and share</h3><p>Decks save on your device automatically. Sign in to keep them online, open them anywhere, and share a link anyone can view.</p></article>
+<article class="fcard reveal"><span class="fcard__ico">${ico('shield')}</span><h3>Moderation and privacy</h3><p>A swear filter is on by default, or hold every answer until you approve it. Start a private session and nothing is kept.</p></article>
+<article class="fcard reveal"><span class="fcard__ico">${ico('trophy')}</span><h3>Games, reports and courses</h3><p>Timed quizzes with names, teams and a leaderboard. Save a session report. Share a deck as a self-paced course with a certificate.</p></article>
+<article class="fcard reveal"><span class="fcard__ico">${ico('team')}</span><h3>Teams</h3><p>On Pro and Advanced, share decks with your team, comment on slides, and keep one logo and colour set for everyone.</p></article>
 </div></div></section>
 
 <section id="live" class="dark"><div class="wrap split">
@@ -256,28 +284,14 @@ ${planCards()}
 <figcaption>Everything the audience sends is checked before it is counted.</figcaption></figure>
 </div></section>
 
-<section id="demo"><div class="wrap">
-<header class="head reveal"><p class="label">The real player</p><h2>See it in action.</h2><p class="sub">This is the actual presentation player. Answer the quiz, open a tab, flip a card.</p></header>
-<div class="demo reveal"><div class="win__bar"><i></i><i></i><i></i><span>Interactive demo</span></div>
-<div class="frame" id="frame"><button type="button" id="load"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>Play the interactive demo</span></button></div></div>
-</div></section>
-
-<section id="blocks" class="alt"><div class="wrap">
-<header class="head reveal"><p class="label">Blocks</p><h2>${BLOCK_COUNT} kinds of block. One deck.</h2>
-<p class="sub">Nine of them are shown here; flip cards, calculators, a live code lab and the rest are in the app. Mix them freely. Each one works while you present, and each has a clear text version for screen readers.</p></header>
-<div class="figs">
-${FIGS.map(([t, d, svg]) => `<figure class="fig reveal">${svg}<figcaption><b>${t}</b><span>${d}</span></figcaption></figure>`).join('\n')}
-</div></div></section>
-
-<section id="trust" class="alt"><div class="wrap">
-<header class="head reveal"><p class="label">Security and privacy</p><h2>Built with confidential material in mind.</h2>
-<p class="sub">Presentations often carry sensitive content. These are the choices we made, stated plainly.</p></header>
-<div class="rules four">
-<article class="item reveal"><h3>On your device first</h3><p>Decks are stored in your browser. Nothing is uploaded unless you sign in or choose to share.</p></article>
-<article class="item reveal"><h3>No tracking</h3><p>No advertising, no tracking cookies and no sale of data. See the <a href="/privacy/">privacy policy</a>.</p></article>
-<article class="item reveal"><h3>Answers stay with you</h3><p>Audience responses are held in the presenter's browser and are not stored on our servers.</p></article>
-<article class="item reveal"><h3>You stay in control</h3><p>Export any deck, revoke a share link instantly, and delete your account and online data at any time.</p></article>
-</div><p class="reveal" style="margin-top:8px"><a href="/security/">Read the full security and privacy summary</a></p></div></section>
+<section id="trust" class="band-paper"><div class="wrap">
+<header class="head head--center reveal"><p class="label">Security and privacy</p><h2>Built with confidential material in <em>mind.</em></h2></header>
+<div class="tcards">
+<article class="tcard reveal"><h3>On your device first</h3><p>Decks are stored in your browser. Nothing is uploaded unless you sign in or choose to share.</p></article>
+<article class="tcard reveal"><h3>No tracking</h3><p>No advertising, no tracking cookies and no sale of data.</p></article>
+<article class="tcard reveal"><h3>Answers stay with you</h3><p>Audience responses are held in the presenter&rsquo;s browser, not stored on our servers.</p></article>
+<article class="tcard reveal"><h3>You stay in control</h3><p>Export any deck, revoke a share link instantly, and delete everything at any time.</p></article>
+</div><p class="head--center reveal" style="margin-top:28px"><a class="btn ghost" href="/security/">Read the security summary</a></p></div></section>
 
 <section id="usecases"><div class="wrap">
 <header class="head reveal"><p class="label">Use cases</p><h2>More <em>engagement,</em> every day.</h2>
@@ -326,11 +340,6 @@ ${FIGS.map(([t, d, svg]) => `<figure class="fig reveal">${svg}<figcaption><b>${t
 <details><summary>Can I get my slides out?</summary><p>Yes: a standalone web page, PDF, PNG images, PowerPoint, or the deck file itself. Your content is yours.</p></details>
 <details><summary>How do I get help?</summary><p>Write to <a href="${mailto()}">${SUPPORT}</a> and a person at Densight Labs will reply. The <a href="/learn/">guides</a> cover the common questions.</p></details>
 <details><summary>Which browsers work?</summary><p>Current Chrome, Edge, Firefox and Safari, on computers, tablets and phones. Audience pages work on phones from about 2022 onward.</p></details>
-</div></div></section>
-
-<section class="built"><div class="wrap"><div class="built__in reveal">
-<img class="logo logo--on-light" src="/brand/logo-64.png" width="40" height="40" alt=""><img class="logo logo--on-dark" src="/brand/logo-light-64.png" width="40" height="40" alt="">
-<p><strong>Built by <a href="${COMPANY}">Densight Labs</a>.</strong> We are an applied AI firm that deploys AI inside enterprise teams. Densight Slides is the tool we wanted for running workshops and briefings. <a href="${COMPANY}">Visit densightlabs.com</a></p>
 </div></div></section>
 
 <section class="cta-band"><div class="wrap reveal">
