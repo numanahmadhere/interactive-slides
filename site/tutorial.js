@@ -177,10 +177,14 @@ export function makeDemo(type) {
 }
 
 // ---- drawing ---------------------------------------------------------------------------
+// The big screen is built once per question and then updated in place, so bars slide, numbers count up and
+// words glide to their new places instead of the whole thing being redrawn every second.
 
 const TICK_MS = 250;
 const CROWD_EVERY = 6; // ticks, so every 1.5 seconds
 const REVEAL_PAUSE_TICKS = 28;
+const SWAP_MS = 170;
+const HOVER_INTENT_MS = 120;
 
 function mount(root) {
   const $ = (sel) => root.querySelector(sel);
@@ -190,6 +194,7 @@ function mount(root) {
   const announce = $('#show-announce');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const canHover = matchMedia('(hover: hover)').matches;
+  const stage = $('.show__stage');
 
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 
@@ -200,61 +205,140 @@ function mount(root) {
   let timer = 0;
   let visible = false;
   let note = '';
-  let drawn = new Set(); // what is already on the big screen, so only new things animate
+  let ui = {};
+  let swapTimer = 0;
 
   const elapsed = () => ticks * TICK_MS / 1000;
 
-  // ---- your screen
-  function drawScreen() {
+  // a number that counts up to its new value
+  function tween(node, to) {
+    const from = Number(node.dataset.v ?? node.textContent) || 0;
+    node.dataset.v = String(to);
+    if (reduced || from === to) { node.textContent = String(to); return; }
+    const start = performance.now();
+    const run = (now) => {
+      const t = Math.min(1, (now - start) / 450);
+      node.textContent = String(Math.round(from + (to - from) * (1 - (1 - t) ** 3)));
+      if (t < 1 && node.dataset.v === String(to)) requestAnimationFrame(run);
+    };
+    requestAnimationFrame(run);
+  }
+
+  // ---- the big screen: build once ...
+  function buildScreen() {
     const scene = SCENES[type];
-    slide.replaceChildren(el('h2', 'show__q', scene.question));
+    ui = { q: el('h2', 'show__q', scene.question), nodes: new Map() };
+    slide.replaceChildren(ui.q);
     if (type === 'cloud') {
-      const cloud = el('div', 'show__cloud');
-      cloud.setAttribute('role', 'img');
-      cloud.setAttribute('aria-label', `Word cloud of ${demo.total} words`);
-      for (const w of demo.layout()) {
-        const s = el('span', `show__word${w.turn ? ' is-turned' : ''}${drawn.has(w.word) ? '' : ' is-new'}`, w.word);
-        drawn.add(w.word);
-        s.dataset.hue = w.hue;
-        s.style.fontSize = `${w.size}em`;
-        if (w.mine) s.classList.add('is-mine');
-        cloud.append(s);
-      }
-      slide.append(cloud, el('p', 'show__count', `${demo.total} ${demo.total === 1 ? 'word' : 'words'}`));
+      ui.cloud = el('div', 'show__cloud');
+      ui.cloud.setAttribute('role', 'img');
+      ui.count = el('p', 'show__count');
+      slide.append(ui.cloud, ui.count);
     } else if (type === 'poll') {
-      const list = el('ul', 'show__bars');
-      demo.options.forEach((text, i) => {
-        const row = el('li', `show__bar${demo.you === i ? ' is-mine' : ''}`);
+      ui.list = el('ul', 'show__bars');
+      demo.options.forEach((text) => {
+        const row = el('li', 'show__bar');
         const fill = el('span', 'show__fill');
-        fill.style.width = `${demo.percent(i)}%`;
-        row.append(fill, el('span', 'show__label', text), el('span', 'show__pct', `${demo.percent(i)}%`));
-        list.append(row);
+        const pct = el('span', 'show__pct', '0%');
+        row.append(fill, el('span', 'show__label', text), pct);
+        ui.list.append(row);
+        ui.nodes.set(row, { fill, pct });
       });
-      slide.append(list, el('p', 'show__count', `${demo.total} responses`));
+      ui.count = el('p', 'show__count');
+      slide.append(ui.list, ui.count);
     } else if (type === 'quiz') {
-      const status = demo.revealed ? `The answer is ${demo.options[demo.correct]}` : demo.everyone ? 'Everyone has voted!' : `${demo.voted} of ${demo.room + 1} have answered`;
-      slide.append(el('p', 'show__status', status));
-      const cols = el('div', 'show__cols');
+      ui.status = el('p', 'show__status');
+      ui.cols = el('div', 'show__cols');
       demo.options.forEach((text, i) => {
-        const col = el('div', `show__col${demo.revealed ? (i === demo.correct ? ' is-right' : ' is-wrong') : ''}`);
-        col.dataset.i = i;
-        col.append(el('span', 'show__n', String(demo.counts[i])), el('span', 'show__rule'), el('span', 'show__label', text));
-        cols.append(col);
+        const col = el('div', 'show__col');
+        const n = el('span', 'show__n', '0');
+        col.append(n, el('span', 'show__rule'), el('span', 'show__label', text));
+        ui.cols.append(col);
+        ui.nodes.set(i, { col, n });
       });
-      slide.append(cols);
+      slide.append(ui.status, ui.cols);
     } else {
-      const list = el('ul', 'show__notes');
-      for (const item of demo.items) {
-        list.append(el('li', `show__note${item.mine ? ' is-mine' : ''}${drawn.has(item.text) ? '' : ' is-new'}`, item.text));
-        drawn.add(item.text);
+      ui.list = el('ul', 'show__notes');
+      ui.count = el('p', 'show__count');
+      slide.append(ui.list, ui.count);
+    }
+    updateScreen(true);
+  }
+
+  // ---- ... then update in place
+  function updateScreen(firstPaint = false) {
+    if (type === 'cloud') {
+      const words = demo.layout();
+      const before = new Map([...ui.nodes].map(([k, n]) => [k, n.getBoundingClientRect()]));
+      const keep = new Set(words.map((w) => w.word));
+      for (const [k, n] of ui.nodes) if (!keep.has(k)) { n.remove(); ui.nodes.delete(k); }
+      words.forEach((w) => {
+        let n = ui.nodes.get(w.word);
+        if (!n) { n = el('span', 'show__word', w.word); ui.nodes.set(w.word, n); if (!firstPaint) n.classList.add('is-new'); }
+        n.dataset.hue = w.hue;
+        n.classList.toggle('is-turned', w.turn);
+        n.classList.toggle('is-mine', w.mine);
+        n.style.fontSize = `${w.size}em`;
+        ui.cloud.append(n); // moves it into the right order
+      });
+      // glide: put every word that was already there back where it was, then let it travel
+      if (!reduced) {
+        for (const [k, n] of ui.nodes) {
+          const old = before.get(k);
+          if (!old) continue;
+          const now = n.getBoundingClientRect();
+          const dx = old.left - now.left;
+          const dy = old.top - now.top;
+          if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
+          n.style.transition = 'none';
+          n.style.transform = `translate(${dx}px, ${dy}px)${n.classList.contains('is-turned') ? ' rotate(180deg)' : ''}`;
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            n.style.transition = '';
+            n.style.transform = '';
+          }));
+        }
       }
-      slide.append(list, el('p', 'show__count', `${demo.total} responses`));
+      ui.cloud.setAttribute('aria-label', `Word cloud of ${demo.total} words`);
+      ui.count.textContent = `${demo.total} ${demo.total === 1 ? 'word' : 'words'}`;
+    } else if (type === 'poll') {
+      let i = 0;
+      for (const [row, { fill, pct }] of ui.nodes) {
+        const p = demo.percent(i);
+        fill.style.width = `${p}%`;
+        pct.textContent = `${p}%`;
+        row.classList.toggle('is-mine', demo.you === i);
+        i++;
+      }
+      ui.count.textContent = `${demo.total} responses`;
+    } else if (type === 'quiz') {
+      ui.status.textContent = demo.revealed ? `The answer is ${demo.options[demo.correct]}` : demo.everyone ? 'Everyone has voted!' : `${demo.voted} of ${demo.room + 1} have answered`;
+      ui.status.classList.toggle('is-done', demo.revealed || demo.everyone);
+      demo.options.forEach((_, i) => {
+        const { col, n } = ui.nodes.get(i);
+        tween(n, demo.counts[i]);
+        col.classList.toggle('is-right', demo.revealed && i === demo.correct);
+        col.classList.toggle('is-wrong', demo.revealed && i !== demo.correct);
+        col.classList.toggle('is-mine', demo.you === i);
+      });
+    } else {
+      const items = demo.items;
+      const keep = new Set(items);
+      for (const [item, n] of ui.nodes) if (!keep.has(item)) { n.remove(); ui.nodes.delete(item); }
+      [...items].reverse().forEach((item) => {
+        let n = ui.nodes.get(item);
+        if (!n) { n = el('li', 'show__note', item.text); ui.nodes.set(item, n); if (!firstPaint) n.classList.add('is-new'); }
+        n.classList.toggle('is-mine', item.mine);
+      });
+      items.forEach((item, i) => { const n = ui.nodes.get(item); if (ui.list.children[i] !== n) ui.list.insertBefore(n, ui.list.children[i] ?? null); });
+      ui.count.textContent = `${demo.total} responses`;
     }
   }
 
   // ---- the phone
   function drawPhone() {
     const scene = SCENES[type];
+    const focusedOpt = [...phone.querySelectorAll('.show__opt')].indexOf(document.activeElement);
+    const hadInput = document.activeElement?.id === 'show-input';
     const kids = [el('p', 'phone__q', scene.question)];
     if (type === 'cloud' || type === 'open') {
       const form = el('form', 'show__form');
@@ -264,17 +348,20 @@ function mount(root) {
       input.setAttribute('aria-label', type === 'cloud' ? 'Your word' : 'Your answer');
       input.maxLength = type === 'cloud' ? 24 : 140;
       input.placeholder = type === 'cloud' ? 'Type a word' : 'Type your answer';
-      if (type === 'open') input.rows = 3;
+      if (type === 'open') {
+        input.rows = 3;
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
+      }
       const send = el('button', 'show__send', 'Submit');
       send.type = 'submit';
       form.append(input, send);
       form.addEventListener('submit', (e) => {
         e.preventDefault();
         const added = demo.add(input.value, true);
-        if (!added) { note = demo instanceof CloudDemo && demo.mine.size >= 3 ? 'You have sent three words.' : demo.mineCount >= 3 ? 'You have sent three answers.' : 'Type something first.'; }
+        if (!added) note = demo.mine?.size >= 3 ? 'You have sent three words.' : demo.mineCount >= 3 ? 'You have sent three answers.' : 'Type something first.';
         else { note = type === 'cloud' ? 'Sent. Look at the big screen.' : 'Sent. Your answer is on the screen.'; say(`Added "${added}"`); }
         input.value = '';
-        drawScreen();
+        updateScreen();
         drawPhone();
       });
       kids.push(form);
@@ -284,16 +371,15 @@ function mount(root) {
         const b = el('button', `show__opt${demo.you === i ? ' is-on' : ''}`, text);
         b.type = 'button';
         b.setAttribute('aria-pressed', String(demo.you === i));
-        b.addEventListener('click', () => { if (demo.vote(i)) { note = 'Vote sent. You can change it.'; say(`You voted for ${text}`); drawScreen(); drawPhone(); } });
+        b.addEventListener('click', () => { if (demo.vote(i)) { note = 'Vote sent. You can change it.'; say(`You voted for ${text}`); updateScreen(); drawPhone(); } });
         list.append(b);
       });
       kids.push(list);
     } else {
-      const left = Math.max(0, 1 - elapsed() / demo.timeLimit);
       const bar = el('div', 'show__timer');
       bar.setAttribute('aria-hidden', 'true');
       const fill = el('span');
-      fill.style.width = `${demo.frozen ?? left * 100}%`;
+      fill.style.width = `${demo.frozen ?? Math.max(0, 1 - elapsed() / demo.timeLimit) * 100}%`;
       bar.append(fill);
       const ends = el('div', 'show__ends');
       ends.setAttribute('aria-hidden', 'true');
@@ -313,8 +399,9 @@ function mount(root) {
           demo.frozen = frac;
           note = 'Answer sent. Waiting for the others.';
           say('Answer sent');
-          if (demo.everyone) { demo.reveal(); finish(); }
-          drawScreen(); drawPhone();
+          if (demo.everyone) { demo.reveal(); revealAt = ticks; }
+          updateScreen();
+          drawPhone();
         });
         list.append(b);
       });
@@ -324,28 +411,37 @@ function mount(root) {
       kids.push(el('p', 'show__result', demo.you === null ? 'Time is up. No answer sent.' : demo.you === demo.correct ? `Correct! You scored ${demo.points} points.` : `Not quite. It was ${demo.options[demo.correct]}.`));
     } else if (note) kids.push(el('p', 'show__note-phone', note));
     phone.replaceChildren(...kids);
+    if (focusedOpt >= 0) phone.querySelectorAll('.show__opt')[focusedOpt]?.focus({ preventScroll: true });
+    if (hadInput) $('#show-input')?.focus({ preventScroll: true });
   }
-
-  function finish() { revealAt = ticks; }
 
   function say(text) { announce.textContent = text; }
 
-  function select(next, { focus = false } = {}) {
-    if (next === type && slide.childElementCount) return;
-    type = next;
-    demo = makeDemo(type);
-    ticks = 0;
-    note = '';
-    revealAt = 0;
-    drawn = new Set();
+  function paintCards() {
     for (const c of cards) {
       const on = c.dataset.type === type;
       c.closest('li').classList.toggle('is-on', on);
       c.setAttribute('aria-pressed', String(on));
     }
-    drawScreen();
-    drawPhone();
-    if (focus) $('#show-input')?.focus();
+  }
+
+  function select(next, { focus = false, instant = false } = {}) {
+    if (next === type && ui.q) { if (focus) $('#show-input')?.focus({ preventScroll: true }); return; }
+    type = next;
+    paintCards();
+    clearTimeout(swapTimer);
+    const apply = () => {
+      demo = makeDemo(type);
+      ticks = 0;
+      note = '';
+      revealAt = 0;
+      buildScreen();
+      drawPhone();
+      stage.classList.remove('is-swapping');
+      if (focus) $('#show-input')?.focus({ preventScroll: true });
+    };
+    if (instant || reduced) apply();
+    else { stage.classList.add('is-swapping'); swapTimer = setTimeout(apply, SWAP_MS); }
   }
 
   // ---- the simulated room
@@ -355,16 +451,22 @@ function mount(root) {
       if (!demo.revealed) {
         if (ticks % 3 === 0) demo.crowdStep();
         if (demo.you === null) { const fill = phone.querySelector('.show__timer span'); if (fill) fill.style.width = `${Math.max(0, 1 - elapsed() / demo.timeLimit) * 100}%`; }
-        if (demo.everyone || elapsed() >= demo.timeLimit) { while (!demo.everyone && demo.others < demo.room) demo.crowdStep(); demo.frozen ??= 0; demo.reveal(); finish(); drawPhone(); }
-        drawScreen();
+        if (demo.everyone || elapsed() >= demo.timeLimit) {
+          while (!demo.everyone && demo.others < demo.room) demo.crowdStep();
+          demo.frozen ??= 0;
+          demo.reveal();
+          revealAt = ticks;
+          drawPhone();
+        }
+        updateScreen();
       } else if (ticks - revealAt > REVEAL_PAUSE_TICKS) {
-        demo = makeDemo('quiz'); ticks = 0; note = ''; drawScreen(); drawPhone();
+        revealAt = Infinity; // one restart only
+        stage.classList.add('is-swapping');
+        swapTimer = setTimeout(() => { demo = makeDemo('quiz'); ticks = 0; note = ''; revealAt = 0; buildScreen(); drawPhone(); stage.classList.remove('is-swapping'); }, SWAP_MS);
       }
       return;
     }
-    if (ticks % CROWD_EVERY === 0) {
-      if (demo.total < 60) { demo.crowdStep(); drawScreen(); }
-    }
+    if (ticks % CROWD_EVERY === 0 && demo.total < 60) { demo.crowdStep(); updateScreen(); }
   }
 
   function run() {
@@ -376,15 +478,22 @@ function mount(root) {
   new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; if (visible) run(); else halt(); }).observe(root);
   document.addEventListener('visibilitychange', () => (document.hidden ? halt() : run()));
 
+  // Pointing at a card shows it, but only if the pointer stays a moment, so sweeping across the list does not flicker.
   cards.forEach((c) => {
+    const li = c.closest('li');
+    let intent = 0;
     c.addEventListener('click', () => select(c.dataset.type, { focus: true }));
     c.addEventListener('focus', () => select(c.dataset.type));
-    if (canHover) c.closest('li').addEventListener('mouseenter', () => select(c.dataset.type));
+    if (canHover) {
+      li.addEventListener('mouseenter', () => { clearTimeout(intent); intent = setTimeout(() => select(c.dataset.type), HOVER_INTENT_MS); });
+      li.addEventListener('mouseleave', () => clearTimeout(intent));
+    }
   });
 
+  paintCards();
+  select('cloud', { instant: true });
   // With reduced motion nothing moves by itself, so start from a room that is already full.
-  select('cloud');
-  if (reduced) { for (let i = 0; i < 6; i++) demo.crowdStep(); drawScreen(); }
+  if (reduced) { for (let i = 0; i < 6; i++) demo.crowdStep(); updateScreen(); }
 }
 
 if (typeof document !== 'undefined') {

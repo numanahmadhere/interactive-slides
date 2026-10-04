@@ -98,7 +98,7 @@ test('the home page leads with the tutorial, wired to the script, with the real 
   const home = buildSite()['index.html'];
   for (const id of ['id="show"', 'id="show-slide"', 'id="show-phone"', 'id="show-announce"', 'src="/tutorial.js"', 'data-type="cloud"', 'data-type="quiz"', 'data-type="poll"', 'data-type="open"']) assert.ok(home.includes(id), `missing ${id}`);
   const src = readFileSync(new URL('../site/tutorial.js', import.meta.url), 'utf8');
-  for (const m of src.matchAll(/\$\('([^']+)'\)/g)) if (m[1] !== '#show-input') assert.ok(home.includes(`id="${m[1].replace(/^#/, '')}"`), `the script looks for ${m[1]}`);
+  for (const m of src.matchAll(/\$\('([^']+)'\)/g)) if (m[1].startsWith('#') && m[1] !== '#show-input') assert.ok(home.includes(`id="${m[1].replace(/^#/, '')}"`), `the script looks for ${m[1]}`);
   assert.ok(home.indexOf('id="tutorial"') < home.indexOf('id="compare"'));
   assert.ok(home.includes('paid plan'), 'it says which of these need a paid plan');
   assert.ok(home.includes('<noscript>'), 'a text fallback without JavaScript');

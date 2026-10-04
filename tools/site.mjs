@@ -153,7 +153,7 @@ const home = () => layout({
 <div class="show__stage">
 <span class="show__tag show__tag--screen" aria-hidden="true">Your screen<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v15M6 13l6 6 6-6"/></svg></span>
 <span class="show__tag show__tag--phone" aria-hidden="true">Participant&rsquo;s screen<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5c0 6 3 9 9 10M10 11l4 4-4 4"/></svg></span>
-<div class="show__screen"><p class="show__join">Join with the code <b>5F5BLZ</b></p><div id="show-slide" class="show__slide"></div></div>
+<div class="show__screen"><p class="show__join"><i class="show__live" aria-hidden="true"></i>Join with the code <b>5F5BLZ</b></p><div id="show-slide" class="show__slide"></div></div>
 <div class="show__phone"><div class="show__phonebrand">Densight Slides</div><div id="show-phone" class="show__phonebody"></div></div>
 </div>
 <p class="sr" id="show-announce" role="status" aria-live="polite"></p>
