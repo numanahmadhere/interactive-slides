@@ -95,6 +95,98 @@ export const TEMPLATES = [
     ]),
   },
   {
+    id: 'section', name: 'Section break', group: 'Basics',
+    make: () => slide([
+      B('shape', { kind: 'rect', fill: 'accent', text: '', size: 'sm', width: 'full' }, { x: 160, y: 420, w: 120, h: 10 }),
+      B('heading', { text: 'Part two', level: 1 }, { x: 160, y: 460, w: 1600 }),
+      B('text', { text: 'What changes next', size: 'lg', muted: true }, { x: 160, y: 700, w: 1200 }),
+    ]),
+  },
+  {
+    id: 'comparison-table', name: 'Comparison table', group: 'Content',
+    make: () => slide([
+      B('heading', { text: 'How the options compare', level: 2 }, { x: 128, y: 96, w: 1664 }),
+      B('table', {}, { x: 128, y: 300, w: 1664 }),
+    ]),
+  },
+  {
+    id: 'priority-matrix', name: 'Priority matrix', group: 'Content',
+    make: () => slide([
+      B('heading', { text: 'What to do first', level: 2 }, { x: 128, y: 80, w: 1664 }),
+      B('matrix', {}, { x: 128, y: 240, w: 1664, h: 760 }),
+    ]),
+  },
+  {
+    id: 'swot', name: 'SWOT analysis', group: 'Content',
+    make: () => slide([
+      B('heading', { text: 'SWOT', level: 2 }, { x: 128, y: 80, w: 1664 }),
+      B('matrix', { xLabel: 'Helpful to harmful', yLabel: 'Inside to outside', tl: 'Strengths', tr: 'Weaknesses', bl: 'Opportunities', br: 'Threats', tlItems: 'What we do well', trItems: 'Where we fall short', blItems: 'What could help us', brItems: 'What could hurt us', size: 'md' }, { x: 128, y: 240, w: 1664, h: 760 }),
+    ]),
+  },
+  {
+    id: 'icebreaker', name: 'Icebreaker word cloud', group: 'Audience',
+    make: () => slide([
+      B('wordcloud', { question: 'In one word, how are you arriving today?', limit: 1, moderation: 'filter' }, { x: 128, y: 120, w: 1664, h: 840 }),
+    ]),
+  },
+  {
+    id: 'open-question', name: 'Open question', group: 'Audience',
+    make: () => slide([
+      B('open-answers', { question: 'What would you like to get out of this session?', limit: 2, moderation: 'filter' }, { x: 128, y: 120, w: 1664, h: 840 }),
+    ]),
+  },
+  {
+    id: 'rating', name: 'Rating scale', group: 'Audience',
+    make: () => slide([
+      B('rating', {}, { x: 128, y: 160, w: 1664 }),
+    ]),
+  },
+  {
+    id: 'prioritise', name: 'Prioritise together', group: 'Audience',
+    make: () => slide([
+      B('ranking', {}, { x: 128, y: 120, w: 1664, h: 840 }),
+    ]),
+  },
+  {
+    id: 'questions', name: 'Audience questions', group: 'Audience',
+    make: () => slide([
+      B('qna', {}, { x: 128, y: 120, w: 1664, h: 840 }),
+    ]),
+  },
+  {
+    id: 'pulse', name: 'Pulse check', group: 'Audience',
+    make: () => slide([
+      B('reactions', {}, { x: 128, y: 300, w: 1664 }),
+    ]),
+  },
+  {
+    id: 'pin-map', name: 'Pin on a picture', group: 'Audience',
+    make: () => slide([
+      B('pin', {}, { x: 128, y: 100, w: 1664, h: 880 }),
+    ]),
+  },
+  {
+    id: 'registration', name: 'Registration and expectations', group: 'Audience',
+    make: () => slide([
+      B('heading', { text: 'Welcome. Join on your phone', level: 2 }, { x: 128, y: 96, w: 1664 }),
+      B('text', { text: 'Pick a nickname when asked. Then tell us what you hope to learn.', size: 'lg', muted: true }, { x: 128, y: 220, w: 1400 }),
+      B('open-answers', { question: 'What do you hope to learn today?', limit: 1, moderation: 'filter' }, { x: 128, y: 360, w: 1664, h: 640 }),
+    ]),
+  },
+  {
+    id: 'feedback', name: 'Feedback: rate and comment', group: 'Audience',
+    make: () => slide([
+      B('rating', { question: 'How useful was this session?', max: 5, low: 'Not useful', high: 'Very useful' }, { x: 128, y: 100, w: 1664 }),
+      B('open-answers', { question: 'One thing we should change?', limit: 1, moderation: 'filter' }, { x: 128, y: 560, w: 1664, h: 440 }),
+    ]),
+  },
+  {
+    id: 'scoreboard', name: 'Leaderboard', group: 'Audience',
+    make: () => slide([
+      B('leaderboard', {}, { x: 128, y: 120, w: 1664, h: 840 }),
+    ]),
+  },
+  {
     id: 'thanks', name: 'Thank you', group: 'Basics',
     make: () => slide([
       B('heading', { text: 'Thank you', level: 1, align: 'center' }, { x: 160, y: 360, w: 1600 }),
