@@ -300,7 +300,7 @@ test('every internal link on the public pages goes somewhere that exists', () =>
 
 test('the new pages exist, are in the sitemap, and the nav leads to them', () => {
   const site = buildSite();
-  for (const dir of ['templates', 'education', 'training', 'pricing', 'security', 'refund', 'privacy', 'terms']) {
+  for (const dir of ['templates', 'education', 'training', 'use-cases', 'events', 'people-teams', 'consulting', 'webinars', 'retrospectives', 'community', 'pricing', 'security', 'refund', 'privacy', 'terms']) {
     assert.ok(site[`${dir}/index.html`], dir);
     assert.ok(site['sitemap.xml'].includes(`/${dir}/`), `${dir} in the sitemap`);
     assert.ok(site['index.html'].includes(`href="/${dir}/"`), `${dir} linked from home`);
@@ -355,4 +355,20 @@ test('the refund policy states the real window and the legal pages point to each
   assert.ok(site['terms/index.html'].includes('href="/refund/"') && site['privacy/index.html'].includes('href="/refund/"'));
   assert.ok(site['terms/index.html'].includes('Paddle') && site['privacy/index.html'].includes('Paddle') && site['privacy/index.html'].includes('Supabase') && site['privacy/index.html'].includes('Netlify'));
   assert.ok(site['index.html'].includes('href="/refund/"'), 'the footer links the refund policy');
+});
+
+test('use cases: a hub, eight segment pages, each with real ready-made slides, and every page links to the others', () => {
+  const site = buildSite();
+  const slugs = ['training', 'education', 'events', 'people-teams', 'consulting', 'webinars', 'retrospectives', 'community'];
+  for (const slug of slugs) {
+    const page = site[`${slug}/index.html`];
+    assert.ok(site['use-cases/index.html'].includes(`href="/${slug}/"`), `hub links ${slug}`);
+    assert.ok(site['index.html'].includes(`href="/${slug}/"`), `home links ${slug}`);
+    assert.ok(site['sitemap.xml'].includes(`/${slug}/`), `${slug} in the sitemap`);
+    assert.ok((page.match(/class="case"/g) ?? []).length >= 6, `${slug} has six uses`);
+    assert.ok(page.includes('Start building free'));
+    assert.equal(slugs.filter((o) => o !== slug && page.includes(`href="/${o}/"`)).length >= 7, true, `${slug} links the other seven`);
+    for (const m of page.matchAll(/href="\/app\/\?template=([\w-]+)"/g)) assert.ok(getTemplate(m[1]), `${slug}: ${m[1]}`);
+  }
+  assert.ok(!/testimonial|trusted by [0-9]|million users/i.test(Object.values(site).join(' ')), 'still no invented proof');
 });

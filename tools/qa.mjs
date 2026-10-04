@@ -34,7 +34,7 @@ const sw = existsSync('dist/sw.js') ? readFileSync('dist/sw.js', 'utf8') : '';
 // 3. the app files are all there and wired together
 check('the app page loads /app.js and /app.css', appHtml.includes('src="/app.js"') && appHtml.includes('href="/app.css"'));
 check('the home page is small (under 72 KB, no app bundle)', html.length < 72 * 1024 && !html.includes('app.js'), `${(html.length / 1024).toFixed(1)} KB`);
-check('public pages, sitemap and robots exist', ['privacy', 'terms', 'learn', 'templates', 'education', 'training', 'pricing', 'security', 'refund'].every((d) => existsSync(`dist/${d}/index.html`)) && existsSync('dist/sitemap.xml') && existsSync('dist/robots.txt'));
+check('public pages, sitemap and robots exist', ['privacy', 'terms', 'learn', 'templates', 'education', 'training', 'pricing', 'security', 'refund', 'use-cases', 'events', 'consulting'].every((d) => existsSync(`dist/${d}/index.html`)) && existsSync('dist/sitemap.xml') && existsSync('dist/robots.txt'));
 check('service worker was generated with a versioned cache', /const CACHE = "interactive-slides-[0-9a-f]{12}"/.test(sw));
 check('/app/* is rewritten to the app page', /from\s*=\s*"\/app\/\*"[\s\S]*?to\s*=\s*"\/app\/index\.html"[\s\S]*?status\s*=\s*200/.test(existsSync('netlify.toml') ? readFileSync('netlify.toml', 'utf8') : ''));
 

@@ -20,6 +20,7 @@ ${price ? `<a class="btn${id === 'pro' ? '' : ' ghost'}" href="/app/account?plan
 </article>`;
 }).join('\n');
 
+const money = (n) => `$${n.toLocaleString('en-US')}`;
 const BLOCK_COUNT = listBlocks().filter((d) => !d.internal).length;
 
 const SITE = (process.env.SITE_URL ?? 'https://densight-slides.netlify.app').replace(/\/+$/, '');
@@ -40,6 +41,12 @@ const ICONS = {
   remote: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   export: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
   design: '<circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 22a10 10 0 1 1 10-10c0 2-2 3-4 3h-2a2 2 0 0 0-1 3.7c.5.8.3 3.3-3 3.3z"/>',
+  megaphone: '<path d="M3 11v2a1 1 0 0 0 1 1h2l8 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M17.5 8.5a5 5 0 0 1 0 7"/>',
+  users: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.5a3 3 0 0 1 0 5.5M18 14.5c1.8.7 3 2.4 3 4.5"/>',
+  compass: '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+  video: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/>',
+  loop: '<path d="M4 12a8 8 0 0 1 13.7-5.6L20 9M20 4v5h-5M20 12a8 8 0 0 1-13.7 5.6L4 15M4 20v-5h5"/>',
+  heart: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
   bars: '<path d="M5 20V11M12 20V4M19 20v-7"/>',
   grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
   upload: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',
@@ -50,6 +57,20 @@ const ICONS = {
   team: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 5.5a3 3 0 0 1 0 5.5M18 14.5c1.8.7 3 2.4 3 4.5"/>',
   share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>',
 };
+// ---- use cases: one list drives the menu, the footer, the hub page and the home page ------------------------------------
+
+const SEGMENTS = [
+  { slug: 'training', name: 'Training and meetings', short: 'Workshops, town halls, briefings and onboarding where the room answers.', icon: 'briefcase', tone: 'a' },
+  { slug: 'education', name: 'Education', short: 'Lectures, seminars and classrooms. Students join with a code and never need an account.', icon: 'cap', tone: 'b' },
+  { slug: 'events', name: 'Events and conferences', short: 'Keynote questions, live polls, icebreakers and quizzes for big rooms.', icon: 'megaphone', tone: 'c' },
+  { slug: 'people-teams', name: 'HR and people teams', short: 'Onboarding courses, all-hands questions and honest feedback.', icon: 'users', tone: 'd' },
+  { slug: 'consulting', name: 'Consulting and workshops', short: 'Facilitate client sessions, rank priorities and leave a report behind.', icon: 'compass', tone: 'a' },
+  { slug: 'webinars', name: 'Webinars and online sessions', short: 'Make a remote audience part of the call, from any browser.', icon: 'video', tone: 'b' },
+  { slug: 'retrospectives', name: 'Team retrospectives', short: 'Anonymous retros, voting on actions, shared decks for the team.', icon: 'loop', tone: 'c' },
+  { slug: 'community', name: 'Non-profits and community groups', short: 'Meetings, volunteer training and fundraising nights on a small budget.', icon: 'heart', tone: 'd' },
+];
+const segHref = (s) => `/${s.slug}/`;
+
 const ico = (n) => `<span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONS[n]}</svg></span>`;
 
 const THEME_INIT = "try{var t=localStorage.getItem('interactive-slides:theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}document.documentElement.classList.add('js')";
@@ -112,16 +133,17 @@ ${index ? '' : '<meta name="robots" content="noindex">\n'}<link rel="canonical" 
 <a class="mm__feat" href="/#tutorial"><span class="mm__badge">Live demo</span><b>Answer on a phone and watch it land on the big screen</b><span class="mm__mini" aria-hidden="true"><i style="--w:72%"></i><i style="--w:48%"></i><i style="--w:30%"></i></span><span class="mm__go">Try it now <span aria-hidden="true">&rarr;</span></span></a>
 </div></details>
 <details class="dd"><summary>Solutions</summary><div class="dd__panel mm mm--solutions" role="group" aria-label="Solutions">
-<a class="mm__card mm__card--a" href="/training/"><span class="mm__ico mm__ico--a">${ico('briefcase')}</span><b>Training and meetings</b><small>Workshops, town halls, client briefings and onboarding where the room answers.</small><span class="mm__tags"><i>Workshops</i><i>Town halls</i><i>Courses</i></span><span class="mm__go">See how teams use it <span aria-hidden="true">&rarr;</span></span></a>
-<a class="mm__card mm__card--b" href="/education/"><span class="mm__ico mm__ico--b">${ico('cap')}</span><b>Education</b><small>Lectures, seminars and classrooms. Students join with a code and never need an account.</small><span class="mm__tags"><i>Lectures</i><i>Quizzes</i><i>Seminars</i></span><span class="mm__go">See classroom uses <span aria-hidden="true">&rarr;</span></span></a>
-<a class="mm__foot" href="/templates/"><span>Not sure where to start?</span><b>Browse ${TEMPLATES.length} ready-made slides <span aria-hidden="true">&rarr;</span></b></a>
+<a class="mm__card mm__card--a" href="/training/"><span class="mm__ico mm__ico--a">${ico('briefcase')}</span><b>Training and meetings</b><small>Workshops, town halls, client briefings and onboarding where the room answers.</small><span class="mm__go">See how teams use it <span aria-hidden="true">&rarr;</span></span></a>
+<a class="mm__card mm__card--b" href="/education/"><span class="mm__ico mm__ico--b">${ico('cap')}</span><b>Education</b><small>Lectures, seminars and classrooms. Students join with a code and never need an account.</small><span class="mm__go">See classroom uses <span aria-hidden="true">&rarr;</span></span></a>
+<div class="mm__more"><span class="mm__h">More ways to use it</span><div class="mm__grid">${SEGMENTS.slice(2).map((x) => `<a class="mm__item" href="${segHref(x)}"><span class="mm__ico mm__ico--${x.tone}">${ico(x.icon)}</span><span class="mm__txt"><b>${x.name}</b></span></a>`).join('')}</div></div>
+<a class="mm__foot" href="/use-cases/"><span>Not sure which fits?</span><b>See all use cases <span aria-hidden="true">&rarr;</span></b></a>
 </div></details>
 <a href="/#features">Features</a>
 <a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/learn/">Guides</a></nav>
 <span class="grow"></span>
 <a class="link-quiet" href="/app/account">Sign in</a><a class="btn sm" href="/app/">Start building</a>
 <details class="menu"><summary aria-label="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
-<div class="menu__panel"><a href="/#tutorial">Try it</a><a href="/#features">Features</a><a href="/training/">Training and meetings</a><a href="/education/">Education</a><a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/security/">Security</a><a href="/learn/">Guides</a><a href="/app/account">Sign in</a></div></details>
+<div class="menu__panel"><a href="/#tutorial">Try it</a><a href="/#features">Features</a><a href="/use-cases/">Use cases</a><a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/security/">Security</a><a href="/learn/">Guides</a><a href="/app/account">Sign in</a></div></details>
 </div></header>
 <div class="flash" id="flash" role="status" hidden>Your account and online decks were deleted. Decks on this device were kept.</div>
 <main id="main">
@@ -132,7 +154,7 @@ ${body}
 <div class="foot-brand"><a class="brand" href="/">${LOGO_DARK_BG}<span>${NAME}</span></a>
 <p>Interactive presentations your audience can answer. A product of <a href="${COMPANY}">Densight Labs</a>, an applied AI firm.</p></div>
 <div><h3 class="foot-h">Product</h3><a href="/#tutorial">Try it live</a><a href="/#features">Features</a><a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/learn/#import">Import PowerPoint</a><a href="/app/">Open the app</a></div>
-<div><h3 class="foot-h">Solutions</h3><a href="/training/">Training and meetings</a><a href="/education/">Education</a><a href="/learn/#course">Courses</a><a href="/learn/#team">Teams</a></div>
+<div><h3 class="foot-h">Use cases</h3>${SEGMENTS.map((x) => `<a href="${segHref(x)}">${x.name}</a>`).join('')}<a href="/use-cases/">All use cases</a></div>
 <div><h3 class="foot-h">Resources</h3><a href="/learn/">Guides</a><a href="/#faq">FAQ</a><a href="/security/">Security</a><a href="/#compare">How we compare</a></div>
 <div><h3 class="foot-h">Company</h3><a href="${COMPANY}">Densight Labs</a><a href="${mailto()}">Contact</a><a href="${mailto('Security report')}">Report a security issue</a></div>
 </div><div class="wrap foot-end"><span>&copy; ${new Date().getFullYear()} <a href="${COMPANY}">Densight Labs</a>. All rights reserved.</span><span class="foot-legal"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/refund/">Refunds</a><a href="${mailto()}">${SUPPORT}</a></span></div></footer>
@@ -337,7 +359,9 @@ ${planCards()}
 <li><b>Hands-on lessons.</b> Matching, ordering, fill-in-the-blank, flip cards and hotspots.</li>
 <li><b>Independent study.</b> Share a self-paced course with a completion list and certificate.</li>
 </ul><a class="btn ghost" href="/education/">See classroom uses</a></div>
-</div></div></section>
+</div>
+<div class="uc__more reveal"><h3>And wherever people need to be heard</h3><ul>${SEGMENTS.slice(2).map((x) => `<li><a href="${segHref(x)}"><span class="mm__ico mm__ico--${x.tone}">${ico(x.icon)}</span><span><b>${x.name}</b><small>${x.short}</small></span></a></li>`).join('')}</ul><p><a class="btn" href="/use-cases/">See all use cases</a></p></div>
+</div></section>
 
 <section id="start" class="alt"><div class="wrap">
 <header class="head reveal"><p class="label">Getting started</p><h2>Easy to start. Simple to <em>connect.</em></h2>
@@ -565,7 +589,10 @@ ${groups.map((g) => `<h2 class="tpg">${esc(g)}</h2><ul class="tpl">${TEMPLATES.f
 
 // ---- segment pages (education, training) ----------------------------------------------------------------------
 
-function segmentPage({ path, title, description, eyebrow, h1, lead, cases, trust, closing }) {
+function segmentPage({ path, title, description, eyebrow, h1, lead, cases, trust, closing, templates = [] }) {
+  const slug = path.replace(/\//g, '');
+  const picks = templates.map((id) => TEMPLATES.find((t) => t.id === id)).filter(Boolean);
+  const others = SEGMENTS.filter((x) => x.slug !== slug);
   return layout({
     path, title, description,
     body: `<section class="seg"><div class="wrap">
@@ -574,9 +601,13 @@ function segmentPage({ path, title, description, eyebrow, h1, lead, cases, trust
 </div></section>
 <section><div class="wrap"><header class="head"><h2>How people use it</h2></header>
 <div class="cases">${cases.map(([t, text, how]) => `<article class="case"><h3>${t}</h3><p>${text}</p><p class="case__how"><b>Use:</b> ${how}</p></article>`).join('')}</div></div></section>
-<section class="alt"><div class="wrap"><header class="head"><h2>What you can count on</h2></header>
+${picks.length ? `<section class="band-paper"><div class="wrap"><header class="head"><h2>Start with these slides</h2><p class="sub">Each one opens in the editor as a new deck, ready to change.</p></header>
+<ul class="tpl">${picks.map((t) => `<li class="tpl__card">${thumb(t.make())}<div class="tpl__row"><b>${esc(t.name)}</b><a class="btn sm" href="/app/?template=${t.id}" aria-label="Use the ${esc(t.name)} slide">Use this slide</a></div></li>`).join('')}</ul></div></section>` : ''}
+<section><div class="wrap"><header class="head"><h2>What you can count on</h2></header>
 <ul class="checks seg__checks">${trust.map(([b, t]) => `<li>${CHECK}<span><b>${b}</b> ${t}</span></li>`).join('')}</ul>
 <p class="seg__fine">${closing}</p></div></section>
+<section class="band-paper"><div class="wrap"><header class="head"><h2>Other ways people use it</h2></header>
+<ul class="chips">${others.map((x) => `<li><a href="${segHref(x)}"><span class="mm__ico mm__ico--${x.tone}">${ico(x.icon)}</span>${x.name}</a></li>`).join('')}</ul></div></section>
 <section class="cta-band"><div class="wrap"><h2>Try it with your next session.</h2><p>Free to start. Nothing for your audience to install.</p><a class="btn lg light" href="/app/">Start building free</a></div></section>`,
   });
 }
@@ -603,6 +634,7 @@ const educationPage = () => segmentPage({
     ['Swearing is hidden by default.', 'Or hold every answer until you approve it.'],
     ['Works for everyone.', 'Slides can be driven from the keyboard and the interactive blocks have text versions for screen readers.'],
   ],
+  templates: ['icebreaker', 'quiz', 'pulse', 'feedback'],
   closing: `The free plan covers building, presenting, polls and quizzes with rooms of up to ${PLANS.free.livePhones} phones. Teaching in an institution and need something different? Write to <a href="${mailto('Education use')}">${SUPPORT}</a> and a person will reply.`,
 });
 
@@ -628,12 +660,164 @@ const trainingPage = () => segmentPage({
     ['Work together.', 'On Pro and Advanced, share decks with your team, comment on slides and keep one brand kit.'],
     ['Works offline.', 'Build and present without a connection; live answers need one.'],
   ],
+  templates: ['icebreaker', 'prioritise', 'priority-matrix', 'questions'],
   closing: `Paid plans add bigger rooms (up to ${PLANS.advanced.livePhones.toLocaleString('en-US')} phones), more question types, your own branding and team workspaces, each with a ${TRIAL_DAYS}-day free trial. See <a href="/pricing/">pricing</a>.`,
+});
+
+
+const SEGMENT_SPECS = {
+  events: {
+    title: `${NAME} for events and conferences`,
+    description: 'Audience questions, live polls, icebreakers, quizzes and feedback for keynotes, conferences and meetups. Rooms of up to 1,000 phones.',
+    eyebrow: 'For events and conferences',
+    h1: 'Turn a big room into a <em>conversation.</em>',
+    lead: 'Open a session with a poll, take upvoted questions from the whole audience, and close with feedback you can read the same day. Attendees join from their own phones with a code or a QR on the screen.',
+    cases: [
+      ['Keynotes and panels', 'Attendees send questions and upvote the best ones, and you answer what the room cares about most. Hold questions for approval first if you want.', 'Audience Q&amp;A with upvotes, approve-first moderation (Starter plan and above).'],
+      ['Opening the session', 'A one-word question gets everyone participating in the first minute and shows you who is in the room.', 'Word cloud, live poll (Starter plan and above for word clouds).'],
+      ['Sponsor sessions and games', 'Run a timed quiz between talks, with names, teams and a leaderboard on the big screen.', 'Timed quiz, teams, leaderboard (Starter plan and above).'],
+      ['Finding your way around', 'Let people drop a pin on a floor plan or a map to say where they are, or where something should go.', 'Pin on an image (Starter plan and above).'],
+      ['Workshops inside the conference', 'Rank topics for the next hour, or place ideas on a grid, and show the result straight away.', 'Ranking, 2x2 matrix, live poll.'],
+      ['After the session', 'A rating and one open question collect feedback while people are still in their seats. Download the answers as a spreadsheet.', 'Rating scale, open answers, results download (Starter plan and above).'],
+    ],
+    templates: ['icebreaker', 'questions', 'pin-map', 'scoreboard'],
+    trust: [
+      ['Rooms of any size you need.', `Up to ${PLANS.advanced.livePhones.toLocaleString('en-US')} phones in one room on Advanced, ${PLANS.pro.livePhones} on Pro.`],
+      ['No app and no sign-up for attendees.', 'A code or QR code is enough, on any phone.'],
+      ['You stay in control of the screen.', 'Votes count for the slide you are showing, and you move the slides from your own phone.'],
+      ['Know the venue Wi-Fi limits.', 'Your slides present offline, but phones need a connection to send answers. Check coverage before a very large room.'],
+    ],
+    closing: `Paid plans add bigger rooms, more question types and downloads, each with a ${TRIAL_DAYS}-day free trial. See <a href="/pricing/">pricing</a>.`,
+  },
+  'people-teams': {
+    title: `${NAME} for HR and people teams`,
+    description: 'Onboarding courses with certificates, anonymous all-hands questions, polls and feedback sessions for HR and people teams.',
+    eyebrow: 'For HR and people teams',
+    h1: 'Hear what your people <em>really think.</em>',
+    lead: 'Run all-hands with questions people feel safe asking, turn onboarding into a course new starters finish at their own pace, and collect feedback without names attached.',
+    cases: [
+      ['All-hands and town halls', 'People send questions without putting their name to them, and the room upvotes the ones that matter. You can read each one before it appears.', 'Audience Q&amp;A, approve-first moderation (Starter plan and above).'],
+      ['Onboarding courses', 'Share a deck as a self-paced course. New starters go through it in their own time, and you get a list of who finished and a certificate for each person.', 'Self-paced course (Starter plan and above).'],
+      ['Training sessions', 'Check what landed with a short quiz after each section, and re-teach only what was missed.', 'Quiz, score summary, session report (Starter plan and above).'],
+      ['Feedback and listening', 'Ask how a change is landing with a rating scale and an open question, with no names collected unless you turn them on.', 'Rating scale, open answers, private session.'],
+      ['Culture and engagement', 'A one-word question about how the week felt shows the mood of the room at a glance.', 'Word cloud, reactions (word clouds need Starter and above).'],
+      ['Benefits and policy sessions', 'Walk through a change, then poll the room on what is still unclear before you close.', 'Live poll, audience Q&amp;A.'],
+    ],
+    templates: ['questions', 'rating', 'registration', 'feedback'],
+    trust: [
+      ['Anonymous by default.', 'Names are collected only when you turn them on. A private session keeps nothing at all.'],
+      ['You read it before everyone does.', 'Hold answers for your approval, or let the swear filter hide the rest.'],
+      ['Answers are not stored on our servers.', 'They stay in the presenter&rsquo;s browser while the session runs. See <a href="/security/">security</a>.'],
+      ['A completion list, not a compliance system.', 'A course records who viewed every slide and typed their name. It does not grade quizzes or replace a learning management system.'],
+    ],
+    closing: `Team workspaces on Pro and Advanced let your whole team share decks and comment on slides. See <a href="/pricing/">pricing</a>.`,
+  },
+  consulting: {
+    title: `${NAME} for consulting and workshops`,
+    description: 'Facilitate client workshops: rank priorities, place ideas on a 2x2, collect open answers, present with your own branding and leave a session report.',
+    eyebrow: 'For consulting and workshops',
+    h1: 'Facilitate the room, not the <em>slideshow.</em>',
+    lead: 'Put the decision on the screen and let every person in the room weigh in. Rank priorities together, place ideas on a grid, collect honest answers, and leave the client a clear record.',
+    cases: [
+      ['Discovery sessions', 'Open questions bring out what people would not say aloud, and you can group and discuss the answers straight away.', 'Open answers, word cloud, approve-first moderation (Starter plan and above).'],
+      ['Prioritising together', 'Have the room rank a list of options and see the group&rsquo;s order appear, instead of arguing from the loudest voice.', 'Ranking (Starter plan and above), live poll.'],
+      ['Impact and effort', 'Place ideas on a 2x2 and discuss the quick wins first. SWOT and priority grids are ready-made.', '2x2 matrix, SWOT slide.'],
+      ['Presenting as your firm', 'Use your own logo, colours and font, and move the slides from your phone while you walk the room.', 'Brand kit, phone remote (Starter plan and above for branding).'],
+      ['Confidential work', 'Start a private session when the topic is sensitive: nothing is kept after you end it.', 'Private session.'],
+      ['Leaving something behind', 'Save a session report with every question and answer, share the deck with a link, or export to PowerPoint.', 'Session report, share link, PowerPoint export (reports Starter plan and above; PowerPoint on Pro and above).'],
+    ],
+    templates: ['prioritise', 'priority-matrix', 'swot', 'open-question'],
+    trust: [
+      ['Works in the client&rsquo;s room.', 'Nothing for participants to install, and the deck presents offline.'],
+      ['Bring your existing slides.', 'Import a PowerPoint or Google Slides deck, and take the finished deck out as a PowerPoint.'],
+      ['Share work with colleagues.', 'On Pro and Advanced, share decks with your team, comment on slides and keep one brand kit.'],
+      ['Honest about limits.', 'Imported charts and SmartArt are not carried across, and the importer tells you what it left out.'],
+    ],
+    closing: `Pro and Advanced add PowerPoint export and team workspaces. Every paid plan starts with a ${TRIAL_DAYS}-day free trial. See <a href="/pricing/">pricing</a>.`,
+  },
+  webinars: {
+    title: `${NAME} for webinars and online sessions`,
+    description: 'Make a remote audience part of the call: live polls, quizzes, word clouds and Q&A from any browser, with no app and no sign-up.',
+    eyebrow: 'For webinars and online sessions',
+    h1: 'Make the people on the call <em>part of it.</em>',
+    lead: 'Share your screen and put a code in the chat. Attendees answer from the browser on their phone or computer, and the results build on the screen you are sharing.',
+    cases: [
+      ['Starting strong', 'Open with a poll or a one-word question so people do something in the first minute.', 'Live poll, word cloud (word clouds need Starter and above).'],
+      ['Questions without the chaos', 'Attendees send questions and upvote them, and you take the top ones instead of scrolling a chat.', 'Audience Q&amp;A (Starter plan and above).'],
+      ['Checking understanding', 'A short quiz between sections shows whether the message landed.', 'Quiz, timed questions, score summary.'],
+      ['Courses and recordings', 'Turn the same deck into a self-paced course for people who missed the live session.', 'Self-paced course (Starter plan and above).'],
+      ['Keeping people with you', 'Quick reactions let attendees tell you to slow down or give an example, without unmuting.', 'Reactions and hand raise.'],
+      ['Follow-up', 'Share the deck with a link and download the answers afterwards.', 'Share link, results download (Starter plan and above).'],
+    ],
+    templates: ['icebreaker', 'poll', 'pulse', 'feedback'],
+    trust: [
+      ['Works with whatever you use to present.', 'Share the browser window or tab. There is nothing to install and no plugin for your meeting tool.'],
+      ['Any device with a browser.', 'Attendees can answer on a phone or a computer.'],
+      ['Not an add-in yet.', 'We do not yet have add-ins for PowerPoint, Google Slides or meeting apps. You present from our player.'],
+    ],
+    closing: `Free to start, with rooms of up to ${PLANS.free.livePhones} people. See <a href="/pricing/">pricing</a> for bigger rooms.`,
+  },
+  retrospectives: {
+    title: `${NAME} for team retrospectives`,
+    description: 'Run team retros with anonymous answers, a 2x2, voting on actions and a shared deck. Ready-made retro slides.',
+    eyebrow: 'For team retrospectives',
+    h1: 'Retros where everyone <em>speaks up.</em>',
+    lead: 'Collect what went well and what did not without anyone waiting their turn, vote on what to change, and keep the deck where the whole team can see it.',
+    cases: [
+      ['What went well, what did not', 'Everyone adds their thoughts at once and the common themes grow on the screen.', 'Word cloud or open answers (Starter plan and above).'],
+      ['Honest, anonymous input', 'No names unless you ask for them, so the quiet voices are heard too.', 'Open answers, private session.'],
+      ['Choosing what to fix', 'Rank the proposed changes together, or place them on impact and effort.', 'Ranking (Starter plan and above), 2x2 matrix.'],
+      ['Taking the temperature', 'Start with a quick rating of the sprint and see how far apart the team is.', 'Rating scale, reactions.'],
+      ['Keeping actions visible', 'Put the agreed actions on a slide in a shared deck and comment on them as work moves.', 'Team workspace and comments (Pro plan and above).'],
+      ['A record for next time', 'Save the session report so next retro can start from the last one.', 'Session report (Starter plan and above).'],
+    ],
+    templates: ['open-question', 'rating', 'priority-matrix', 'prioritise'],
+    trust: [
+      ['No setup for the team.', 'A code on the screen is all anyone needs, in the office or remote.'],
+      ['Nothing is kept unless you save it.', 'Answers live in the facilitator&rsquo;s browser, and a private session keeps nothing.'],
+      ['Share the deck.', 'On Pro and Advanced, your team shares decks, brand and comments in one workspace.'],
+    ],
+    closing: `Start free today. Team workspaces come with Pro and Advanced. See <a href="/pricing/">pricing</a>.`,
+  },
+  community: {
+    title: `${NAME} for non-profits and community groups`,
+    description: 'Community meetings, volunteer training and fundraising quiz nights for non-profits and groups. Free to start, nothing for people to install.',
+    eyebrow: 'For non-profits and community groups',
+    h1: 'Everyone in the hall gets <em>a say.</em>',
+    lead: 'Run a community meeting where every person can answer, train volunteers with a course they finish in their own time, and host a quiz night that raises money, all from a browser.',
+    cases: [
+      ['Community meetings', 'Put the options on screen, let everyone vote from their phone, and take upvoted questions from people who would not speak up.', 'Live poll, audience Q&amp;A (Q&amp;A needs Starter and above).'],
+      ['Volunteer training', 'Share a deck as a self-paced course. Volunteers go through it when it suits them, and you see who finished.', 'Self-paced course with certificates (Starter plan and above).'],
+      ['Fundraising quiz nights', 'Teams, a timer, points for speed and a live leaderboard on the big screen.', 'Timed quiz, teams, leaderboard (Starter plan and above).'],
+      ['Planning together', 'Ask what matters most and rank the answers, so decisions reflect the group.', 'Word cloud, ranking.'],
+      ['Meetings by phone or online', 'Members join from home with a code, so nobody is left out by distance.', 'Live session, share link.'],
+      ['Reporting back', 'Save a report of what people said and share the deck with funders or members.', 'Session report, share link.'],
+    ],
+    templates: ['poll', 'questions', 'scoreboard', 'icebreaker'],
+    trust: [
+      ['Free to start.', `Build, present and run polls and quizzes with rooms of up to ${PLANS.free.livePhones} phones at no cost.`],
+      ['Nothing to install for members.', 'Any phone with a browser works.'],
+      ['Write to us about non-profit pricing.', `Tell us how you would use it at <a href="${mailto('Non-profit pricing')}">${SUPPORT}</a> and a person will reply.`],
+    ],
+    closing: `Paid plans start at ${money(PRICES.starter.month)} a month with a ${TRIAL_DAYS}-day free trial. See <a href="/pricing/">pricing</a>.`,
+  },
+};
+
+const segmentPages = () => Object.fromEntries(Object.entries(SEGMENT_SPECS).map(([slug, spec]) => [`${slug}/index.html`, segmentPage({ path: `/${slug}/`, ...spec })]));
+
+const useCasesPage = () => layout({
+  path: '/use-cases/',
+  title: `Use cases | ${NAME}`,
+  description: 'How teams, schools, events and community groups use Densight Slides: training, education, conferences, HR, consulting, webinars, retros and more.',
+  body: `<section class="seg"><div class="wrap"><p class="label">Use cases</p><h1>Wherever people need to be <em>heard.</em></h1>
+<p class="lead">The same slides, questions and live answers work in a classroom, a boardroom, a conference hall and a video call. Pick the one closest to you.</p></div></section>
+<section><div class="wrap"><ul class="ucgrid">${SEGMENTS.map((x) => `<li><a class="uccard uccard--${x.tone}" href="${segHref(x)}"><span class="mm__ico mm__ico--${x.tone}">${ico(x.icon)}</span><b>${x.name}</b><small>${x.short}</small><span class="mm__go">Read how <span aria-hidden="true">&rarr;</span></span></a></li>`).join('')}</ul>
+<p class="seg__fine" style="margin-top:36px">Not on the list? If people need to answer questions in a room or online, it probably fits. <a href="${mailto('A use case')}">Tell us about yours</a> or <a href="/app/">start building</a>.</p></div></section>
+<section class="cta-band"><div class="wrap"><h2>Try it with your next session.</h2><p>Free to start. Nothing for your audience to install.</p><a class="btn lg light" href="/app/">Start building free</a></div></section>`,
 });
 
 // ---- pricing --------------------------------------------------------------------------------------------------
 
-const money = (n) => `$${n.toLocaleString('en-US')}`;
 
 const pricingCards = () => PLAN_ORDER.map((id) => {
   const plan = PLANS[id];
@@ -707,11 +891,13 @@ export function buildSite() {
     'templates/index.html': templatesPage(),
     'education/index.html': educationPage(),
     'training/index.html': trainingPage(),
+    'use-cases/index.html': useCasesPage(),
+    ...segmentPages(),
     'pricing/index.html': pricingPage(),
     'security/index.html': securityPage(),
     '404.html': notFound(),
     'robots.txt': `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /welcome/\n\nSitemap: ${SITE}/sitemap.xml\n`,
-    'sitemap.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', '/templates/', '/education/', '/training/', '/pricing/', '/security/', '/learn/', '/privacy/', '/terms/', '/refund/'].map((p) => `<url><loc>${SITE}${p}</loc></url>`).join('\n')}\n</urlset>\n`,
+    'sitemap.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', '/templates/', '/use-cases/', ...SEGMENTS.map(segHref), '/pricing/', '/security/', '/learn/', '/privacy/', '/terms/', '/refund/'].map((p) => `<url><loc>${SITE}${p}</loc></url>`).join('\n')}\n</urlset>\n`,
   };
   return pages;
 }
