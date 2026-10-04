@@ -67,11 +67,11 @@ ${index ? '' : '<meta name="robots" content="noindex">\n'}<link rel="canonical" 
 <a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
 <a class="brand" href="/">${LOGO}<span>${NAME}</span></a>
-<nav class="main" aria-label="Main"><a href="/#features">Features</a><a href="/#tutorial">Tutorial</a><a href="/#live">Live audience</a><a href="/learn/">Guides</a><a href="/#faq">FAQ</a></nav>
+<nav class="main" aria-label="Main"><a href="/#tutorial">Tutorial</a><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/learn/">Guides</a><a href="/#faq">FAQ</a></nav>
 <span class="grow"></span>
 <a class="link-quiet" href="/app/account">Sign in</a><a class="btn sm" href="/app/">Start building</a>
 <details class="menu"><summary aria-label="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
-<div class="menu__panel"><a href="/#features">Features</a><a href="/#tutorial">Tutorial</a><a href="/#live">Live audience</a><a href="/learn/">Guides</a><a href="/#faq">FAQ</a><a href="/app/account">Sign in</a></div></details>
+<div class="menu__panel"><a href="/#tutorial">Tutorial</a><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/learn/">Guides</a><a href="/#faq">FAQ</a><a href="/app/account">Sign in</a></div></details>
 </div></header>
 <div class="flash" id="flash" role="status" hidden>Your account and online decks were deleted. Decks on this device were kept.</div>
 <main id="main">
@@ -80,7 +80,7 @@ ${body}
 <footer class="site"><div class="wrap">
 <div class="foot-brand"><a class="brand" href="/">${LOGO_DARK_BG}<span>${NAME}</span></a>
 <p>Interactive presentations your audience can answer. A product of <a href="${COMPANY}">Densight Labs</a>, an applied AI firm.</p></div>
-<div><h3 class="foot-h">Product</h3><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/#how">How it works</a><a href="/app/">Open the app</a></div>
+<div><h3 class="foot-h">Product</h3><a href="/#tutorial">Tutorial</a><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/#how">How it works</a><a href="/app/">Open the app</a></div>
 <div><h3 class="foot-h">Learn</h3><a href="/learn/">Guides</a><a href="/#faq">FAQ</a></div>
 <div><h3 class="foot-h">Company</h3><a href="${COMPANY}">Densight Labs</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="${mailto()}">Support: ${SUPPORT}</a></div>
 </div><div class="wrap foot-end"><span>&copy; ${new Date().getFullYear()} <a href="${COMPANY}">Densight Labs</a>. All rights reserved.</span><a href="${mailto()}">${SUPPORT}</a></div></footer>
@@ -138,32 +138,11 @@ const home = () => layout({
 <div><dt>30</dt><dd>interactive and design blocks</dd></div>
 <div><dt>0</dt><dd>apps for your audience to install</dd></div>
 <div><dt>5</dt><dd>ways to export a deck</dd></div>
-<div><dt>2</dt><dd>themes, light and dark</dd></div>
+<div><dt>12</dt><dd>slide templates to start from</dd></div>
 </dl></div>
 </section>
 
-<section class="uses"><div class="wrap"><p>Used for <b>executive briefings</b>, <b>training</b>, <b>workshops</b>, <b>client presentations</b>, <b>town halls</b> and <b>classrooms</b>.</p></div></section>
-
-<section id="features"><div class="wrap">
-<header class="head reveal"><p class="label">Features</p><h2>Everything a live presentation needs.</h2>
-<p class="sub">Built for rooms where people are expected to take part, not just watch.</p></header>
-<div class="rules">
-<article class="item reveal"><span class="no">01</span><h3>Interactive blocks</h3><p>Quizzes with instant feedback, polls, matching, ordering, flip cards, hotspots, timelines, charts, calculators and a live code lab, all inside your slides.</p></article>
-<article class="item reveal"><span class="no">02</span><h3>Live audience</h3><p>Show a code or QR. People answer on their phones and watch the results build on your screen. Nothing for them to install.</p></article>
-<article class="item reveal"><span class="no">03</span><h3>Phone remote</h3><p>Move the slides from your phone and read your speaker notes and the next slide while you talk.</p></article>
-<article class="item reveal"><span class="no">04</span><h3>Considered design</h3><p>Themes, your own colours and logo, backgrounds, shapes, icons and diagrams. Text stays readable on any colour you pick.</p></article>
-<article class="item reveal"><span class="no">05</span><h3>Present or export anywhere</h3><p>Present in the browser, even offline. Export to a standalone web page, PDF, images or PowerPoint.</p></article>
-<article class="item reveal"><span class="no">06</span><h3>Save and share</h3><p>Decks save on your device automatically. Sign in to keep them online, open them anywhere, and share a link anyone can view.</p></article>
-</div></div></section>
-
-<section class="alt"><div class="wrap">
-<header class="head reveal"><p class="label">Blocks</p><h2>Thirty kinds of block. One deck.</h2>
-<p class="sub">Mix them freely. Each one works while you present, and each has a clear text version for screen readers.</p></header>
-<div class="figs">
-${FIGS.map(([t, d, svg]) => `<figure class="fig reveal">${svg}<figcaption><b>${t}</b><span>${d}</span></figcaption></figure>`).join('\n')}
-</div></div></section>
-
-<section id="tutorial"><div class="wrap">
+<section id="tutorial" class="alt"><div class="wrap">
 <header class="head reveal"><p class="label">Interactive tutorial</p><h2>Run your first live poll in four steps.</h2>
 <p class="sub">Nothing here is a recording. Type, click and tap, and it behaves like the real thing.</p></header>
 <div class="tut reveal" id="tut">
@@ -191,6 +170,18 @@ ${FIGS.map(([t, d, svg]) => `<figure class="fig reveal">${svg}<figcaption><b>${t
 <noscript><p class="note">The tutorial needs JavaScript. The <a href="/learn/">guides</a> cover the same steps in text.</p></noscript>
 </div></section>
 
+<section id="features"><div class="wrap">
+<header class="head reveal"><p class="label">Features</p><h2>Everything a live presentation needs.</h2>
+<p class="sub">Built for rooms where people are expected to take part, not just watch.</p></header>
+<div class="rules">
+<article class="item reveal"><span class="no">01</span><h3>Interactive blocks</h3><p>Quizzes with instant feedback, polls, matching, ordering, flip cards, hotspots, timelines, charts, calculators and a live code lab, all inside your slides.</p></article>
+<article class="item reveal"><span class="no">02</span><h3>Live audience</h3><p>Show a code or QR. People answer on their phones and watch the results build on your screen. Nothing for them to install.</p></article>
+<article class="item reveal"><span class="no">03</span><h3>Phone remote</h3><p>Move the slides from your phone and read your speaker notes and the next slide while you talk.</p></article>
+<article class="item reveal"><span class="no">04</span><h3>Drag, drop, done</h3><p>Place anything anywhere, with guides that snap things into line. Start from a template, then change the theme, colours, logo and backgrounds. Text stays readable on any colour you pick.</p></article>
+<article class="item reveal"><span class="no">05</span><h3>Present or export anywhere</h3><p>Present in the browser, even offline. Export to a standalone web page, PDF, images or PowerPoint.</p></article>
+<article class="item reveal"><span class="no">06</span><h3>Save and share</h3><p>Decks save on your device automatically. Sign in to keep them online, open them anywhere, and share a link anyone can view.</p></article>
+</div></div></section>
+
 <section id="live" class="dark"><div class="wrap split">
 <div class="reveal"><p class="label on-dark">Live audience</p><h2>Your audience joins in seconds.</h2>
 <p class="sub">No sign-up, no app, no names. They scan, they answer, you see it happen.</p>
@@ -213,10 +204,23 @@ ${FIGS.map(([t, d, svg]) => `<figure class="fig reveal">${svg}<figcaption><b>${t
 <figcaption>Everything the audience sends is checked before it is counted.</figcaption></figure>
 </div></section>
 
+<section id="demo"><div class="wrap">
+<header class="head reveal"><p class="label">The real player</p><h2>See it in action.</h2><p class="sub">This is the actual presentation player. Answer the quiz, open a tab, flip a card.</p></header>
+<div class="demo reveal"><div class="win__bar"><i></i><i></i><i></i><span>Interactive demo</span></div>
+<div class="frame" id="frame"><button type="button" id="load"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>Play the interactive demo</span></button></div></div>
+</div></section>
+
+<section id="blocks" class="alt"><div class="wrap">
+<header class="head reveal"><p class="label">Blocks</p><h2>Thirty kinds of block. One deck.</h2>
+<p class="sub">Six of them are shown here; flip cards, calculators, a live code lab and the rest are in the app. Mix them freely. Each one works while you present, and each has a clear text version for screen readers.</p></header>
+<div class="figs">
+${FIGS.map(([t, d, svg]) => `<figure class="fig reveal">${svg}<figcaption><b>${t}</b><span>${d}</span></figcaption></figure>`).join('\n')}
+</div></div></section>
+
 <section id="how"><div class="wrap">
 <header class="head reveal"><p class="label">How it works</p><h2>From idea to live in minutes.</h2></header>
 <ol class="steps">
-<li class="reveal"><span class="num">1</span><h3>Build</h3><p>Start from a blank deck or the demo. Add headings, text, images and interactive blocks. It saves as you go.</p></li>
+<li class="reveal"><span class="num">1</span><h3>Build</h3><p>Start from a template or a blank slide. Drag in text, images and interactive blocks and place them where you want. It saves as you go.</p></li>
 <li class="reveal"><span class="num">2</span><h3>Present</h3><p>Press Present. Use the keyboard, a clicker or your phone. A laser pointer, drawing and a timer are built in.</p></li>
 <li class="reveal"><span class="num">3</span><h3>Engage</h3><p>Start a live session, show the code and watch answers arrive. Download or share the deck afterwards.</p></li>
 </ol></div></section>
@@ -231,13 +235,7 @@ ${FIGS.map(([t, d, svg]) => `<figure class="fig reveal">${svg}<figcaption><b>${t
 <article class="item reveal"><h3>You stay in control</h3><p>Export any deck, revoke a share link instantly, and delete your account and online data at any time.</p></article>
 </div></div></section>
 
-<section id="demo"><div class="wrap">
-<header class="head reveal"><p class="label">The real player</p><h2>See it in action.</h2><p class="sub">This is the actual presentation player. Answer the quiz, open a tab, flip a card.</p></header>
-<div class="demo reveal"><div class="win__bar"><i></i><i></i><i></i><span>Interactive demo</span></div>
-<div class="frame" id="frame"><button type="button" id="load"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>Play the interactive demo</span></button></div></div>
-</div></section>
-
-<section class="alt"><div class="wrap">
+<section><div class="wrap">
 <header class="head reveal"><p class="label">Use cases</p><h2>For people who lead the room.</h2></header>
 <div class="rules four">
 <article class="item reveal"><h3>Executive briefings</h3><p>Take the temperature of the room before you decide, and branch to the topics that matter to this audience.</p></article>
@@ -246,13 +244,14 @@ ${FIGS.map(([t, d, svg]) => `<figure class="fig reveal">${svg}<figcaption><b>${t
 <article class="item reveal"><h3>Town halls and events</h3><p>Let a whole room respond from their seats while you stay in control of the screen.</p></article>
 </div></div></section>
 
-<section id="faq"><div class="wrap faq">
+<section id="faq" class="alt"><div class="wrap faq">
 <div class="reveal"><p class="label">FAQ</p><h2>Questions, answered.</h2><p class="sub">Anything else? Read the <a href="/learn/">guides</a>.</p></div>
 <div class="reveal">
 <details><summary>Is it free?</summary><p>You can build, present and export without paying or signing in. Saving online and sharing links need a free account.</p></details>
 <details><summary>Does my audience need an account or an app?</summary><p>No. They open a link or scan a QR code in their phone's browser and enter nothing else.</p></details>
 <details><summary>Where are my decks stored?</summary><p>On your device first. If you sign in they are also saved to your online account so you can open them on other devices. See the <a href="/privacy/">privacy policy</a>.</p></details>
 <details><summary>Does it work offline?</summary><p>After your first visit, yes: you can edit and present without a connection. Live audience features and online saving need one.</p></details>
+<details><summary>Can I place things anywhere on a slide?</summary><p>Yes. Drag, resize and rotate anything, group blocks, and let guides snap them into line. Templates and one-click arrangements give you a tidy start.</p></details>
 <details><summary>Can I get my slides out?</summary><p>Yes: a standalone web page, PDF, PNG images, PowerPoint, or the deck file itself. Your content is yours.</p></details>
 <details><summary>How do I get help?</summary><p>Write to <a href="${mailto()}">${SUPPORT}</a> and a person at Densight Labs will reply. The <a href="/learn/">guides</a> cover the common questions.</p></details>
 <details><summary>Which browsers work?</summary><p>Current Chrome, Edge, Firefox and Safari, on computers, tablets and phones. Audience pages work on phones from about 2022 onward.</p></details>
@@ -279,8 +278,8 @@ ${FIGS.map(([t, d, svg]) => `<figure class="fig reveal">${svg}<figcaption><b>${t
 });
 
 const guides = [
-  ['Make your first deck', '<ol><li>Open <a href="/app/">My decks</a> and choose <strong>Blank deck</strong>.</li><li>Click the title text on the slide and type. Click it again to edit in place.</li><li>Use the <strong>+</strong> next to a slot in the right panel to add blocks: text, lists, images, quizzes and more.</li><li>Your deck saves on your device as you work. Rename it with the title box at the top.</li></ol>'],
-  ['Add a quiz or poll', '<p>In the right panel under <strong>Add content</strong>, choose <em>Quiz question</em> or <em>Live poll</em>. Type the question, edit the choices, and tick which choice is correct for a quiz. Add a <em>Score summary</em> block on a later slide to total every quiz.</p>'],
+  ['Make your first deck', '<ol><li>Open <a href="/app/">My decks</a> and choose <strong>Blank deck</strong>.</li><li>Click the title text on the slide and type. Click it again to edit in place.</li><li>Press <strong>Insert</strong> above the slide (or type <kbd>/</kbd>) to add text, images, quizzes and more, then drag them where you want. Double-click empty space to type there.</li><li>Your deck saves on your device as you work. Rename it with the title box at the top.</li></ol>'],
+  ['Add a quiz or poll', '<p>Press <strong>Insert</strong> or type <kbd>/</kbd>, then choose <em>Quiz question</em> or <em>Live poll</em>. Type the question, edit the choices, and tick which choice is correct for a quiz. Add a <em>Score summary</em> block on a later slide to total every quiz.</p>'],
   ['Present your deck', '<p>Press <strong>Present</strong> or <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Enter</kbd>. Move with the arrow keys or space. <kbd>O</kbd> opens an overview, <kbd>L</kbd> is a laser pointer, <kbd>D</kbd> draws, <kbd>F</kbd> is full screen and <kbd>?</kbd> lists every shortcut. Choose <em>With presenter view</em> for notes and a timer on a second screen.</p>'],
   ['Run a live session with phones', '<ol><li>Open a slide that has a poll or quiz, then choose <strong>Present &gt; Go live &gt; Start session</strong>.</li><li>Show the code or QR to the room. Phones open the link and see the question when you reach that slide.</li><li>Votes appear on your slide as they arrive. Scan the second QR code with your own phone to use it as a remote with your notes.</li></ol><p>If you reload your page mid-session, the same code resumes and phones send their answers again.</p>'],
   ['Save online and share', '<p>Choose <strong>Sign in</strong>, enter your email, and open the link we send. From then on your decks also save online. In the editor open <strong>File &gt; Cloud</strong> and press <em>Share</em> to get a link anyone can view. <em>Stop sharing</em> ends it immediately.</p>'],

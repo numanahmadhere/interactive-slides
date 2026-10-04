@@ -96,7 +96,7 @@ test('the public pages are complete, small and honest', () => {
   assert.ok(site['404.html'].includes('noindex'));
   // claims on the page must be features that exist
   for (const promised of ['Interactive blocks', 'Live audience', 'Phone remote']) assert.ok(home.includes(promised));
-  for (const unbuilt of ['word cloud', 'Word cloud', 'AI-powered', 'AI assistant', 'with AI', 'AI features', 'templates']) assert.ok(!home.includes(unbuilt), `home mentions something not built: ${unbuilt}`);
+  for (const unbuilt of ['word cloud', 'Word cloud', 'AI-powered', 'AI assistant', 'with AI', 'AI features', 'slide library']) assert.ok(!home.includes(unbuilt), `home mentions something not built: ${unbuilt}`);
 });
 
 test('brand: the logo, icons and sharing image exist and every page uses them', () => {
