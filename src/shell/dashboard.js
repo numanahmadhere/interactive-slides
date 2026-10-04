@@ -13,7 +13,7 @@ import { slideToPng } from '../export/png.js';
 import { blankDeck, demoDeckCopy, duplicateDeck, sampleDeckCopy } from '../library/starters.js';
 import { appFooter, appHeader } from './chrome.js';
 import { deckPath } from './paths.js';
-import { takeFlash } from './flash.js';
+import { setFlash, takeFlash } from './flash.js';
 
 const ago = (ms) => {
   const s = Math.max(0, (Date.now() - ms) / 1000);
@@ -191,12 +191,20 @@ export async function mountDashboard(root) {
   }
 
   function importFile() {
-    const input = h('input', { type: 'file', accept: '.json,application/json' });
+    const input = h('input', { type: 'file', accept: '.json,application/json,.pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation' });
     input.addEventListener('change', async () => {
       const file = input.files?.[0];
       if (!file) return;
       try {
-        const { deck } = normalizeDeck(JSON.parse(await file.text()));
+        let raw;
+        if (/\.pptx$/i.test(file.name)) {
+          const { pptxToDeck } = await import('../import/pptx.js'); // loaded only when someone imports
+          const out = await pptxToDeck(new Uint8Array(await file.arrayBuffer()), file.name);
+          raw = out.deck;
+          if (out.warnings.length) setFlash(['PowerPoint imported.', ...out.warnings].join(' '));
+          else setFlash('PowerPoint imported.');
+        } else raw = JSON.parse(await file.text());
+        const { deck } = normalizeDeck(raw);
         await newDeck(await assets.adoptDataUrls(deck));
       } catch (err) {
         toast(err instanceof SyntaxError ? 'That file is not valid JSON.' : err.message || 'Could not import that file.', { kind: 'error' });
@@ -284,7 +292,7 @@ export async function mountDashboard(root) {
         startTile('blank', 'Blank deck', 'Start from scratch', () => newDeck(blankDeck()), true),
         startTile('demo', 'Interactive demo', 'Quizzes, polls and diagrams', () => newDeck(demoDeckCopy())),
         startTile('sample', 'Sample deck', 'A short deck to learn from', () => newDeck(sampleDeckCopy())),
-        startTile('upload', 'Import a deck', 'Open a .json file', importFile)),
+        startTile('upload', 'Import a deck', 'A PowerPoint (.pptx) or .json file', importFile)),
       h('div', { class: 'sh-toolbar' },
         h('div', { class: 'sh-search' }, icon('search', 16), search), sortSel),
       status, skeleton, empty, noMatch, grid),

@@ -1020,7 +1020,7 @@ export class Editor {
   }
 
   #pickImportFile() {
-    const input = h('input', { type: 'file', accept: '.json,application/json' });
+    const input = h('input', { type: 'file', accept: '.json,application/json,.pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation' });
     input.addEventListener('change', () => {
       if (input.files?.[0]) this.importFile(input.files[0]);
     });
@@ -1038,6 +1038,12 @@ export class Editor {
 
   async importFile(file) {
     try {
+      if (/\.pptx$/i.test(file.name)) {
+        const { pptxToDeck } = await import('../import/pptx.js'); // loaded only when someone imports
+        const { deck, warnings } = await pptxToDeck(new Uint8Array(await file.arrayBuffer()), file.name);
+        await this.importDeck(deck, { flash: ['PowerPoint imported as a new deck.', ...warnings].join(' ') });
+        return;
+      }
       await this.importDeck(JSON.parse(await file.text()), { flash: 'Deck imported as a new deck.' });
     } catch (err) {
       toast(err instanceof SyntaxError ? 'That file is not valid JSON.' : err.message || 'Could not import that file.', { kind: 'error' });
