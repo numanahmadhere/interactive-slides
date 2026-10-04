@@ -180,6 +180,11 @@ export class Cloud {
     }
   }
 
+  // The current session token, refreshed if needed, for calling our own server functions.
+  async accessToken() {
+    return this.#token();
+  }
+
   // The signed-in person's subscription row, or null (no paid plan, or the billing part of
   // schema.sql has not been run yet). Read-only: only the Paddle webhook writes it.
   async subscription() {

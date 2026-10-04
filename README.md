@@ -450,6 +450,24 @@ Set up, once:
 4. Build with a `test_` client token to try it with Paddle's sandbox cards; a `live_` token for real
    payments. Real payments also need a verified Paddle account and an approved checkout domain.
 
+What the webhook keeps (all written by `/api/paddle-webhook`, nothing from the browser): one `subscriptions`
+row per paying person (plan, status, trial and end dates, the Paddle ids, and which Paddle account it came from), a
+`paddle_customers` mirror (id and email), and a log of delivery ids so retries and out-of-order deliveries change
+nothing. Events handled: `subscription.created/activated/updated/trialing/past_due/paused/resumed/canceled`,
+`customer.created/updated` and `transaction.completed`; anything else is acknowledged and ignored. A bad signature
+gets a 401 so Paddle retries; a database failure gets a 500 for the same reason.
+
+Access rule (`planOf` in `src/billing/plans.js`, and `plan_of()` in the database): `active`, `trialing` and
+`past_due` keep access; `paused` and `canceled` do not. A scheduled cancellation does **not** revoke anything: the
+plan stays until its end date, then the `canceled` event arrives. `past_due` keeps access while Paddle retries the
+card; change that one word in both places if you would rather lock at once.
+
+Customer portal: the account page's **Manage billing** button calls `/api/paddle-portal`
+(`netlify/functions/paddle-portal.mjs`) with the person's session. The server checks the session with Supabase,
+finds *their* Paddle customer id in the database (nothing about who they are is read from the request), and asks
+Paddle for a portal session for that live or sandbox account. It needs `PADDLE_API_KEY_LIVE` /
+`PADDLE_API_KEY_SANDBOX` (server only).
+
 Known limits: switching between paid plans is done through support for now (a plan change needs
 Paddle's subscription API, which needs a server key); the page asks you to write to support. Team
 workspaces and single sign-on do not exist yet, so the Advanced plan sells room size and priority support only.

@@ -125,7 +125,7 @@ test('share links: work signed out, only for the exact token, and can be turned 
     assert.equal(token.length, 22);
     assert.equal((await anon.getShared(token)).meta.title, 'Public talk');
     assert.equal(await owner.setShared(row.id, true, token), token, 'turning it on again keeps the same link');
-    await assert.rejects(anon.getShared(token.slice(0, 21) + 'z'), { code: 'not_found' });
+    await assert.rejects(anon.getShared(token.slice(0, 21) + (token.endsWith('z') ? 'y' : 'z')), { code: 'not_found' });
     await assert.rejects(anon.getShared(''), { code: 'not_found' });
     await assert.rejects(anon.list(), { code: 'signed_out' }, 'anonymous visitors cannot list decks');
 

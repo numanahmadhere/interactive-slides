@@ -32,6 +32,15 @@ export async function mountAccount(root) {
   const billing = getBilling();
   const day = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString([], { dateStyle: 'medium' }); };
 
+  // Ask our server for a Paddle-hosted page where this person updates their card, cancels and sees invoices.
+  async function openPortal() {
+    const res = await fetch('/api/paddle-portal', { method: 'POST', headers: { authorization: `Bearer ${await cloud.accessToken()}` } });
+    const body = await res.json().catch(() => ({}));
+    if (res.ok && body.url) { location.assign(body.url); return; }
+    const reasons = { not_configured: 'The billing page is not switched on yet. Write to support and we will sort it out.', no_subscription: 'We could not find a subscription on this account.', sign_in_required: 'Please sign in again.' };
+    throw new Error(reasons[body.error] ?? 'Could not open your billing page. Try again in a minute.');
+  }
+
   // Your plan, how to manage it, and the plans you could move to.
   function planSection() {
     const row = billing.row;
@@ -44,6 +53,7 @@ export async function mountAccount(root) {
       if (row.status === 'canceled') lines.push('Your subscription has ended.');
     }
     const manage = [];
+    if (row?.paddle_subscription_id && billing.plan !== 'free') manage.push(button({ label: 'Manage billing', variant: 'primary', onClick: run('Opening your billing page...', openPortal) }));
     if (row?.update_payment_url && billing.plan !== 'free') manage.push(h('a', { class: 'ed-btn', href: row.update_payment_url, target: '_blank', rel: 'noopener', text: 'Update payment method' }));
     if (row?.cancel_url && billing.plan !== 'free' && !row.ends_at) manage.push(h('a', { class: 'ed-btn', href: row.cancel_url, target: '_blank', rel: 'noopener', text: 'Cancel subscription' }));
     const wanted = new URLSearchParams(location.search).get('plan');

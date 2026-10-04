@@ -53,11 +53,21 @@ const SUBSCRIPTION_EVENTS = new Set([
   'subscription.past_due', 'subscription.paused', 'subscription.resumed', 'subscription.canceled',
 ]);
 
-// A Paddle event -> the record the database stores, or { skip: reason }.
+const CUSTOMER_EVENTS = new Set(['customer.created', 'customer.updated']);
+
+// A Paddle event -> what to store and which handler stores it, or { skip: reason }.
 export function recordFrom(event) {
   if (!event || typeof event !== 'object' || typeof event.event_id !== 'string' || typeof event.event_type !== 'string') return { skip: 'malformed' };
-  if (!SUBSCRIPTION_EVENTS.has(event.event_type)) return { skip: 'not_a_subscription_event' };
   const d = event.data ?? {};
+  if (CUSTOMER_EVENTS.has(event.event_type)) {
+    if (typeof d.id !== 'string' || !d.id) return { skip: 'malformed' };
+    return { kind: 'customer', eventId: event.event_id, eventType: event.event_type, occurredAt: event.occurred_at, record: { customer_id: d.id, email: typeof d.email === 'string' ? d.email : '' } };
+  }
+  if (event.event_type === 'transaction.completed') {
+    if (!d.subscription_id) return { skip: 'one_off_payment' }; // not part of a subscription, nothing to mirror
+    return { kind: 'transaction', eventId: event.event_id, eventType: event.event_type, occurredAt: event.occurred_at, record: { paddle_subscription_id: String(d.subscription_id), paddle_customer_id: String(d.customer_id ?? '') } };
+  }
+  if (!SUBSCRIPTION_EVENTS.has(event.event_type)) return { skip: 'not_a_handled_event' };
   const userId = d.custom_data?.user_id;
   if (typeof userId !== 'string' || !UUID.test(userId)) return { skip: 'no_user' };
   const item = (d.items ?? []).find((i) => i?.price?.id) ?? null;
@@ -68,6 +78,7 @@ export function recordFrom(event) {
   if (d.status === 'canceled') endsAt = d.canceled_at ?? event.occurred_at ?? null;
   else if (change?.action === 'cancel' || change?.action === 'pause') endsAt = change.effective_at ?? null;
   return {
+    kind: 'subscription',
     eventId: event.event_id,
     eventType: event.event_type,
     occurredAt: event.occurred_at,
@@ -100,7 +111,7 @@ export function ipInCidrs(ip, cidrs) {
   });
 }
 
-// deps: { secrets: {live, sandbox}, apply(eventId, type, occurredAt, record) -> status,
+// deps: { secrets: {live, sandbox}, apply(kind, eventId, type, occurredAt, record) -> status,
 //         allowIp?(ip, env) -> bool|undefined, now?(), log?(msg) }
 // Returns a plain { status, body }. Anything we cannot process cleanly is a non-2xx so Paddle retries.
 export async function handleWebhook({ body, signature, ip }, deps) {
@@ -123,7 +134,7 @@ export async function handleWebhook({ body, signature, ip }, deps) {
     return { status: 200, body: r.skip };
   }
   try {
-    const result = await deps.apply(r.eventId, r.eventType, r.occurredAt, r.record, env);
+    const result = await deps.apply(r.kind, r.eventId, r.eventType, r.occurredAt, { ...r.record, paddle_env: env });
     log(`${env} ${r.eventType} ${r.eventId}: ${result}`);
     return { status: 200, body: result };
   } catch (err) {

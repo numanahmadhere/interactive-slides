@@ -46,8 +46,9 @@ export default async (request, context) => {
         const cidrs = await paddleIps(env);
         return cidrs && ip ? ipInCidrs(ip, cidrs) : undefined;
       },
-      apply: async (eventId, eventType, occurredAt, record) => {
-        const res = await fetch(`${SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/rpc/paddle_apply`, {
+      apply: async (kind, eventId, eventType, occurredAt, record) => {
+        const rpc = { subscription: 'paddle_apply', customer: 'paddle_apply_customer', transaction: 'paddle_apply_transaction' }[kind];
+        const res = await fetch(`${SUPABASE_URL.replace(/\/+$/, '')}/rest/v1/rpc/${rpc}`, {
           method: 'POST',
           headers: { 'content-type': 'application/json', apikey: SUPABASE_SERVICE_ROLE_KEY, authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
           body: JSON.stringify({ p_event_id: eventId, p_event_type: eventType, p_occurred: occurredAt, rec: record }),

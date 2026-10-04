@@ -271,3 +271,28 @@ test('nobody but the webhook can run paddle_apply', async () => {
   assert.ok((await as(B, `select paddle_apply('x', 't', now(), '{}'::jsonb)`)).error);
   assert.ok((await as(null, `select paddle_apply('x', 't', now(), '{}'::jsonb)`)).error);
 });
+
+test('customer and payment events are stored once, in order, and only by the webhook', async () => {
+  const cust = async (id, at, rec) => (await db.query('select paddle_apply_customer($1, $2, $3, $4::jsonb) as r', [id, 'customer.updated', at, JSON.stringify(rec)])).rows[0].r;
+  assert.equal(await cust('c1', '2026-10-04T10:00:00Z', { customer_id: 'ctm_X', email: 'old@example.test', paddle_env: 'live' }), 'applied');
+  assert.equal(await cust('c1', '2026-10-04T10:00:00Z', { customer_id: 'ctm_X', email: 'dup@example.test', paddle_env: 'live' }), 'duplicate');
+  assert.equal(await cust('c2', '2026-10-04T11:00:00Z', { customer_id: 'ctm_X', email: 'new@example.test', paddle_env: 'live' }), 'applied');
+  assert.equal(await cust('c0', '2026-10-04T09:00:00Z', { customer_id: 'ctm_X', email: 'older@example.test', paddle_env: 'live' }), 'stale');
+  assert.equal((await db.query(`select email from paddle_customers where customer_id = 'ctm_X'`)).rows[0].email, 'new@example.test');
+  assert.ok((await as(B, 'select * from paddle_customers')).error, 'customers are not readable from the browser');
+  const tx = async (id, at, sub) => (await db.query('select paddle_apply_transaction($1, $2, $3, $4::jsonb) as r', [id, 'transaction.completed', at, JSON.stringify({ paddle_subscription_id: sub })])).rows[0].r;
+  assert.equal(await tx('t0', '2026-10-05T00:00:00Z', 'sub_not_seen_yet'), 'no_subscription_yet');
+  await db.query(`update subscriptions set paddle_subscription_id = 'sub_PAID' where user_id = $1`, [B]);
+  assert.equal(await tx('t1', '2026-10-06T00:00:00Z', 'sub_PAID'), 'applied');
+  assert.equal(await tx('t1', '2026-10-06T00:00:00Z', 'sub_PAID'), 'duplicate');
+  assert.equal(await tx('t2', '2026-10-05T00:00:00Z', 'sub_PAID'), 'applied');
+  assert.equal(new Date((await db.query('select last_paid_at from subscriptions where user_id = $1', [B])).rows[0].last_paid_at).toISOString(), '2026-10-06T00:00:00.000Z', 'an older payment never moves the date back');
+  assert.ok((await as(B, `select paddle_apply_customer('x','t',now(),'{}'::jsonb)`)).error);
+  assert.ok((await as(B, `select paddle_apply_transaction('x','t',now(),'{}'::jsonb)`)).error);
+});
+
+test('the environment a subscription came from is kept, so the portal talks to the right account', async () => {
+  await db.query('delete from subscriptions where user_id = $1', [B]);
+  assert.equal(await apply('env1', '2026-10-07T00:00:00Z', rec({ paddle_env: 'sandbox', paddle_subscription_id: 'sub_SB' })), 'applied');
+  assert.equal((await db.query('select paddle_env from subscriptions where user_id = $1', [B])).rows[0].paddle_env, 'sandbox');
+});

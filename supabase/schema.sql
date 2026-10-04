@@ -182,17 +182,17 @@ begin
 
   begin
     insert into public.subscriptions as s
-      (user_id, plan, status, billing_interval, paddle_customer_id, paddle_subscription_id, trial_ends_at, ends_at, update_payment_url, cancel_url, event_at, updated_at)
+      (user_id, plan, status, billing_interval, paddle_customer_id, paddle_subscription_id, trial_ends_at, ends_at, update_payment_url, cancel_url, event_at, updated_at, paddle_env)
     values
       (uid, rec->>'plan', rec->>'status', nullif(rec->>'billing_interval', ''), rec->>'paddle_customer_id', rec->>'paddle_subscription_id',
        nullif(rec->>'trial_ends_at', '')::timestamptz, nullif(rec->>'ends_at', '')::timestamptz,
-       nullif(rec->>'update_payment_url', ''), nullif(rec->>'cancel_url', ''), p_occurred, now())
+       nullif(rec->>'update_payment_url', ''), nullif(rec->>'cancel_url', ''), p_occurred, now(), nullif(rec->>'paddle_env', ''))
     on conflict (user_id) do update set
       plan = excluded.plan, status = excluded.status, billing_interval = excluded.billing_interval,
       paddle_customer_id = excluded.paddle_customer_id, paddle_subscription_id = excluded.paddle_subscription_id,
       trial_ends_at = excluded.trial_ends_at, ends_at = excluded.ends_at,
       update_payment_url = excluded.update_payment_url, cancel_url = excluded.cancel_url,
-      event_at = excluded.event_at, updated_at = now()
+      event_at = excluded.event_at, updated_at = now(), paddle_env = excluded.paddle_env
       where s.event_at <= excluded.event_at;
     get diagnostics n = row_count;
   exception when unique_violation then
@@ -201,3 +201,56 @@ begin
   return case when n = 0 then 'stale' else 'applied' end;
 end $$;
 revoke all on function public.paddle_apply(text, text, timestamptz, jsonb) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------------
+-- Customers and payments mirrored from Paddle, and which Paddle account (live or sandbox) each
+-- row came from. Written only by the webhook. Safe to run again.
+-- ---------------------------------------------------------------------------------
+
+alter table public.subscriptions add column if not exists paddle_env text check (paddle_env in ('live', 'sandbox'));
+alter table public.subscriptions add column if not exists last_paid_at timestamptz;
+
+create table if not exists public.paddle_customers (
+  customer_id text primary key,
+  email       text not null,
+  paddle_env  text not null check (paddle_env in ('live', 'sandbox')),
+  event_at    timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+alter table public.paddle_customers enable row level security;
+revoke all on public.paddle_customers from anon, authenticated;
+
+-- A customer event: upsert by Paddle's id, ignoring a delivery older than the one already applied.
+create or replace function public.paddle_apply_customer(p_event_id text, p_event_type text, p_occurred timestamptz, rec jsonb)
+returns text
+language plpgsql security definer set search_path = public as $$
+declare n int;
+begin
+  insert into public.paddle_events (event_id, event_type) values (p_event_id, p_event_type) on conflict do nothing;
+  get diagnostics n = row_count;
+  if n = 0 then return 'duplicate'; end if;
+  insert into public.paddle_customers as c (customer_id, email, paddle_env, event_at, updated_at)
+  values (rec->>'customer_id', coalesce(rec->>'email', ''), rec->>'paddle_env', p_occurred, now())
+  on conflict (customer_id) do update set email = excluded.email, paddle_env = excluded.paddle_env, event_at = excluded.event_at, updated_at = now()
+    where c.event_at <= excluded.event_at;
+  get diagnostics n = row_count;
+  return case when n = 0 then 'stale' else 'applied' end;
+end $$;
+revoke all on function public.paddle_apply_customer(text, text, timestamptz, jsonb) from public, anon, authenticated;
+
+-- A completed payment: note when a subscription was last paid. If we have not seen the subscription yet
+-- nothing is stored and the later subscription event tells the story.
+create or replace function public.paddle_apply_transaction(p_event_id text, p_event_type text, p_occurred timestamptz, rec jsonb)
+returns text
+language plpgsql security definer set search_path = public as $$
+declare n int;
+begin
+  insert into public.paddle_events (event_id, event_type) values (p_event_id, p_event_type) on conflict do nothing;
+  get diagnostics n = row_count;
+  if n = 0 then return 'duplicate'; end if;
+  update public.subscriptions set last_paid_at = greatest(coalesce(last_paid_at, p_occurred), p_occurred)
+    where paddle_subscription_id = rec->>'paddle_subscription_id';
+  get diagnostics n = row_count;
+  return case when n = 0 then 'no_subscription_yet' else 'applied' end;
+end $$;
+revoke all on function public.paddle_apply_transaction(text, text, timestamptz, jsonb) from public, anon, authenticated;

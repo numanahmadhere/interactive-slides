@@ -83,7 +83,7 @@ test('a cancellation at the end of the period keeps access until then; an immedi
 });
 
 test('events we cannot or should not act on are skipped, not failed', () => {
-  assert.equal(recordFrom(event({ event_type: 'transaction.completed' })).skip, 'not_a_subscription_event');
+  assert.equal(recordFrom(event({ event_type: 'address.created' })).skip, 'not_a_handled_event');
   assert.equal(recordFrom(event({}, { custom_data: null })).skip, 'no_user');
   assert.equal(recordFrom(event({}, { custom_data: { user_id: 'not-a-uuid' } })).skip, 'no_user');
   assert.equal(recordFrom(event({}, { custom_data: { user_id: "'; drop table decks;--" } })).skip, 'no_user');
@@ -101,15 +101,17 @@ test('the whole handler: bad signature 401, good delivery applied, database fail
   assert.equal(applied.length, 0, 'nothing is written for an unsigned delivery');
   const ok = await handleWebhook({ body, signature: await signed(body) }, deps());
   assert.deepEqual([ok.status, ok.body], [200, 'applied']);
-  assert.equal(applied[0][0], 'evt_1');
-  assert.equal(applied[0][3].plan, 'pro');
+  assert.equal(applied[0][0], 'subscription');
+  assert.equal(applied[0][1], 'evt_1');
+  assert.equal(applied[0][4].plan, 'pro');
+  assert.equal(applied[0][4].paddle_env, 'live', 'the row says which Paddle account it came from');
   const failing = await handleWebhook({ body, signature: await signed(body) }, deps({ apply: async () => { throw new Error('db down'); } }));
   assert.equal(failing.status, 500);
   const notJson = '{oops';
   assert.equal((await handleWebhook({ body: notJson, signature: await signed(notJson) }, deps())).status, 400);
-  const other = JSON.stringify(event({ event_type: 'customer.updated' }));
+  const other = JSON.stringify(event({ event_type: 'address.created' }));
   const skipped = await handleWebhook({ body: other, signature: await signed(other) }, deps());
-  assert.deepEqual([skipped.status, skipped.body], [200, 'not_a_subscription_event']);
+  assert.deepEqual([skipped.status, skipped.body], [200, 'not_a_handled_event']);
 });
 
 test('addresses outside Paddle\'s list are turned away, but only after the signature checks out', async () => {
@@ -201,4 +203,22 @@ test('the page never computes or reformats a price Paddle gives it, and never to
   assert.match(checkout, /displayMode: 'overlay', variant: 'one-page'/);
   assert.match(checkout, /successUrl: `\$\{location\.origin\}\/welcome`/);
   assert.ok(!/pdl_|SERVICE_ROLE/.test(picker + checkout + readFileSync(new URL('../src/billing/config.js', import.meta.url), 'utf8')), 'no server key anywhere in the page code');
+});
+
+
+test('customer and payment events are routed to their own handlers', () => {
+  const customer = recordFrom({ event_id: 'evt_c', event_type: 'customer.updated', occurred_at: '2026-10-04T10:00:00Z', data: { id: 'ctm_1', email: 'a@example.com', name: 'A' } });
+  assert.deepEqual([customer.kind, customer.record], ['customer', { customer_id: 'ctm_1', email: 'a@example.com' }]);
+  assert.equal(recordFrom({ event_id: 'e', event_type: 'customer.created', data: {} }).skip, 'malformed');
+  const paid = recordFrom({ event_id: 'evt_t', event_type: 'transaction.completed', occurred_at: '2026-10-04T10:00:00Z', data: { id: 'txn_1', subscription_id: 'sub_1', customer_id: 'ctm_1' } });
+  assert.deepEqual([paid.kind, paid.record.paddle_subscription_id], ['transaction', 'sub_1']);
+  assert.equal(recordFrom({ event_id: 'e', event_type: 'transaction.completed', data: { id: 'txn_2', subscription_id: null } }).skip, 'one_off_payment');
+});
+
+test('a customer event reaches the customer handler with the account it came from', async () => {
+  const body = JSON.stringify({ event_id: 'evt_c', event_type: 'customer.created', occurred_at: '2026-10-04T10:00:00Z', data: { id: 'ctm_9', email: 'z@example.com' } });
+  const calls = [];
+  const res = await handleWebhook({ body, signature: await signed(body, 'sandbox-secret') }, { secrets: { live: SECRET, sandbox: 'sandbox-secret' }, now: () => NOW, apply: async (...a) => { calls.push(a); return 'applied'; } });
+  assert.equal(res.status, 200);
+  assert.deepEqual([calls[0][0], calls[0][4].customer_id, calls[0][4].paddle_env], ['customer', 'ctm_9', 'sandbox']);
 });
