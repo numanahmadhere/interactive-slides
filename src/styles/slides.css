@@ -1073,3 +1073,16 @@ button.sp-rt__col { cursor: pointer; }
 .sp-mod__title { margin: 0 0 12px; color: var(--sp-muted); font-size: 28px; font-weight: 650; }
 .sp-mod__row { display: flex; align-items: center; gap: 16px; padding: 8px 0; font-size: 32px; }
 .sp-mod__text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+
+/* ---- timed quiz clock and the leaderboard ---- */
+.sp-quiz__clock { margin: 0 0 20px; color: var(--sp-accent-text); font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sp-quiz__clock:empty { display: none; }
+.sp-quiz__clock.is-out { color: var(--sp-muted); }
+.sp-lb__title { margin: 0 0 28px; font-size: 56px; font-weight: 650; line-height: 1.2; font-family: var(--sp-font-display, inherit); }
+.sp-lb__rows { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.sp-lb__row { display: flex; align-items: center; gap: 24px; padding: 14px 28px; border: 3px solid var(--sp-border); border-radius: 18px; background: var(--sp-surface); font-size: 44px; }
+.sp-lb__row:first-child { border-color: var(--sp-accent-text); }
+.sp-lb__place { flex: none; width: 64px; color: var(--sp-accent-text); font-weight: 700; }
+.sp-lb__name { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.sp-lb__note { color: var(--sp-muted); font-size: 30px; }
+.sp-lb__pts { font-variant-numeric: tabular-nums; font-weight: 700; }

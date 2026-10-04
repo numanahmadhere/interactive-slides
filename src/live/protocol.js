@@ -72,6 +72,7 @@ export function cleanPrompt(raw) {
     prompt.high = text(raw.high, 60);
   }
   if (TEXT_KINDS.has(kind)) prompt.limit = int(raw.limit, 1, 5) ?? (kind === 'cloud' ? 3 : 1);
+  if (kind === 'quiz') prompt.timeLimit = int(raw.timeLimit, 0, 300) ?? 0;
   if (TEXT_KINDS.has(kind) || kind === 'qna') prompt.moderation = ['off', 'filter', 'approve'].includes(raw.moderation) ? raw.moderation : 'filter';
   return prompt;
 }
@@ -104,7 +105,11 @@ export function cleanAudienceState(raw) {
       else if (p.kind === 'qna') data[p.id] = cleanQuestions(row);
     }
   }
-  return { title: text(raw.title, 200), prompts, counts, data, ended: raw.ended === true, session: text(raw.session, 40) };
+  // Names and teams for the leaderboard, and how many seconds are left on each timed question.
+  const teams = Array.isArray(raw.teams) ? raw.teams.slice(0, 8).filter((t) => typeof t === 'string' && t.trim()).map((t) => t.slice(0, 24)) : [];
+  const remaining = {};
+  if (isObj(raw.remaining)) for (const p of prompts) if (Number.isFinite(raw.remaining[p.id])) remaining[p.id] = Math.max(0, Math.min(300, Math.round(raw.remaining[p.id])));
+  return { title: text(raw.title, 200), prompts, counts, data, names: raw.names === true, teams, remaining, ended: raw.ended === true, session: text(raw.session, 40) };
 }
 
 // What the host tells the phone remote.
@@ -166,10 +171,13 @@ export function parseCommand(raw) {
   return isObj(raw) && raw.t === 'cmd' && COMMANDS.has(raw.op) ? { op: raw.op } : null;
 }
 
+// A phone saying it is here. It may bring a nickname and a team for the leaderboard.
 export function parseHello(raw) {
   if (!isObj(raw) || raw.t !== 'hello') return null;
   const cid = cidOf(raw.cid);
-  return cid ? { cid } : null;
+  if (!cid) return null;
+  const clean = (v, max) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max) : '');
+  return { cid, name: clean(raw.name, 24), team: clean(raw.team, 24) };
 }
 
 // ---- tallies -----------------------------------------------------------------
@@ -254,11 +262,13 @@ export const STALE_AFTER_MS = 45_000;
 export const isStale = (lastHeardAt, now, limit = STALE_AFTER_MS) => lastHeardAt !== null && now - lastHeardAt > limit;
 
 // A session saved by the presenter's page so a reload can pick it up again.
+// (names and teams ride along with a saved session so a reload resumes the same game)
 export function cleanSavedSession(raw) {
   if (!isObj(raw)) return null;
   const code = normalizeCode(raw.room?.code);
   const key = normalizeKey(raw.room?.key);
   const config = cleanConfig(raw.config);
   if (!code || !key || !config) return null;
-  return { room: { code, key }, config, base: text(raw.base, 300) };
+  const teams = Array.isArray(raw.teams) ? raw.teams.slice(0, 8).filter((t) => typeof t === 'string' && t.trim()).map((t) => t.trim().slice(0, 24)) : [];
+  return { room: { code, key }, config, base: text(raw.base, 300), names: raw.names === true, teams };
 }

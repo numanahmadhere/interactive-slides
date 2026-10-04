@@ -26,6 +26,7 @@ export default registerBlock({
     mode: 'single',
     choices: [{ text: 'The first option', correct: true }, { text: 'The second option', correct: false }, { text: 'The third option', correct: false }],
     explanation: '',
+    timeLimit: 0,
   }),
   normalize: (p) => ({
     question: str(p.question, '', 1000),
@@ -36,6 +37,7 @@ export default registerBlock({
       () => ({ text: '', correct: false }),
     ),
     explanation: str(p.explanation, '', 2000),
+    timeLimit: [0, 10, 20, 30, 60, 120].includes(Number(p.timeLimit)) ? Number(p.timeLimit) : 0,
   }),
   fields: [
     { key: 'mode', label: 'Answer type', type: 'segmented', options: [{ value: 'single', label: 'One answer' }, { value: 'multiple', label: 'Several answers' }] },
@@ -44,6 +46,7 @@ export default registerBlock({
       item: () => ({ text: '', correct: false }),
       fields: [{ key: 'text', label: 'Text', type: 'text' }, { key: 'correct', label: 'Correct answer', type: 'toggle' }],
     },
+    { key: 'timeLimit', label: 'Time to answer (live sessions)', type: 'select', options: [{ value: 0, label: 'No limit' }, { value: 10, label: '10 seconds' }, { value: 20, label: '20 seconds' }, { value: 30, label: '30 seconds' }, { value: 60, label: '1 minute' }, { value: 120, label: '2 minutes' }] },
     { type: 'action', label: 'Make this true / false', run: () => ({ mode: 'single', choices: trueFalse() }) },
   ],
   check: (props) => (props.choices.some((c) => c.correct) ? null : 'Mark at least one choice as correct.'),
@@ -68,7 +71,7 @@ export default registerBlock({
         h('span', { class: 'sp-choice__mark' }, editing && c.correct ? svgIcon(CHECK, { size: 36 }) : null)));
     });
 
-    const root = h('div', { class: 'sp-quiz', 'data-mode': mode }, rich('p', { class: 'sp-quiz__q', id: qid }, question), group);
+    const root = h('div', { class: 'sp-quiz', 'data-mode': mode }, rich('p', { class: 'sp-quiz__q', id: qid }, question), ctx.mode === 'present' && block.props.timeLimit ? h('p', { class: 'sp-quiz__clock', 'aria-live': 'off' }) : null, group);
     if (mode === 'multiple') {
       const check = h('button', { class: 'sp-btn sp-btn--outline sp-btn--md sp-quiz__check', type: 'button', text: 'Check answer', disabled: true });
       if (ctx.mode === 'present') root.append(h('div', { class: 'sp-quiz__actions' }, check));
@@ -151,6 +154,19 @@ export default registerBlock({
       });
     };
     paintLive();
-    return live.subscribe(paintLive);
+    // A timed question counts down on the big screen too.
+    const clock = el.querySelector('.sp-quiz__clock');
+    let tick = 0;
+    if (clock) {
+      const draw = () => {
+        const left = live.remaining?.(block.id);
+        clock.textContent = left === null || left === undefined ? '' : left > 0 ? `${Math.ceil(left)} seconds left` : 'Time is up';
+        clock.classList.toggle('is-out', left === 0);
+      };
+      draw();
+      tick = setInterval(draw, 250);
+    }
+    const off = live.subscribe(paintLive);
+    return () => { clearInterval(tick); off(); };
   },
 });

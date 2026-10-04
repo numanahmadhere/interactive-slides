@@ -6,13 +6,14 @@
 import { slideTitle } from '../core/schema.js';
 import { uid } from '../core/util.js';
 import { stripTags } from '../core/util.js';
-import { collectPrompts } from './prompts.js';
+import { collectPrompts, collectKeys } from './prompts.js';
 import {
   Tally, audienceChannel, remoteChannel, parseVote, parseCommand, parseHello, parseText, parseAsk, CHOICE_KINDS,
 } from './protocol.js';
 import { Boards } from './boards.js';
 import { resultsCsv } from './results.js';
-import { canUseKind, livePhones } from '../billing/plans.js';
+import { canUseKind, livePhones, canLeaderboard } from '../billing/plans.js';
+import { Scoreboard, isRight, pointsFor } from './scoring.js';
 
 const HOST_CID = 'host';
 const PUBLISH_DELAY_MS = 250;
@@ -36,13 +37,19 @@ export class LiveHost {
   #opened = { audience: false, remote: false };
   #heartbeat = 0;
   #locked;
+  #board = new Scoreboard();
+  #keys = new Map();      // quiz id -> answer key (stays on this page)
+  #askedAt = new Map();   // quiz id -> when its question first appeared
   #full = new Map(); // phones turned away because the room is full -> when we last told them
 
   // plan: who is hosting. It decides which kinds of question phones can answer and how many phones fit.
   // It defaults to the smallest plan, so a caller that forgets to pass one is limited, not unlimited.
-  constructor({ transport, room, title = '', now = Date.now, plan = 'free' }) {
+  // names: ask phones for a nickname and keep a leaderboard. teams: names of teams phones may join.
+  constructor({ transport, room, title = '', now = Date.now, plan = 'free', names = false, teams = [] }) {
     this.title = title;
     this.plan = plan;
+    this.wantNames = names;
+    this.teamNames = teams.map((t) => String(t).trim()).filter(Boolean).slice(0, 8);
     this.#locked = new Set();
     this.sessionId = uid('h_'); // changes whenever a presenter page (re)starts; phones re-send their answers when it does
     this.transport = transport;
@@ -63,6 +70,27 @@ export class LiveHost {
 
   // True when this block's question type is not part of the plan, so phones never see it.
   isLocked = (id) => this.#locked.has(id);
+
+  // Names, teams and the leaderboard need a plan that includes them.
+  get names() { return this.wantNames && canLeaderboard(this.plan); }
+  get teams() { return this.names ? this.teamNames : []; }
+
+  // The leaderboard and teams, for the slide.
+  leaderboard = (n = 10) => (this.names ? this.#board.players(n) : []);
+  teamBoard = () => (this.names ? this.#board.teams() : []);
+
+  // Seconds left on a timed question, or null when it has no clock (or the plan has no timed quizzes).
+  remaining = (id) => {
+    const key = this.#keys.get(id);
+    const limit = this.#limitOf(key);
+    const opened = this.#askedAt.get(id);
+    if (!limit || opened === undefined) return null;
+    return Math.max(0, limit - (this.now() - opened) / 1000);
+  };
+
+  #limitOf(key) {
+    return key && key.timeLimit > 0 && canLeaderboard(this.plan) ? key.timeLimit : 0;
+  }
   get prompts() { return this.#prompts; }
 
   onStatus(fn) {
@@ -134,7 +162,11 @@ export class LiveHost {
     const all = p ? collectPrompts(p.deck.slides[p.state.slide]) : [];
     this.#locked = new Set(all.filter((x) => !canUseKind(this.plan, x.kind)).map((x) => x.id));
     this.#prompts = all.filter((x) => !this.#locked.has(x.id));
-    for (const prompt of this.#prompts) this.#known.set(prompt.id, { prompt, slide: p.state.slide + 1 });
+    this.#keys = p ? collectKeys(p.deck.slides[p.state.slide]) : new Map();
+    for (const prompt of this.#prompts) {
+      this.#known.set(prompt.id, { prompt, slide: p.state.slide + 1 });
+      if (prompt.kind === 'quiz' && !this.#askedAt.has(prompt.id)) this.#askedAt.set(prompt.id, this.now()); // the clock starts the first time it is shown
+    }
     for (const fn of [...this.#subs]) fn();
   }
 
@@ -155,6 +187,7 @@ export class LiveHost {
 
   resetVotes(id) {
     this.#tally.reset(id);
+    if (id === undefined) { this.#board.reset(); this.#askedAt.clear(); } else { this.#board.forget(id); this.#askedAt.delete(id); }
     this.#boards.reset(id);
     this.#changed();
   }
@@ -224,6 +257,7 @@ export class LiveHost {
     if (hello) {
       if (!this.#admit(hello.cid)) return;
       this.#touch(hello.cid);
+      if (this.names) this.#board.join(hello.cid, hello, this.teamNames);
       this.#publishSoon();
       return;
     }
@@ -257,7 +291,27 @@ export class LiveHost {
     if (!this.#admit(vote.cid)) return;
     this.#touch(vote.cid);
     const prompt = this.#prompts.find((p) => p.id === vote.id);
-    if (this.#tally.vote(vote, prompt)) this.#changed();
+    const key = prompt.kind === 'quiz' ? this.#keys.get(prompt.id) : null;
+    const limit = this.#limitOf(key);
+    if (limit) { // a timed question: no answers after the clock, and the first answer stands
+      const elapsed = (this.now() - (this.#askedAt.get(prompt.id) ?? this.now())) / 1000;
+      if (elapsed > limit + 1) { this.#audience?.send({ t: 'score', cid: vote.cid, id: prompt.id, late: true }); return; }
+      if (this.#board.answered(vote.cid, prompt.id)) return;
+    }
+    if (!this.#tally.vote(vote, prompt)) return;
+    if (key && this.names) this.#score(vote, key, limit);
+    this.#changed();
+  }
+
+  // Marks a quiz answer, banks the points, and tells that one phone how it did.
+  #score(vote, key, limit) {
+    const elapsedS = (this.now() - (this.#askedAt.get(vote.id) ?? this.now())) / 1000;
+    if (!this.#board.has(vote.cid)) this.#board.join(vote.cid);
+    const correct = isRight(key, vote.picks);
+    const points = pointsFor({ correct, elapsedS, limitS: limit });
+    this.#board.record(vote.cid, vote.id, { correct, points });
+    const standing = this.#board.rankOf(vote.cid);
+    this.#audience?.send({ t: 'score', cid: vote.cid, id: vote.id, correct, points, total: standing?.points ?? points, rank: standing?.rank ?? null, of: standing?.of ?? null });
   }
 
   #touch(cid) {
@@ -310,7 +364,12 @@ export class LiveHost {
       else if (p.kind === 'open') data[p.id] = this.#boards.responses(p.id);
       else if (p.kind === 'qna') data[p.id] = this.#boards.questions(p.id).slice(0, 100);
     }
-    this.#audience.send({ t: 'state', session: this.sessionId, title: this.#player?.deck.meta.title ?? this.title, prompts: this.#prompts, counts, data });
+    const remaining = {};
+    for (const p of this.#prompts) {
+      const left = this.remaining(p.id);
+      if (left !== null) remaining[p.id] = left;
+    }
+    this.#audience.send({ t: 'state', session: this.sessionId, title: this.#player?.deck.meta.title ?? this.title, prompts: this.#prompts, counts, data, names: this.names, teams: this.teams, remaining });
     this.#publishRemote();
   }
 

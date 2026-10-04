@@ -8,8 +8,8 @@ import { cleanConfig } from '../live/protocol.js';
 import { loadProject } from '../cloud/config.js';
 import { BUILD } from '../build-info.js';
 import { BUILT_IN_CONFIG } from '../cloud/defaults.js';
-import { button, field, openDialog, select, textInput, toast } from './ui.js';
-import { PLANS } from '../billing/plans.js';
+import { button, field, openDialog, select, textInput, toast, toggle } from './ui.js';
+import { PLANS, canLeaderboard } from '../billing/plans.js';
 
 const STATUS_TEXT = {
   connecting: 'Connecting...',
@@ -39,6 +39,8 @@ export function openLiveDialog(editor) {
     let url = useProject ? project.url : settings.config.url ?? '';
     let key = useProject ? project.key : settings.config.key ?? '';
     let base = settings.base;
+    let names = false;
+    let teamText = '';
     const remoteBox = h('div', { class: 'ed-live__server', hidden: kind === 'local' || !!BUILT_IN_CONFIG });
     const problem = h('p', { class: 'ed-hint ed-hint--warn', hidden: true });
 
@@ -68,13 +70,18 @@ export function openLiveDialog(editor) {
         return;
       }
       saveSettings({ config, base });
-      editor.startLive({ config, base });
+      const teams = teamText.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 8);
+      if ((names || teams.length) && !editor.requirePlan((p) => p.leaderboard, 'Names, teams and the leaderboard are not part of your plan.')) return;
+      editor.startLive({ config, base, names: names || teams.length > 0, teams });
       render();
     } });
 
     return h('div', null,
       h('p', { class: 'ed-hint', text: 'Start a session, then show the code or QR code. The audience answers polls and quizzes on their phones and you move the slides from yours. Nothing is saved on the server.' }),
-      field('Run', kindSelect), remoteBox, problem,
+      field('Run', kindSelect), remoteBox,
+      toggle({ label: canLeaderboard(editor.plan) ? 'Ask for names and keep a leaderboard' : 'Ask for names and keep a leaderboard (Starter)', value: false, onChange: (v) => { names = v; } }),
+      field('Teams (optional)', textInput({ placeholder: 'Red, Blue', spellcheck: false, onInput: (v) => { teamText = v; } }), 'Names of up to eight teams, separated by commas. Phones choose one; teams are ranked by their average score.'),
+      problem,
       h('div', { class: 'ed-live__actions' }, start));
   }
 

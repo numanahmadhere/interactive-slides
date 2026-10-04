@@ -35,6 +35,7 @@ import './open-answers.js';
 import './rating.js';
 import './ranking.js';
 import './qna.js';
+import './leaderboard.js';
 import './group.js';
 
 export * from './registry.js';

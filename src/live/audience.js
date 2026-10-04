@@ -11,6 +11,16 @@ import { BUILD } from '../build-info.js';
 
 const HEARTBEAT_MS = 20_000;
 
+function loadProfile() {
+  try {
+    const p = JSON.parse(sessionStorage.getItem('is-profile') ?? 'null');
+    return { name: typeof p?.name === 'string' ? p.name.slice(0, 24) : '', team: typeof p?.team === 'string' ? p.team.slice(0, 24) : '' };
+  } catch {
+    return { name: '', team: '' };
+  }
+}
+const saveProfile = (p) => { try { sessionStorage.setItem('is-profile', JSON.stringify(p)); } catch { /* kept for this page only */ } };
+
 function clientId() {
   try {
     let id = sessionStorage.getItem('is-cid');
@@ -36,6 +46,9 @@ export function mountAudience(root, { code, config }) {
   let session = null; // which presenter page is talking; a new one has lost the totals
   const answeredIn = new Map(); // prompt id -> the presenter session that has our answer
   let slow = false;
+  let profile = loadProfile(); // nickname and team for the leaderboard, asked once
+  const scores = new Map(); // quiz id -> how this phone did, as told by the presenter
+  const deadlines = new Map(); // quiz id -> when its clock runs out, by this phone's clock
   const notes = new Map(); // prompt id -> what the presenter did with the last thing we sent
   let fullTimer = 0;
   let full = false; // turned away: the room is at its limit
@@ -56,6 +69,11 @@ export function mountAudience(root, { code, config }) {
       paint();
     },
     onMessage: (raw) => {
+      if (raw?.t === 'score' && raw.cid === cid && typeof raw.id === 'string') { // right or wrong, points, and where we stand
+        scores.set(raw.id, raw.late ? { late: true } : { correct: raw.correct === true, points: Number.isFinite(raw.points) ? raw.points : 0, total: Number.isFinite(raw.total) ? raw.total : null, rank: Number.isInteger(raw.rank) ? raw.rank : null, of: Number.isInteger(raw.of) ? raw.of : null });
+        paint();
+        return;
+      }
       if (raw?.t === 'note' && raw.cid === cid && typeof raw.id === 'string') { // what became of something we sent
         if (raw.what === 'filtered' && typed.get(raw.id)?.length) typed.set(raw.id, typed.get(raw.id).slice(0, -1)); // it never reached the board, so it does not count against the limit
         notes.set(raw.id, raw.what === 'filtered' ? 'That was not shown: it breaks the room\'s rules.' : 'Sent. The presenter checks answers before they appear.');
@@ -73,6 +91,7 @@ export function mountAudience(root, { code, config }) {
       if (!next) return;
       if (next.session) session = next.session;
       state = next;
+      for (const [id, secs] of Object.entries(next.remaining)) if (!deadlines.has(id) || Math.abs(deadlines.get(id) - (Date.now() + secs * 1000)) > 2500) deadlines.set(id, Date.now() + secs * 1000);
       heard = true;
       lastHeardAt = Date.now();
       // A presenter page that restarted (a reload) has lost the totals. Whenever a
@@ -92,7 +111,7 @@ export function mountAudience(root, { code, config }) {
       paint();
     },
   });
-  const hello = () => channel.send({ t: 'hello', cid });
+  const hello = () => channel.send({ t: 'hello', cid, name: profile.name, team: profile.team });
   setInterval(hello, HEARTBEAT_MS);
   setTimeout(() => { slow = true; paint(); }, 6000);
   let wasStale = false;
@@ -107,6 +126,50 @@ export function mountAudience(root, { code, config }) {
     answeredIn.set(prompt.id, session);
     paint();
   };
+
+  const ordinal = (n) => `${n}${['th', 'st', 'nd', 'rd'][(n % 100 >> 3) ^ 1 && n % 10 < 4 ? n % 10 : 0]}`;
+
+  function scoreLine(prompt) {
+    const sc = scores.get(prompt.id);
+    if (!sc) return null;
+    if (sc.late) return h('p', { class: 'lv-score is-late', role: 'status', text: 'Time was up before your answer arrived.' });
+    const standing = sc.rank ? ` You are ${ordinal(sc.rank)} of ${sc.of}, with ${sc.total} points.` : '';
+    return h('p', { class: `lv-score ${sc.correct ? 'is-right' : 'is-wrong'}`, role: 'status', text: sc.correct ? `Correct. +${sc.points} points.${standing}` : `Not this time.${standing}` });
+  }
+
+  function timerBadge(prompt) {
+    if (!deadlines.has(prompt.id)) return null;
+    const left = Math.max(0, Math.ceil((deadlines.get(prompt.id) - Date.now()) / 1000));
+    return h('p', { class: 'lv-timer', 'data-deadline': prompt.id, 'aria-live': 'off', text: left > 0 ? `${left} seconds left` : 'Time is up' });
+  }
+
+  // Asked once when the presenter is running a leaderboard.
+  function profileForm() {
+    const form = h('form', { class: 'lv-card lv-form' }, h('h2', { class: 'lv-q', text: 'Who is playing?' }));
+    const name = h('input', { class: 'lv-input', 'aria-label': 'Your nickname', maxlength: '24', autocomplete: 'off', placeholder: 'Your nickname' });
+    name.value = profile.name;
+    form.append(name);
+    let team = profile.team || '';
+    if (state.teams.length) {
+      const group = h('div', { class: 'lv-options', role: 'group', 'aria-label': 'Your team' });
+      for (const t of state.teams) {
+        const b = h('button', { type: 'button', class: `lv-opt${team === t ? ' is-on' : ''}`, 'aria-pressed': String(team === t) }, h('span', { class: 'lv-opt__text', text: t }));
+        b.addEventListener('click', () => { team = t; for (const o of group.children) { const on = o === b; o.classList.toggle('is-on', on); o.setAttribute('aria-pressed', String(on)); } });
+        group.append(b);
+      }
+      form.append(group);
+    }
+    form.append(h('button', { type: 'submit', class: 'lv-send', text: 'Join the game' }));
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!name.value.trim() || (state.teams.length && !team)) { name.focus(); return; }
+      profile = { name: name.value.trim().slice(0, 24), team };
+      saveProfile(profile);
+      hello();
+      paint();
+    });
+    return form;
+  }
 
   function choiceCard(prompt) {
     const chosen = picks.get(prompt.id) ?? [];
@@ -129,7 +192,9 @@ export function mountAudience(root, { code, config }) {
       });
       list.append(btn);
     });
-    const out = h('section', { class: 'lv-card' }, h('h2', { class: 'lv-q', text: prompt.question }), list);
+    const out = h('section', { class: 'lv-card' }, h('h2', { class: 'lv-q', text: prompt.question }), timerBadge(prompt), list);
+    const upTo = scoreLine(prompt);
+    if (upTo) out.append(upTo);
     if (prompt.multi) {
       const send = h('button', { type: 'button', class: 'lv-send', text: answered ? 'Update answer' : 'Send answer' });
       send.disabled = chosen.length === 0;
@@ -287,6 +352,8 @@ export function mountAudience(root, { code, config }) {
       } else {
         body.append(h('p', { class: 'lv-note', text: 'Connected. The next question will appear here.' }));
       }
+    } else if (state.names && !profile.name) {
+      body.append(profileForm());
     } else {
       for (const p of state.prompts) body.append(card(p));
     }
@@ -298,6 +365,14 @@ export function mountAudience(root, { code, config }) {
     }
     footStatus.textContent = status === 'error' ? 'Connection problem. Retrying...' : '';
   }
+  // Count the clock down on the question cards without redrawing them.
+  const tick = setInterval(() => {
+    for (const el of body.querySelectorAll('[data-deadline]')) {
+      const left = Math.max(0, Math.ceil((deadlines.get(el.dataset.deadline) - Date.now()) / 1000));
+      el.textContent = left > 0 ? `${left} seconds left` : 'Time is up';
+      el.classList.toggle('is-out', left === 0);
+    }
+  }, 500);
   paint();
-  return { close: () => { channel.close(); transport.close(); } };
+  return { close: () => { clearInterval(tick); channel.close(); transport.close(); } };
 }

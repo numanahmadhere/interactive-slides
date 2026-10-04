@@ -44,7 +44,7 @@ test('commands and hellos are checked', () => {
   assert.equal(parseCommand({ t: 'cmd', op: 'eval' }), null);
   assert.equal(parseCommand({ t: 'cmd', op: '__proto__' }), null);
   assert.equal(parseCommand('next'), null);
-  assert.deepEqual(parseHello({ t: 'hello', cid: 'abc' }), { cid: 'abc' });
+  assert.deepEqual(parseHello({ t: 'hello', cid: 'abc' }), { cid: 'abc', name: '', team: '' });
   assert.equal(parseHello({ t: 'hello', cid: '' }), null);
 });
 
@@ -246,7 +246,8 @@ test('a presenter page that restarts announces a new session id, so phones know 
 test('a saved session is only resumed if it is complete and valid', () => {
   const room = newRoom();
   const good = { room, config: { kind: 'realtime', url: 'https://abc.supabase.co', key: 'k' }, base: 'https://x.test/' };
-  assert.deepEqual(cleanSavedSession(good), good);
+  assert.deepEqual(cleanSavedSession(good), { ...good, names: false, teams: [] });
+  assert.deepEqual(cleanSavedSession({ ...good, names: true, teams: ['Red', '', 7, 'Blue'] }), { ...good, names: true, teams: ['Red', 'Blue'] }, 'a reload resumes the same game');
   assert.equal(cleanSavedSession({ ...good, room: { code: 'BAD', key: room.key } }), null);
   assert.equal(cleanSavedSession({ ...good, room: { code: room.code, key: 'short' } }), null);
   assert.equal(cleanSavedSession({ ...good, config: { kind: 'realtime', url: 'javascript:1', key: 'k' } }), null);

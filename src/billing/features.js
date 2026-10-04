@@ -28,6 +28,7 @@ export function highlights(id) {
   if (newKinds.length) lines.push('Word cloud, open answers, ranking and audience Q&A');
   if (plan.brand && !below.brand) lines.push('Your own logo, colours and font');
   if (plan.csv && !below.csv) lines.push('Download results as a spreadsheet');
+  if (plan.leaderboard && !below.leaderboard) lines.push('Timed quizzes with names, teams and a leaderboard');
   const newExports = plan.exports.filter((e) => !below.exports.includes(e));
   if (newExports.length) lines.push(`Export as ${list(newExports.map((e) => EXPORT_NAMES[e]))}`);
   const newThemes = plan.themes.length - below.themes.length;

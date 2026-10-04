@@ -74,3 +74,10 @@
 .lv-q-flag { grid-column: 2; color: var(--lv-muted); font-size: 13px; font-weight: 600; }
 .lv-up-btn { display: grid; justify-items: center; min-width: 48px; min-height: 48px; padding: 4px 8px; border: 2px solid var(--lv-control); border-radius: 12px; background: transparent; color: inherit; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; touch-action: manipulation; }
 .lv-up-btn.is-on { border-color: var(--lv-accent); color: var(--lv-accent); }
+
+/* ---- timed quizzes, scores and the nickname form ---- */
+.lv-timer { margin: -6px 0 12px; color: var(--lv-muted); font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.lv-timer.is-out { color: var(--lv-fg); }
+.lv-score { margin: 12px 0 0; padding: 10px 14px; border: 2px solid var(--lv-control); border-radius: 12px; font-weight: 650; }
+.lv-score.is-right { border-color: var(--lv-accent); }
+.lv-score.is-late, .lv-score.is-wrong { color: var(--lv-muted); }
