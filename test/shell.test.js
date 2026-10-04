@@ -176,6 +176,7 @@ test('the interactive tutorial is on the home page and wired up', () => {
 
 import { GROUPS, VENDORS } from '../tools/compare.mjs';
 import { getBlock } from '../src/core/blocks/index.js';
+import { canUseKind, canCsv, PLANS, PRICES, TRIAL_DAYS } from '../src/billing/plans.js';
 
 test('the comparison table is complete and every claim about us is backed by the product', () => {
   const rows = GROUPS.flatMap((g) => g.rows);
@@ -185,10 +186,10 @@ test('the comparison table is complete and every claim about us is backed by the
   for (const row of rows) {
     assert.equal(row.cells.length, VENDORS.length, row.name);
     for (const c of row.cells) assert.match(c, valid, `${row.name}: ${c}`);
-    assert.ok(!['paid', 'check'].includes(row.cells[0]), `${row.name}: we have no paid plans and never "check" ourselves`);
+    assert.notEqual(row.cells[0], 'check', `${row.name}: we never "check" ourselves`);
     assert.ok(row.cells[0] !== 'soon' || !row.needs, `${row.name}: marked not yet but claims support`);
   }
-  // every "yes" in our column that names a capability must exist in the code
+  // everything we say we can do must exist in the code
   const proof = {
     wordcloud: () => getBlock('wordcloud'), 'open-answers': () => getBlock('open-answers'), rating: () => getBlock('rating'),
     ranking: () => getBlock('ranking'), qna: () => getBlock('qna'),
@@ -197,9 +198,28 @@ test('the comparison table is complete and every claim about us is backed by the
     offline: () => readFileSync(new URL('../src/sw-template.js', import.meta.url), 'utf8').includes('fetch'),
     'no-storage': () => !/\.insert\(|from\('decks'\)/.test(readFileSync(new URL('../src/live/host.js', import.meta.url), 'utf8')),
   };
-  for (const row of rows.filter((r) => r.needs && r.cells[0] === 'yes')) {
-    for (const need of row.needs) assert.ok(proof[need]?.(), `"${row.name}" says yes but "${need}" is not in the product`);
+  for (const row of rows.filter((r) => r.needs && ['yes', 'paid', 'part'].includes(r.cells[0]))) {
+    for (const need of row.needs) assert.ok(proof[need]?.(), `"${row.name}" is claimed but "${need}" is not in the product`);
   }
+  // "Paid plan only" about us must really be locked on free and open on a paid plan
+  const gate = {
+    'kind:cloud': () => !canUseKind('free', 'cloud') && canUseKind('starter', 'cloud'),
+    'kind:open': () => !canUseKind('free', 'open') && canUseKind('starter', 'open'),
+    'kind:ranking': () => !canUseKind('free', 'ranking') && canUseKind('starter', 'ranking'),
+    'kind:qna': () => !canUseKind('free', 'qna') && canUseKind('starter', 'qna'),
+    csv: () => !canCsv('free') && canCsv('starter'),
+  };
+  for (const row of rows.filter((r) => r.cells[0] === 'paid')) {
+    assert.ok(row.gated?.length, `${row.name}: says paid but names no lock`);
+    for (const g of row.gated) assert.ok(gate[g]?.(), `${row.name}: "${g}" is not actually locked on the free plan`);
+  }
+  // a "Yes" must not secretly be locked
+  for (const row of rows.filter((r) => r.cells[0] === 'yes' && r.gated)) assert.fail(`${row.name}: Yes but has a lock`);
+  // the price we print is the price we charge
+  const price = rows.find((r) => r.name.startsWith('Cheapest paid plan')).cells[0];
+  assert.ok(price.includes(`$${PRICES.starter.month} a month`) && price.includes(`${TRIAL_DAYS}-day trial`), price);
+  const free = rows.find((r) => r.name === 'Free plan limits').cells[0];
+  assert.ok(free.includes(`${PLANS.free.cloudDecks} decks`) && free.includes(`${PLANS.free.livePhones} phones`), free);
 });
 
 test('the table is on the home page, third after the hero and tutorial', () => {
@@ -208,4 +228,18 @@ test('the table is on the home page, third after the hero and tutorial', () => {
   assert.deepEqual(order.slice(0, 3), ['hero', 'tutorial', 'compare']);
   assert.ok(home.includes('Not yet') && home.includes('Paid plan'), 'it admits what we lack');
   assert.ok(home.includes('<caption'), 'the table has a caption');
+});
+
+test('the pricing section prints the real plans, prices and trial, and links each paid plan to its checkout page', () => {
+  const home = buildSite()['index.html'];
+  const pricing = home.slice(home.indexOf('id="pricing"'), home.indexOf('id="features"'));
+  for (const id of ['starter', 'pro', 'advanced']) {
+    assert.ok(pricing.includes(`$${PRICES[id].month}</b>`), `${id} monthly price`);
+    assert.ok(pricing.includes(`$${PRICES[id].year} a year`), `${id} yearly price`);
+    assert.ok(pricing.includes(`href="/app/account?plan=${id}"`), `${id} link`);
+    assert.ok(pricing.includes(PLANS[id].name));
+  }
+  assert.ok(pricing.includes(`${TRIAL_DAYS}-day free trial`));
+  assert.ok(pricing.includes(`${PLANS.free.cloudDecks} decks online`) && pricing.includes(`${PLANS.free.livePhones} phones`));
+  assert.ok(!/unlimited/i.test(pricing), 'nothing here is unlimited, so the page must not say so');
 });

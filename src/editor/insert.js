@@ -10,6 +10,7 @@ import { applyTheme } from '../core/theme.js';
 import { createSlide, ASPECTS } from '../core/schema.js';
 import { defaultFrame } from './ops.js';
 import { openPopover } from './ui.js';
+import { canUseKind } from '../billing/plans.js';
 import { TEMPLATES } from '../library/templates.js';
 
 export const INSERT_MIME = 'application/x-densight-insert';
@@ -52,6 +53,9 @@ const SYNONYMS = {
   ranking: 'order prioritise priorities sort rank vote',
   qna: 'questions ask upvote moderated town hall',
 };
+
+// Block types whose live answers need a paid plan.
+const PAID_BLOCKS = { wordcloud: 'cloud', 'open-answers': 'open', ranking: 'ranking', qna: 'qna' };
 
 export const QUICK_TYPES = ['text', 'image', 'shape', 'quiz', 'poll'];
 
@@ -134,8 +138,10 @@ export function openInsertPanel(editor, anchor) {
         grid = h('div', { class: 'ed-insert__grid' });
         results.append(grid);
       }
-      const card = h('button', { type: 'button', class: 'ed-card', draggable: 'true', title: `Add ${def.label}`, 'data-type': def.type },
+      const paid = PAID_BLOCKS[def.type] && !canUseKind(editor.plan, PAID_BLOCKS[def.type]);
+      const card = h('button', { type: 'button', class: 'ed-card', draggable: 'true', title: `Add ${def.label}${paid ? ' (collecting live answers needs Starter)' : ''}`, 'data-type': def.type },
         blockPreview(editor, def.type, 168),
+        paid ? h('span', { class: 'ed-card__tag', text: 'Starter' }) : null,
         h('span', { class: 'ed-card__label', text: def.label }));
       card.addEventListener('click', () => add(def.type));
       card.addEventListener('dragstart', (e) => {

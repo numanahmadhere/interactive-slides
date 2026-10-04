@@ -1,7 +1,7 @@
 import { h, rich } from '../dom.js';
 import { str, clamp } from '../util.js';
 import { registerBlock } from './registry.js';
-import { stateOf } from './shared.js';
+import { stateOf, isLocked, LOCKED_NOTE } from './shared.js';
 
 const SAMPLE = ['Faster follow-ups would help us most.', 'I would like more examples from our own work.', 'The pace was right for me.'];
 
@@ -38,7 +38,7 @@ export default registerBlock({
     const paint = () => {
       const items = live ? live.responses(block.id) : local.items.slice().reverse();
       wall.replaceChildren(...items.map((t) => h('li', { text: t })));
-      count.textContent = items.length ? `${items.length} ${items.length === 1 ? 'answer' : 'answers'}` : live ? 'Waiting for answers' : 'Add an answer to see the wall';
+      count.textContent = isLocked(live, block) ? LOCKED_NOTE : items.length ? `${items.length} ${items.length === 1 ? 'answer' : 'answers'}` : live ? 'Waiting for answers' : 'Add an answer to see the wall';
     };
     el.querySelector('.sp-live__try')?.addEventListener('submit', (e) => {
       e.preventDefault();

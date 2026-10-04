@@ -65,7 +65,7 @@ const hosts = new Set((js.match(/https?:\/\/[a-zA-Z0-9.-]+/g) ?? []).map((u) => 
 // providers (only used when someone adds an embed), our own company site (a plain link), and documentation links that
 // libraries print inside error messages (never fetched).
 const allowed = new RegExp('(^|\\.)(' + [
-  'supabase\\.co', 'supabase\\.com', 'w3\\.org', 'localhost', '127\\.0\\.0\\.1', 'example\\.com', 'yoursite\\.com', '192\\.168\\.1\\.5',
+  'supabase\\.co', 'supabase\\.com', 'paddle\\.com', 'w3\\.org', 'localhost', '127\\.0\\.0\\.1', 'example\\.com', 'yoursite\\.com', '192\\.168\\.1\\.5',
   'densightlabs\\.com', 'youtube\\.com', 'youtube-nocookie\\.com', 'vimeo\\.com', 'loom\\.com',
   'github\\.com', 'github\\.io', 'openxmlformats\\.org', 'microsoft\\.com', 'purl\\.org', 'stuartk\\.com', 'mozilla\\.org', 'wikipedia\\.org', 'ecma-international\\.org',
 ].join('|') + ')$');

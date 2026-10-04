@@ -168,7 +168,7 @@ test('host: a whole session of every kind, and the results file', async () => {
   ] }] });
   const h = hub();
   const room = newRoom();
-  const host = new LiveHost({ transport: h.transport(), room, title: 'Town hall' });
+  const host = new LiveHost({ transport: h.transport(), room, title: 'Town hall', plan: 'advanced' });
   host.start();
   after(() => host.stop());
   const subs = new Set();
@@ -247,4 +247,79 @@ test('word clouds size words by how common they are and keep a stable order', ()
   assert.deepEqual(layoutWords([]), []);
   assert.equal(average([0, 0, 0, 0, 0]), 0);
   assert.equal(average([1, 0, 0, 0, 1]), 3);
+});
+
+// ---- plans decide what a room can do ----------------------------------------------------
+
+const slideWith = (blocks) => normalizeDeck({ slides: [{ id: 's', layout: 'content', blocks: blocks.map((b) => ({ slot: 'body', ...b })) }] }).deck;
+function runHost(deck, plan) {
+  const h = hub();
+  const room = newRoom();
+  const host = new LiveHost({ transport: h.transport(), room, plan });
+  host.start();
+  const player = { deck, state: { slide: 0, step: 0 }, nav: { stepCounts: [0] }, subscribe: () => () => {}, next() {}, prev() {}, first() {}, last() {} };
+  host.attach(player);
+  const msgs = [];
+  const ch = h.transport().open(`is-a-${room.code}`, { onMessage: (m) => msgs.push(m), onStatus() {} });
+  return { host, ch, msgs };
+}
+
+test('a free room sends polls and ratings to phones but holds back word clouds and Q&A', async () => {
+  const deck = slideWith([
+    { id: 'poll1', type: 'poll', props: { question: 'Q', options: [{ text: 'A' }, { text: 'B' }] } },
+    { id: 'wc1', type: 'wordcloud', props: { question: 'Words?' } },
+    { id: 'rt1', type: 'rating', props: { question: 'Rate' } },
+    { id: 'qa1', type: 'qna', props: { question: 'Ask' } },
+  ]);
+  const { host, ch, msgs } = runHost(deck, 'free');
+  after(() => host.stop());
+  await wait(10);
+  assert.deepEqual(host.prompts.map((p) => p.kind), ['poll', 'rating']);
+  assert.ok(host.isLocked('wc1') && host.isLocked('qa1') && !host.isLocked('poll1'));
+  ch.send({ t: 'text', cid: 'u1', id: 'wc1', text: 'sneaky' });
+  ch.send({ t: 'ask', cid: 'u1', id: 'qa1', text: 'sneaky?' });
+  await wait();
+  assert.deepEqual(host.words('wc1'), [], 'a locked question takes no answers even if a phone sends one');
+  assert.deepEqual(host.questions('qa1'), []);
+  assert.deepEqual(msgs.filter((m) => m.t === 'state').at(-1).prompts.map((p) => p.kind), ['poll', 'rating']);
+  host.setPlan('starter'); // a purchase goes through
+  await wait();
+  assert.deepEqual(host.prompts.map((p) => p.kind), ['poll', 'cloud', 'rating', 'qna']);
+  assert.ok(!host.isLocked('wc1'));
+  ch.send({ t: 'text', cid: 'u1', id: 'wc1', text: 'now fine' });
+  await wait();
+  assert.deepEqual(host.words('wc1'), [['now fine', 1]]);
+});
+
+test('a room holds as many phones as the plan allows; the next is told it is full; those inside keep working', async () => {
+  const deck = slideWith([{ id: 'poll1', type: 'poll', props: { question: 'Q', options: [{ text: 'A' }, { text: 'B' }] } }]);
+  const { host, ch, msgs } = runHost(deck, 'free');
+  after(() => host.stop());
+  await wait(10);
+  assert.equal(host.maxPhones, 25);
+  for (let i = 0; i < 25; i++) ch.send({ t: 'vote', cid: `p${i}`, id: 'poll1', picks: [0] });
+  await wait(20);
+  assert.equal(host.audienceSize, 25);
+  ch.send({ t: 'vote', cid: 'late', id: 'poll1', picks: [1] });
+  ch.send({ t: 'hello', cid: 'late' });
+  ch.send({ t: 'vote', cid: 'late', id: 'poll1', picks: [1] });
+  await wait(20);
+  assert.deepEqual(host.counts('poll1', 2), [25, 0], 'the 26th phone was not counted');
+  const told = msgs.filter((m) => m.t === 'full');
+  assert.equal(told.length, 1, 'told once, not on every message');
+  assert.deepEqual([told[0].cid, told[0].limit], ['late', 25]);
+  ch.send({ t: 'vote', cid: 'p3', id: 'poll1', picks: [1] }); // someone already inside changes their answer
+  await wait(20);
+  assert.deepEqual(host.counts('poll1', 2), [24, 1]);
+  host.setPlan('pro');
+  assert.equal(host.maxPhones, 500);
+  ch.send({ t: 'vote', cid: 'late', id: 'poll1', picks: [1] });
+  await wait(20);
+  assert.deepEqual(host.counts('poll1', 2), [24, 2], 'after an upgrade the waiting phone gets in');
+});
+
+test('a host created without a plan is the smallest one, not unlimited', () => {
+  const host = new LiveHost({ transport: hub().transport(), room: newRoom() });
+  assert.equal(host.plan, 'free');
+  assert.equal(host.maxPhones, 25);
 });

@@ -4,6 +4,20 @@
 
 import { renderTable, CHECKED } from './compare.mjs';
 import { listBlocks } from '../src/core/blocks/index.js';
+import { PLANS, PLAN_ORDER, PRICES, TRIAL_DAYS } from '../src/billing/plans.js';
+import { highlights } from '../src/billing/features.js';
+
+const planCards = () => PLAN_ORDER.map((id) => {
+  const plan = PLANS[id];
+  const price = PRICES[id];
+  return `<article class="bp__card${id === 'pro' ? ' is-highlight' : ''}">
+<h3 class="bp__name">${plan.name}</h3><p class="bp__blurb">${plan.blurb}</p>
+<p class="bp__price"><b>${price ? `$${price.month}` : '$0'}</b><span>${price ? ' a month' : ' forever'}</span></p>
+<p class="bp__save">${price ? `or $${price.year} a year, two months free` : ''}</p>
+<ul class="bp__list">${highlights(id).map((t) => `<li>${t}</li>`).join('')}</ul>
+${price ? `<a class="btn${id === 'pro' ? '' : ' ghost'}" href="/app/account?plan=${id}">Start ${TRIAL_DAYS}-day free trial</a>` : '<a class="btn ghost" href="/app/">Start building</a>'}
+</article>`;
+}).join('\n');
 
 const BLOCK_COUNT = listBlocks().filter((d) => !d.internal).length;
 
@@ -72,11 +86,11 @@ ${index ? '' : '<meta name="robots" content="noindex">\n'}<link rel="canonical" 
 <a class="skip" href="#main">Skip to content</a>
 <header class="top"><div class="wrap">
 <a class="brand" href="/">${LOGO}<span>${NAME}</span></a>
-<nav class="main" aria-label="Main"><a href="/#tutorial">Tutorial</a><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/learn/">Guides</a><a href="/#faq">FAQ</a></nav>
+<nav class="main" aria-label="Main"><a href="/#tutorial">Tutorial</a><a href="/#pricing">Pricing</a><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/learn/">Guides</a><a href="/#faq">FAQ</a></nav>
 <span class="grow"></span>
 <a class="link-quiet" href="/app/account">Sign in</a><a class="btn sm" href="/app/">Start building</a>
 <details class="menu"><summary aria-label="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
-<div class="menu__panel"><a href="/#tutorial">Tutorial</a><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/learn/">Guides</a><a href="/#faq">FAQ</a><a href="/app/account">Sign in</a></div></details>
+<div class="menu__panel"><a href="/#tutorial">Tutorial</a><a href="/#pricing">Pricing</a><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/learn/">Guides</a><a href="/#faq">FAQ</a><a href="/app/account">Sign in</a></div></details>
 </div></header>
 <div class="flash" id="flash" role="status" hidden>Your account and online decks were deleted. Decks on this device were kept.</div>
 <main id="main">
@@ -85,7 +99,7 @@ ${body}
 <footer class="site"><div class="wrap">
 <div class="foot-brand"><a class="brand" href="/">${LOGO_DARK_BG}<span>${NAME}</span></a>
 <p>Interactive presentations your audience can answer. A product of <a href="${COMPANY}">Densight Labs</a>, an applied AI firm.</p></div>
-<div><h3 class="foot-h">Product</h3><a href="/#tutorial">Tutorial</a><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/#how">How it works</a><a href="/app/">Open the app</a></div>
+<div><h3 class="foot-h">Product</h3><a href="/#tutorial">Tutorial</a><a href="/#pricing">Pricing</a><a href="/#features">Features</a><a href="/#live">Live audience</a><a href="/#how">How it works</a><a href="/app/">Open the app</a></div>
 <div><h3 class="foot-h">Learn</h3><a href="/learn/">Guides</a><a href="/#faq">FAQ</a></div>
 <div><h3 class="foot-h">Company</h3><a href="${COMPANY}">Densight Labs</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="${mailto()}">Support: ${SUPPORT}</a></div>
 </div><div class="wrap foot-end"><span>&copy; ${new Date().getFullYear()} <a href="${COMPANY}">Densight Labs</a>. All rights reserved.</span><a href="${mailto()}">${SUPPORT}</a></div></footer>
@@ -190,7 +204,16 @@ ${renderTable()}
 </div>
 </div></section>
 
-<section id="features" class="alt"><div class="wrap">
+<section id="pricing" class="alt"><div class="wrap">
+<header class="head reveal"><p class="label">Pricing</p><h2>Start free. Pay when you outgrow it.</h2>
+<p class="sub">Building and presenting are free. Paid plans add bigger rooms, more question types, your own branding and more ways to export. Every paid plan starts with a ${TRIAL_DAYS}-day free trial; a card is needed to start it and you can cancel before it ends to pay nothing.</p></header>
+<div class="reveal"><div class="bp__grid">
+${planCards()}
+</div>
+<p class="bp__fine">Prices are in US dollars. Checkout shows your local price and any tax. Questions about plans? <a href="${mailto('Plans and pricing')}">${SUPPORT}</a>.</p></div>
+</div></section>
+
+<section id="features"><div class="wrap">
 <header class="head reveal"><p class="label">Features</p><h2>Everything a live presentation needs.</h2>
 <p class="sub">Built for rooms where people are expected to take part, not just watch.</p></header>
 <div class="rules">

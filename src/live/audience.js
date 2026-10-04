@@ -36,6 +36,8 @@ export function mountAudience(root, { code, config }) {
   let session = null; // which presenter page is talking; a new one has lost the totals
   const answeredIn = new Map(); // prompt id -> the presenter session that has our answer
   let slow = false;
+  let fullTimer = 0;
+  let full = false; // turned away: the room is at its limit
 
   const head = h('header', { class: 'lv-head' }, h('div', { class: 'lv-brand' }, ...logoPair(22), h('span', { text: 'Densight Slides' })), h('div', { class: 'lv-title' }));
   const body = h('main', { class: 'lv-body' });
@@ -53,6 +55,13 @@ export function mountAudience(root, { code, config }) {
       paint();
     },
     onMessage: (raw) => {
+      if (raw?.t === 'full' && raw.cid === cid) { // the presenter's plan has no room for another phone
+        full = Number.isInteger(raw.limit) ? raw.limit : true;
+        clearTimeout(fullTimer);
+        fullTimer = setTimeout(() => { full = false; paint(); }, 25_000); // look again; the next hello says if there is room now
+        paint();
+        return;
+      }
       const next = cleanAudienceState(raw);
       if (!next) return;
       if (next.session) session = next.session;
@@ -259,7 +268,9 @@ export function mountAudience(root, { code, config }) {
     if (isStale(lastHeardAt, Date.now()) && !state.ended) {
       body.append(h('p', { class: 'lv-warn', role: 'alert', text: 'Lost contact with the presenter. Answers may not be counted until they are back. This page will update by itself.' }));
     }
-    if (state.ended) {
+    if (full) {
+      body.append(h('p', { class: 'lv-warn', role: 'alert', text: 'This session is full. The presenter\'s plan has no room for more phones. Ask them to upgrade, or watch the screen.' }));
+    } else if (state.ended) {
       body.append(h('p', { class: 'lv-note', text: 'This session has ended. Thanks for taking part.' }));
     } else if (!state.prompts.length) {
       if (!heard) {

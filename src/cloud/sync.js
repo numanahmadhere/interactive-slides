@@ -20,8 +20,8 @@ export class CloudSync {
   state = 'off';
   error = '';
 
-  constructor({ getCloud, getDeck, inline, getLink, setLink, getThumb = () => '', onState = () => {}, delayMs = 3000, timers = { set: (fn, ms) => setTimeout(fn, ms), clear: (id) => clearTimeout(id) } }) {
-    Object.assign(this, { getCloud, getDeck, inline, getLink, setLink, getThumb, onState, delayMs, timers });
+  constructor({ onLimit = () => {}, getCloud, getDeck, inline, getLink, setLink, getThumb = () => '', onState = () => {}, delayMs = 3000, timers = { set: (fn, ms) => setTimeout(fn, ms), clear: (id) => clearTimeout(id) } }) {
+    Object.assign(this, { onLimit, getCloud, getDeck, inline, getLink, setLink, getThumb, onState, delayMs, timers });
     this.refresh();
   }
 
@@ -119,6 +119,10 @@ export class CloudSync {
     } catch (err) {
       if (err.code === 'signed_out') this.refresh();
       else if (err.code === 'conflict') this.#set('conflict', err.message);
+      else if (err.code === 'deck_limit') { // retrying cannot help; offer the plans instead
+        this.#set('error', err.message);
+        this.onLimit(err);
+      }
       else {
         this.#set('error', err.message || 'Could not save to the cloud.');
         this.#retry = this.timers.set(() => this.flush(), RETRY_MS);

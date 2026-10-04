@@ -42,6 +42,17 @@ function projectFromEnv(env) {
 
 const project = projectFromEnv(await readEnv());
 
+// Paddle's client-side token is public by design (it only opens checkout). A server API key,
+// which starts pdl_, must never be compiled into a page.
+function paddleFromEnv(env) {
+  const token = (env.PADDLE_CLIENT_TOKEN ?? '').trim();
+  if (!token) return '';
+  if (/^pdl_/i.test(token)) throw new Error('PADDLE_CLIENT_TOKEN is a server API key (pdl_...). Use the client-side token, which starts with test_ or live_.');
+  if (!/^(test|live)_[A-Za-z0-9]{20,}$/.test(token)) throw new Error('PADDLE_CLIENT_TOKEN should start with test_ (sandbox) or live_ (live).');
+  return token;
+}
+const paddleToken = paddleFromEnv(await readEnv());
+
 // A short label for this build: the commit when known (Netlify sets COMMIT_REF), plus the date.
 function buildLabel() {
   let sha = (process.env.COMMIT_REF ?? '').slice(0, 7);
@@ -92,7 +103,7 @@ const options = {
   // iPhones in the audience may be a few iOS versions behind: compile for Safari 15 and up.
   target: ['es2022', 'safari15', 'chrome100', 'firefox100'],
   loader: { '.woff2': 'dataurl' },
-  define: { __BUILD__: JSON.stringify(serve ? 'dev' : buildLabel()), __DEV__: String(serve), __SUPABASE_URL__: JSON.stringify(project.url), __SUPABASE_KEY__: JSON.stringify(project.key) },
+  define: { __BUILD__: JSON.stringify(serve ? 'dev' : buildLabel()), __DEV__: String(serve), __SUPABASE_URL__: JSON.stringify(project.url), __SUPABASE_KEY__: JSON.stringify(project.key), __PADDLE_TOKEN__: JSON.stringify(paddleToken) },
   sourcemap: serve,
   minify: !serve,
   logLevel: 'info',

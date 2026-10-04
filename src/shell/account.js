@@ -8,6 +8,9 @@ import { signInPanel } from '../cloud/sign-in-panel.js';
 import { appFooter, appHeader } from './chrome.js';
 import { COMPANY_NAME, COMPANY_URL, SUPPORT_EMAIL, supportHref } from './contact.js';
 import { takeFlash } from './flash.js';
+import { getBilling } from '../billing/instance.js';
+import { planPicker } from '../billing/picker.js';
+import { PLANS } from '../billing/plans.js';
 
 export async function mountAccount(root) {
   const persist = new Persistence();
@@ -26,6 +29,35 @@ export async function mountAccount(root) {
   const section = (title, ...children) => h('section', { class: 'sh-section' }, h('h2', { text: title }), ...children);
   const danger = (title, ...children) => h('section', { class: 'sh-section sh-section--danger' }, h('h2', { text: title }), ...children);
 
+  const billing = getBilling();
+  const day = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString([], { dateStyle: 'medium' }); };
+
+  // Your plan, how to manage it, and the plans you could move to.
+  function planSection() {
+    const row = billing.row;
+    const plan = PLANS[billing.plan];
+    const lines = [];
+    if (billing.plan !== 'free' && row) {
+      if (row.status === 'trialing' && row.trial_ends_at) lines.push(`Free trial until ${day(row.trial_ends_at)}. You will be charged after that unless you cancel.`);
+      if (row.status === 'past_due') lines.push('Your last payment did not go through. Update your payment method to keep your plan.');
+      if (row.ends_at && row.status !== 'canceled') lines.push(`Your plan ends on ${day(row.ends_at)} and will not renew.`);
+      if (row.status === 'canceled') lines.push('Your subscription has ended.');
+    }
+    const manage = [];
+    if (row?.update_payment_url && billing.plan !== 'free') manage.push(h('a', { class: 'ed-btn', href: row.update_payment_url, target: '_blank', rel: 'noopener', text: 'Update payment method' }));
+    if (row?.cancel_url && billing.plan !== 'free' && !row.ends_at) manage.push(h('a', { class: 'ed-btn', href: row.cancel_url, target: '_blank', rel: 'noopener', text: 'Cancel subscription' }));
+    const wanted = new URLSearchParams(location.search).get('plan');
+    return section('Plan and billing',
+      h('p', { class: 'sh-lead' }, 'You are on the ', h('strong', { text: plan.name }), ' plan.'),
+      ...lines.map((t) => h('p', { text: t })),
+      manage.length ? h('div', { class: 'ed-live__actions' }, ...manage) : null,
+      planPicker({
+        billing, cloud, highlight: PLANS[wanted] ? wanted : null,
+        onSignIn: () => document.querySelector('.sh-main')?.scrollIntoView(),
+        onActivated: () => render(),
+      }));
+  }
+
   async function render() {
     const local = await persist.listDecks();
     const body = [h('h1', { class: 'sh-title', text: 'Account' })];
@@ -42,6 +74,8 @@ export async function mountAccount(root) {
         h('div', { class: 'ed-live__actions' }, button({ label: 'Sign out', onClick: run('Signing out...', async () => { await cloud.signOut(); location.reload(); }) })),
         status));
     }
+
+    if (cloud?.user) body.push(planSection());
 
     body.push(section('On this device',
       h('p', { text: `${local.length} deck${local.length === 1 ? '' : 's'} stored in this browser. They stay here until you delete them.` }),
@@ -95,6 +129,7 @@ export async function mountAccount(root) {
         } }))) });
   }
 
+  await billing.refresh();
   await render();
   const flash = takeFlash();
   if (flash) toast(flash.text, { kind: flash.kind });

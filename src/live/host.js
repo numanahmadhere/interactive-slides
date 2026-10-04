@@ -12,6 +12,7 @@ import {
 } from './protocol.js';
 import { Boards } from './boards.js';
 import { resultsCsv } from './results.js';
+import { canUseKind, livePhones } from '../billing/plans.js';
 
 const HOST_CID = 'host';
 const PUBLISH_DELAY_MS = 250;
@@ -34,9 +35,15 @@ export class LiveHost {
   #statusSubs = new Set();
   #opened = { audience: false, remote: false };
   #heartbeat = 0;
+  #locked;
+  #full = new Map(); // phones turned away because the room is full -> when we last told them
 
-  constructor({ transport, room, title = '', now = Date.now }) {
+  // plan: who is hosting. It decides which kinds of question phones can answer and how many phones fit.
+  // It defaults to the smallest plan, so a caller that forgets to pass one is limited, not unlimited.
+  constructor({ transport, room, title = '', now = Date.now, plan = 'free' }) {
     this.title = title;
+    this.plan = plan;
+    this.#locked = new Set();
     this.sessionId = uid('h_'); // changes whenever a presenter page (re)starts; phones re-send their answers when it does
     this.transport = transport;
     this.room = room;
@@ -44,6 +51,18 @@ export class LiveHost {
   }
 
   get status() { return this.#status; }
+  get maxPhones() { return livePhones(this.plan); }
+
+  // The plan changed (a purchase went through): re-read which questions are open to phones.
+  setPlan(plan) {
+    if (plan === this.plan) return;
+    this.plan = plan;
+    this.#refreshPrompts();
+    this.#publishNow();
+  }
+
+  // True when this block's question type is not part of the plan, so phones never see it.
+  isLocked = (id) => this.#locked.has(id);
   get prompts() { return this.#prompts; }
 
   onStatus(fn) {
@@ -112,7 +131,9 @@ export class LiveHost {
 
   #refreshPrompts() {
     const p = this.#player;
-    this.#prompts = p ? collectPrompts(p.deck.slides[p.state.slide]) : [];
+    const all = p ? collectPrompts(p.deck.slides[p.state.slide]) : [];
+    this.#locked = new Set(all.filter((x) => !canUseKind(this.plan, x.kind)).map((x) => x.id));
+    this.#prompts = all.filter((x) => !this.#locked.has(x.id));
     for (const prompt of this.#prompts) this.#known.set(prompt.id, { prompt, slide: p.state.slide + 1 });
     for (const fn of [...this.#subs]) fn();
   }
@@ -190,12 +211,14 @@ export class LiveHost {
   #onAudience(raw) {
     const hello = parseHello(raw);
     if (hello) {
+      if (!this.#admit(hello.cid)) return;
       this.#touch(hello.cid);
       this.#publishSoon();
       return;
     }
     const text = parseText(raw, this.#prompts);
     if (text) {
+      if (!this.#admit(text.cid)) return;
       this.#touch(text.cid);
       const ok = text.kind === 'cloud' ? this.#boards.addEntry(text.id, text.cid, text.text, text.limit) : this.#boards.addResponse(text.id, text.cid, text.text, text.limit);
       if (ok) this.#changed();
@@ -203,6 +226,7 @@ export class LiveHost {
     }
     const ask = parseAsk(raw, this.#prompts);
     if (ask) {
+      if (!this.#admit(ask.cid)) return;
       this.#touch(ask.cid);
       const ok = ask.op === 'ask' ? !!this.#boards.ask(ask.id, ask.cid, ask.text, this.now()) : this.#boards.upvote(ask.id, ask.cid, ask.q);
       if (ok) this.#changed();
@@ -210,6 +234,7 @@ export class LiveHost {
     }
     const vote = parseVote(raw, this.#prompts);
     if (!vote) return;
+    if (!this.#admit(vote.cid)) return;
     this.#touch(vote.cid);
     const prompt = this.#prompts.find((p) => p.id === vote.id);
     if (this.#tally.vote(vote, prompt)) this.#changed();
@@ -217,6 +242,21 @@ export class LiveHost {
 
   #touch(cid) {
     if (this.#seen.size < 5000 || this.#seen.has(cid)) this.#seen.set(cid, this.now());
+  }
+
+  // May this phone take part? A phone already counted always may; a new one only while the room has space.
+  // A phone that is turned away is told, at most once every ten seconds, so it can say so instead of
+  // looking broken.
+  #admit(cid) {
+    this.audienceSize; // drop phones not heard from for a minute, which frees their places
+    if (this.#seen.has(cid) || this.#seen.size < this.maxPhones) return true;
+    const last = this.#full.get(cid) ?? 0;
+    if (this.now() - last > 10_000) {
+      this.#full.set(cid, this.now());
+      this.#audience?.send({ t: 'full', cid, limit: this.maxPhones });
+    }
+    if (this.#full.size > 5000) this.#full.clear();
+    return false;
   }
 
   #onRemote(raw) {

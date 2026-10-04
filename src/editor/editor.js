@@ -23,6 +23,9 @@ import { button, openMenu, toast } from './ui.js';
 import { openExportDialog } from './export-dialog.js';
 import { openFindDialog } from './find-dialog.js';
 import { openShortcuts } from './shortcuts-dialog.js';
+import { openUpgrade } from './upgrade-dialog.js';
+import { getBilling } from '../billing/instance.js';
+import { PLANS, planFor, canUseKind, canExport, canUseTheme, canBrand, canCsv } from '../billing/plans.js';
 import { openLiveDialog } from './live-dialog.js';
 import { openCloudDialog } from './cloud-dialog.js';
 import { getCloud } from '../cloud/instance.js';
@@ -131,7 +134,9 @@ export class Editor {
       },
       getThumb: () => this.meta?.thumb ?? '',
       onState: (state, error) => this.#paintCloud(state, error),
+      onLimit: () => this.requirePlan((p) => p.cloudDecks > PLANS[this.plan].cloudDecks, `Your ${PLANS[this.plan].name} plan keeps ${PLANS[this.plan].cloudDecks} decks online, and this deck was not saved there. It is safe on this device.`),
     });
+    this.#watchPlan();
     this.sync.markClean(this.deck); // what was just loaded is not an edit
     this.#paintCloud(this.sync.state, '');
     this.#resumeLive();
@@ -730,6 +735,36 @@ export class Editor {
     if (this.commit(ops.ungroupBlock(this.deck, this.slide.id, id))) this.selectMany(childIds);
   }
 
+  // ---- plans ------------------------------------------------------------------------
+
+  get plan() {
+    return getBilling().plan;
+  }
+
+  // Run `ok` against the person's plan. If it does not pass, say what is needed and offer the plans.
+  // Returns true when they may go ahead.
+  requirePlan(ok, reason) {
+    if (ok(PLANS[this.plan])) return true;
+    const need = planFor(ok);
+    openUpgrade(this, { reason: `${reason} It comes with ${PLANS[need].name} and above.`, highlight: need });
+    return false;
+  }
+
+  // Learn the plan at start, again whenever the tab is looked at (after a purchase in another
+  // tab, say), and redraw when it changes.
+  #watchPlan() {
+    const billing = getBilling();
+    billing.subscribe((plan) => { this.refresh(); this.live?.host?.setPlan(plan); });
+    billing.refresh();
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') billing.refresh(); });
+  }
+
+  // Called when a purchase goes through: draw anything that depended on the old plan again.
+  planChanged() {
+    this.refresh();
+    this.live?.host?.setPlan?.(this.plan);
+  }
+
   // ---- clipboard -----------------------------------------------------------
 
   #blocksForClip() {
@@ -1064,7 +1099,7 @@ export class Editor {
   // room is given when resuming a session after a reload; otherwise a new one is made.
   startLive({ config, base, room = newRoom() }) {
     this.stopLive();
-    const host = new LiveHost({ transport: createTransport(config), room, title: this.deck.meta.title });
+    const host = new LiveHost({ transport: createTransport(config), room, title: this.deck.meta.title, plan: this.plan });
     host.start();
     this.live = { host, room, config, base };
     // Kept for this tab only, so an accidental reload picks the same session up again

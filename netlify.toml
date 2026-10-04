@@ -8,7 +8,12 @@
   NODE_VERSION = "22"
   # The anon key is public and is compiled into the page on purpose; do not let
   # the secrets scanner fail the build over it.
-  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,SUPABASE_ANON_KEY"
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,SUPABASE_ANON_KEY,PADDLE_CLIENT_TOKEN"
+
+# Billing: the Paddle webhook (netlify/functions/paddle-webhook.mjs).
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
 
 [[redirects]]
   from = "/app/*"

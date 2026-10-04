@@ -161,3 +161,29 @@
 }
 :root[data-theme='dark'] .logo--on-light { display: none; }
 :root[data-theme='dark'] .logo--on-dark { display: block; }
+
+/* ---- plan chooser (account page and upgrade dialog) ---- */
+.bp { display: grid; gap: 16px; }
+.bp__toggle { display: inline-flex; justify-self: start; padding: 3px; border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); }
+.bp__tab { padding: 7px 16px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: 600 13.5px var(--font); cursor: pointer; }
+.bp__tab[aria-pressed='true'] { background: var(--blue); color: var(--on-blue); }
+.bp__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+.bp__card { display: flex; flex-direction: column; gap: 6px; padding: 18px; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--surface); color: var(--text); }
+.bp__card.is-highlight { border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-mid); }
+.bp__card.is-current { background: var(--blue-dim); }
+.bp__name { margin: 0; color: var(--ink); font: 650 18px var(--font); }
+.bp__blurb { margin: 0; min-height: 2.8em; color: var(--muted); font-size: 13.5px; line-height: 1.4; }
+.bp__price { margin: 6px 0 0; color: var(--ink); }
+.bp__price b { font: 600 30px var(--font-display); letter-spacing: -0.01em; }
+.bp__price span { color: var(--muted); font-size: 14px; }
+.bp__save { min-height: 1.4em; margin: 0; color: var(--success); font-size: 13px; font-weight: 600; }
+.bp__list { flex: 1; margin: 8px 0 14px; padding-left: 18px; font-size: 14px; line-height: 1.45; }
+.bp__list li { margin: 4px 0; }
+.bp__btn { padding: 11px 14px; border: 1px solid var(--blue); border-radius: var(--radius); background: var(--blue); color: var(--on-blue); font: 650 14px var(--font); cursor: pointer; }
+.bp__btn:hover:not(:disabled) { background: var(--blue-hover); }
+.bp__btn:disabled { border-color: var(--border-strong); background: transparent; color: var(--muted); cursor: default; }
+.bp__free { margin: 0; color: var(--muted); font-size: 14px; font-weight: 600; }
+.bp__note { min-height: 1.4em; margin: 0; color: var(--ink); font-weight: 600; }
+.bp__note[data-kind='error'] { color: var(--danger); }
+.bp__fine { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.bp button:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }

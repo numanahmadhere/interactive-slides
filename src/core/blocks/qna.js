@@ -1,7 +1,7 @@
 import { h, rich } from '../dom.js';
 import { str } from '../util.js';
 import { registerBlock } from './registry.js';
-import { stateOf } from './shared.js';
+import { stateOf, isLocked, LOCKED_NOTE } from './shared.js';
 
 const SAMPLE = [{ text: 'When will the next release ship?', votes: 12 }, { text: 'Can we see this with our own data?', votes: 7 }];
 
@@ -62,7 +62,7 @@ export default registerBlock({
       toggle.hidden = hiddenCount === 0;
       toggle.textContent = showHidden ? 'Hide the hidden ones' : `Show ${hiddenCount} hidden`;
       const open = all.filter((q) => !q.answered && !q.hidden).length;
-      count.textContent = all.length ? `${open} open ${open === 1 ? 'question' : 'questions'}${hiddenCount ? `. ${hiddenCount} hidden` : ''}` : live ? 'Waiting for questions' : 'Ask a question to see the list';
+      count.textContent = isLocked(live, block) ? LOCKED_NOTE : all.length ? `${open} open ${open === 1 ? 'question' : 'questions'}${hiddenCount ? `. ${hiddenCount} hidden` : ''}` : live ? 'Waiting for questions' : 'Ask a question to see the list';
     };
     el.querySelector('.sp-live__try')?.addEventListener('submit', (e) => {
       e.preventDefault();

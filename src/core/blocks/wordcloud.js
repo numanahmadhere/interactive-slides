@@ -1,7 +1,7 @@
 import { h, rich } from '../dom.js';
 import { str, clamp } from '../util.js';
 import { registerBlock } from './registry.js';
-import { stateOf } from './shared.js';
+import { stateOf, isLocked, LOCKED_NOTE } from './shared.js';
 
 const SAMPLE = [['clarity', 9], ['speed', 7], ['trust', 6], ['simple', 5], ['design', 4], ['teamwork', 3], ['focus', 3], ['value', 2], ['fun', 2], ['safe', 1]];
 
@@ -51,7 +51,7 @@ export default registerBlock({
       const list = words();
       fill(cloud, list, false);
       const total = list.reduce((a, w) => a + w[1], 0);
-      count.textContent = total ? `${total} ${total === 1 ? 'word' : 'words'}` : live ? 'Waiting for words' : 'Add a word to see the cloud';
+      count.textContent = isLocked(live, block) ? LOCKED_NOTE : total ? `${total} ${total === 1 ? 'word' : 'words'}` : live ? 'Waiting for words' : 'Add a word to see the cloud';
     };
     el.querySelector('.sp-live__try')?.addEventListener('submit', (e) => {
       e.preventDefault();

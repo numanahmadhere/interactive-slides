@@ -9,6 +9,7 @@ import { loadProject } from '../cloud/config.js';
 import { BUILD } from '../build-info.js';
 import { BUILT_IN_CONFIG } from '../cloud/defaults.js';
 import { button, field, openDialog, select, textInput, toast } from './ui.js';
+import { PLANS } from '../billing/plans.js';
 
 const STATUS_TEXT = {
   connecting: 'Connecting...',
@@ -126,9 +127,11 @@ export function openLiveDialog(editor) {
           qrElement(remoteUrl, { size: 168, label: 'QR code for the presenter remote' }),
           linkRow('Remote link', remoteUrl))),
       h('div', { class: 'ed-live__bar' }, count, status),
+      h('p', { class: 'ed-hint', text: `${PLANS[editor.plan].name} plan: rooms up to ${host.maxPhones} phones.${editor.plan === 'free' ? ' Word clouds, open answers, ranking and Q&A need Starter.' : ''}` }),
       h('div', { class: 'ed-hint', text: `Build ${BUILD}  ·  ${config.kind === 'local' ? 'this browser only' : new URL(config.url).hostname}` }),
       h('div', { class: 'ed-live__actions' },
-        button({ label: 'Download results (CSV)', onClick: () => {
+        button({ label: editor.plan === 'free' ? 'Download results (CSV, Starter)' : 'Download results (CSV)', onClick: () => {
+          if (!editor.requirePlan((p) => p.csv, 'Downloading results is not part of your plan.')) return;
           const blob = new Blob([host.exportResults()], { type: 'text/csv;charset=utf-8' });
           const a = h('a', { href: URL.createObjectURL(blob), download: `${slugify(editor.deck.meta.title) || 'results'}-results.csv` });
           document.body.append(a);

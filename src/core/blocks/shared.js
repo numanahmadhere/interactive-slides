@@ -45,3 +45,8 @@ export function shuffled(n) {
   } while (order.every((v, i) => v === i));
   return order;
 }
+
+// Shown on the presenter's slide instead of the usual waiting text when phones cannot answer this
+// block because the plan does not include its question type.
+export const LOCKED_NOTE = 'Phones can answer this on the Starter plan and above.';
+export const isLocked = (live, block) => !!live?.isLocked?.(block.id);

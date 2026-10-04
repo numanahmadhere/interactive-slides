@@ -409,3 +409,47 @@ Phase 7: phone remote, live polls, quizzes, word clouds, open answers, ratings, 
 
 Known limits: Inter is bundled as the Latin subset only, so other scripts
 fall back to system fonts. Code blocks are not syntax-highlighted yet.
+
+
+## Plans and billing (Paddle)
+
+Four plans: Free, Starter ($10 a month), Pro ($40) and Advanced ($120); yearly is ten months'
+price, and paid plans start with a 7-day trial that needs a card. **One table**, `src/billing/plans.js`,
+says what each plan includes; the pricing section, the upgrade dialog, the account page, the live room and
+the database all read it (tests check they agree).
+
+| | Free | Starter | Pro | Advanced |
+| --- | --- | --- | --- | --- |
+| Decks online | 3 | 25 | 100 | 1,000 |
+| Phones in a live room | 25 | 100 | 500 | 1,000 |
+| Question types phones can answer | poll, quiz, rating | + word cloud, open answers, ranking, Q&A | same | same |
+| Your logo, colours, font | no | yes | yes | yes |
+| Results as a spreadsheet | no | yes | yes | yes |
+| Exports | deck file, PNG | + web page, PDF | + PowerPoint | same |
+| Themes | 2 | 4 | 4 | 4 |
+
+Building, presenting and everything on the device stay free. **What is actually enforced:** the online
+deck limit is enforced by the database (a trigger in `supabase/schema.sql`; existing decks are never
+deleted, only new ones refused). The rest (room size, question types, exports, branding) are locks in the
+browser, because a page running on the customer's computer cannot truly stop them from editing it. They
+are fair-use gates, not security.
+
+How a purchase flows: the page opens Paddle's checkout (`src/billing/checkout.js`) with the signed-in
+person's id in `custom_data`; Paddle sends a signed webhook to `/api/paddle-webhook`
+(`netlify/functions/paddle-webhook.mjs`); it verifies the signature, ignores replays and old events, and
+writes the `subscriptions` row through `paddle_apply()` (service role only). The page reads its own row.
+Cancelling or updating a card uses the links Paddle puts in each subscription (stored on the row).
+
+Set up, once:
+1. Run the new part of `supabase/schema.sql` (it is safe to run again).
+2. Create the catalog in each Paddle account and put the price ids in `src/billing/catalog.js`
+   (live ids are in; fill in the sandbox ids when the sandbox catalog exists).
+3. Add the variables in `.env.example` to Netlify, add a notification destination in each Paddle account
+   pointing at `https://YOUR-SITE/api/paddle-webhook` (events: all `subscription.*`), and paste each
+   destination's secret into `PADDLE_WEBHOOK_SECRET_LIVE` / `_SANDBOX`.
+4. Build with a `test_` client token to try it with Paddle's sandbox cards; a `live_` token for real
+   payments. Real payments also need a verified Paddle account and an approved checkout domain.
+
+Known limits: switching between paid plans is done through support for now (a plan change needs
+Paddle's subscription API, which needs a server key); the page asks you to write to support. Team
+workspaces and single sign-on do not exist yet, so the Advanced plan sells room size and priority support only.

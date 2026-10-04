@@ -21,7 +21,7 @@ test(`${PHONES} phones voting at once: exact totals, everyone sees them`, async 
     { id: 'poll1', type: 'poll', slot: 'body', props: { question: 'Q', options: [{ text: 'A' }, { text: 'B' }, { text: 'C' }] } },
   ] }] });
   const room = newRoom();
-  const host = new LiveHost({ transport: createTransport(config), room, title: 'Load' });
+  const host = new LiveHost({ transport: createTransport(config), room, title: 'Load', plan: 'pro' });
   host.start();
   const listeners = new Set();
   host.attach({

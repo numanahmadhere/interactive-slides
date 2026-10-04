@@ -17,17 +17,19 @@ export const VENDORS = [
 ];
 
 // yes | no | paid (only on a paid plan) | part (partly) | soon (not yet, ours only) | check (not confirmed) | text:...
+// "needs" names what must exist in the product for a Yes or Paid in our column; "gated" names what must be
+// locked on the free plan for a Paid in our column (a test checks both).
 // Order of cells: us, Mentimeter, Slido, Kahoot, Poll Everywhere.
 export const GROUPS = [
   { title: 'Ask your audience', rows: [
     { name: 'Live polls', cells: ['yes', 'yes', 'yes', 'yes', 'yes'] },
     { name: 'Scored quizzes', cells: ['yes', 'yes', 'yes', 'yes', 'yes'] },
     { name: 'Timed quizzes with a leaderboard', cells: ['soon', 'yes', 'yes', 'yes', 'yes'], needs: null },
-    { name: 'Word cloud', cells: ['yes', 'yes', 'yes', 'paid', 'yes'], needs: ['wordcloud'] },
-    { name: 'Open-text answers', cells: ['yes', 'yes', 'yes', 'paid', 'yes'], needs: ['open-answers'] },
-    { name: 'Rating scales and ranking', cells: ['yes', 'yes', 'yes', 'check', 'yes'], needs: ['rating', 'ranking'] },
-    { name: 'Audience Q&A with upvotes', cells: ['yes', 'yes', 'yes', 'paid', 'yes'], needs: ['qna'] },
-    { name: 'Download results as a spreadsheet', cells: ['yes', 'paid', 'paid', 'check', 'paid'], needs: ['csv'] },
+    { name: 'Word cloud', cells: ['paid', 'yes', 'yes', 'paid', 'yes'], needs: ['wordcloud'], gated: ['kind:cloud'] },
+    { name: 'Open-text answers', cells: ['paid', 'yes', 'yes', 'paid', 'yes'], needs: ['open-answers'], gated: ['kind:open'] },
+    { name: 'Rating scales and ranking', cells: ['part', 'yes', 'yes', 'check', 'yes'], needs: ['rating', 'ranking'], gated: ['kind:ranking'] },
+    { name: 'Audience Q&A with upvotes', cells: ['paid', 'yes', 'yes', 'paid', 'yes'], needs: ['qna'], gated: ['kind:qna'] },
+    { name: 'Download results as a spreadsheet', cells: ['paid', 'paid', 'paid', 'check', 'paid'], needs: ['csv'], gated: ['csv'] },
   ] },
   { title: 'Build and present', rows: [
     { name: 'Design full slides in the same tool', cells: ['yes', 'part', 'no', 'part', 'no'], needs: ['free-form'] },
@@ -37,8 +39,8 @@ export const GROUPS = [
   { title: 'Privacy, teams and cost', rows: [
     { name: 'Audience answers stay off the vendor\'s servers', cells: ['yes', 'no', 'no', 'no', 'no'], needs: ['no-storage'] },
     { name: 'Team workspaces and single sign-on', cells: ['soon', 'paid', 'paid', 'paid', 'paid'] },
-    { name: 'Free plan limits', cells: ['text:No caps on questions or exports', 'text:50 participants a month', 'text:100 participants, 3 polls per event', 'text:10 players (3 on a work account)', 'text:25 audience members'] },
-    { name: 'Cheapest paid plan, per presenter', cells: ['text:Free to start', 'text:About $11 a month', 'text:About $17.50 a month', 'text:About $25 a month', 'text:See vendor'] },
+    { name: 'Free plan limits', cells: ['text:3 decks online, rooms up to 25 phones', 'text:50 participants a month', 'text:100 participants, 3 polls per event', 'text:10 players (3 on a work account)', 'text:25 audience members'] },
+    { name: 'Cheapest paid plan, per presenter', cells: ['text:$10 a month, 7-day trial', 'text:About $11 a month', 'text:About $17.50 a month', 'text:About $25 a month', 'text:See vendor'] },
   ] },
 ];
 
