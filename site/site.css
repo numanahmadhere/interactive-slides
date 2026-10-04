@@ -268,7 +268,7 @@ kbd { padding: 1px 7px; border: 1px solid var(--border-strong); border-bottom-wi
 @media (max-width: 600px) { .cmp { font-size: 14px; } .cmp tbody th[scope='row'] { min-width: 150px; } }
 
 /* ---- the tutorial as the first thing on the page: question types on the left, your screen and a phone on the right ---- */
-.tuthero { padding: clamp(40px, 5vw, 72px) 0 0; border-bottom: 1px solid var(--border); background: var(--bg-alt, var(--bg)); }
+.tuthero { padding: clamp(40px, 5vw, 72px) 0 clamp(56px, 6vw, 88px); border-bottom: 1px solid var(--border); background: var(--bg-alt, var(--bg)); }
 .tuthero__head { max-width: 1000px; margin: 0 auto clamp(32px, 4vw, 56px); text-align: center; }
 .tuthero__head h1 { font-size: clamp(32px, 4.4vw, 54px); line-height: 1.1; letter-spacing: -0.02em; }
 .tuthero__head .lead { margin: 18px auto 0; max-width: 720px; color: var(--muted); font-size: clamp(17px, 1.7vw, 20px); }

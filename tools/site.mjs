@@ -4,7 +4,6 @@
 
 import { renderTable, CHECKED } from './compare.mjs';
 import { listBlocks } from '../src/core/blocks/index.js';
-import { TEMPLATES } from '../src/library/templates.js';
 import { PLANS, PLAN_ORDER, PRICES, TRIAL_DAYS } from '../src/billing/plans.js';
 import { highlights } from '../src/billing/features.js';
 
@@ -158,15 +157,7 @@ const home = () => layout({
 </div>
 <p class="sr" id="show-announce" role="status" aria-live="polite"></p>
 </div>
-<p class="show__fine">Word clouds and open answers in a live room come with a paid plan; polls and quizzes are free.</p>
 <noscript><p class="note">The demo needs JavaScript. The <a href="/learn/">guides</a> cover the same steps in text.</p></noscript>
-<p class="cta tuthero__cta"><a class="btn lg" href="/app/">Start building</a><span class="assure">Free to start. Nothing to install. No account needed to try it.</span></p>
-<dl class="facts">
-<div><dt>${BLOCK_COUNT}</dt><dd>interactive and design blocks</dd></div>
-<div><dt>0</dt><dd>apps for your audience to install</dd></div>
-<div><dt>5</dt><dd>ways to export a deck</dd></div>
-<div><dt>${TEMPLATES.length}</dt><dd>slides to start from</dd></div>
-</dl>
 </div></section>
 
 <section id="clients" class="clients"><div class="wrap">
