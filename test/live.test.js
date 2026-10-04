@@ -246,8 +246,8 @@ test('a presenter page that restarts announces a new session id, so phones know 
 test('a saved session is only resumed if it is complete and valid', () => {
   const room = newRoom();
   const good = { room, config: { kind: 'realtime', url: 'https://abc.supabase.co', key: 'k' }, base: 'https://x.test/' };
-  assert.deepEqual(cleanSavedSession(good), { ...good, names: false, teams: [] });
-  assert.deepEqual(cleanSavedSession({ ...good, names: true, teams: ['Red', '', 7, 'Blue'] }), { ...good, names: true, teams: ['Red', 'Blue'] }, 'a reload resumes the same game');
+  assert.deepEqual(cleanSavedSession(good), { ...good, names: false, teams: [], privacy: false });
+  assert.deepEqual(cleanSavedSession({ ...good, names: true, teams: ['Red', '', 7, 'Blue'] }), { ...good, names: true, teams: ['Red', 'Blue'], privacy: false }, 'a reload resumes the same game');
   assert.equal(cleanSavedSession({ ...good, room: { code: 'BAD', key: room.key } }), null);
   assert.equal(cleanSavedSession({ ...good, room: { code: room.code, key: 'short' } }), null);
   assert.equal(cleanSavedSession({ ...good, config: { kind: 'realtime', url: 'javascript:1', key: 'k' } }), null);

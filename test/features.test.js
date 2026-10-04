@@ -12,7 +12,7 @@ test('every plan lists what it gives, built from the real numbers', () => {
   assert.match(starter, /Everything in Free/);
   assert.match(starter, /25 decks online/);
   assert.match(starter, /100 phones/);
-  assert.match(starter, /Word cloud, open answers, ranking and audience Q&A/);
+  assert.match(starter, /Word cloud, open answers, ranking, pins on a picture and audience Q&A/);
   assert.match(starter, /logo, colours and font/);
   assert.match(starter, /spreadsheet/);
   assert.match(starter, /web page and PDF/);

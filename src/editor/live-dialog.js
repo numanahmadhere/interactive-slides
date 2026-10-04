@@ -40,6 +40,7 @@ export function openLiveDialog(editor) {
     let key = useProject ? project.key : settings.config.key ?? '';
     let base = settings.base;
     let names = false;
+    let privacy = false;
     let teamText = '';
     const remoteBox = h('div', { class: 'ed-live__server', hidden: kind === 'local' || !!BUILT_IN_CONFIG });
     const problem = h('p', { class: 'ed-hint ed-hint--warn', hidden: true });
@@ -71,8 +72,8 @@ export function openLiveDialog(editor) {
       }
       saveSettings({ config, base });
       const teams = teamText.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 8);
-      if ((names || teams.length) && !editor.requirePlan((p) => p.leaderboard, 'Names, teams and the leaderboard are not part of your plan.')) return;
-      editor.startLive({ config, base, names: names || teams.length > 0, teams });
+      if (!privacy && (names || teams.length) && !editor.requirePlan((p) => p.leaderboard, 'Names, teams and the leaderboard are not part of your plan.')) return;
+      editor.startLive({ config, base, names: !privacy && (names || teams.length > 0), teams: privacy ? [] : teams, privacy });
       render();
     } });
 
@@ -81,6 +82,8 @@ export function openLiveDialog(editor) {
       field('Run', kindSelect), remoteBox,
       toggle({ label: canLeaderboard(editor.plan) ? 'Ask for names and keep a leaderboard' : 'Ask for names and keep a leaderboard (Starter)', value: false, onChange: (v) => { names = v; } }),
       field('Teams (optional)', textInput({ placeholder: 'Red, Blue', spellcheck: false, onInput: (v) => { teamText = v; } }), 'Names of up to eight teams, separated by commas. Phones choose one; teams are ranked by their average score.'),
+      toggle({ label: 'Private session: keep nothing', value: false, onChange: (v) => { privacy = v; } }),
+      h('p', { class: 'ed-hint', text: 'No names or teams, no report, no spreadsheet. Phones do not remember anything, and answers disappear from this page when you end the session.' }),
       problem,
       h('div', { class: 'ed-live__actions' }, start));
   }
@@ -112,7 +115,7 @@ export function openLiveDialog(editor) {
   }
 
   function runningView() {
-    const { host, room, config, base } = editor.live;
+    const { host, room, config, base, privacy } = editor.live;
     const addr = baseAddress({ base });
     const joinUrl = joinLink(addr, room.code, config);
     const remoteUrl = remoteLink(addr, room.key, config);
@@ -161,9 +164,10 @@ export function openLiveDialog(editor) {
           linkRow('Remote link', remoteUrl))),
       h('div', { class: 'ed-live__bar' }, count, status),
       h('p', { class: 'ed-hint', text: `${PLANS[editor.plan].name} plan: rooms up to ${host.maxPhones} phones.${editor.plan === 'free' ? ' Word clouds, open answers, ranking and Q&A need Starter.' : ''}` }),
+      privacy ? h('p', { class: 'ed-hint', text: 'Private session: nothing from it can be downloaded or saved. It all disappears when you end the session.' }) : null,
       h('div', { class: 'ed-hint', text: `Build ${BUILD}  ·  ${config.kind === 'local' ? 'this browser only' : new URL(config.url).hostname}` }),
       h('div', { class: 'ed-live__actions' },
-        button({ label: editor.plan === 'free' ? 'Download results (CSV, Starter)' : 'Download results (CSV)', onClick: () => {
+        privacy ? null : button({ label: editor.plan === 'free' ? 'Download results (CSV, Starter)' : 'Download results (CSV)', onClick: () => {
           if (!editor.requirePlan((p) => p.csv, 'Downloading results is not part of your plan.')) return;
           const blob = new Blob([host.exportResults()], { type: 'text/csv;charset=utf-8' });
           const a = h('a', { href: URL.createObjectURL(blob), download: `${slugify(editor.deck.meta.title) || 'results'}-results.csv` });
@@ -174,7 +178,7 @@ export function openLiveDialog(editor) {
         } }),
         button({ label: 'Clear all votes', onClick: () => { host.resetVotes(); toast('Votes cleared.'); } }),
         button({ label: 'Present', variant: 'primary', onClick: () => { dialog.close(); editor.present(); } }),
-        button({ label: 'Save report', onClick: () => saveReport() }),
+        privacy ? null : button({ label: 'Save report', onClick: () => saveReport() }),
         button({ label: 'End session', variant: 'danger', onClick: endSession })));
   }
 

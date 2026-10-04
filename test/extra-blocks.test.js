@@ -102,3 +102,26 @@ test('on the free plan the phone never gets a pin prompt', async () => {
   assert.deepEqual(host.pins('p'), []);
   assert.deepEqual(msgs.filter((m) => m.t === 'state').at(-1).prompts, []);
 });
+
+test('a private session keeps nothing: no names, nothing to save, and phones are told', async () => {
+  const deck = slide([{ id: 'q', type: 'poll', props: { question: 'Ok?', options: [{ text: 'a' }, { text: 'b' }] } }]);
+  const h = hub();
+  const room = newRoom();
+  const host = new LiveHost({ transport: h.transport(), room, plan: 'advanced', names: true, teams: ['Red'], privacy: true });
+  host.start();
+  after(() => host.stop());
+  host.attach({ deck, state: { slide: 0, step: 0 }, nav: { stepCounts: [0] }, subscribe: () => () => {}, next() {}, prev() {}, first() {}, last() {} });
+  const msgs = [];
+  const ch = h.transport().open(`is-a-${room.code}`, { onMessage: (m) => msgs.push(m), onStatus() {} });
+  await wait(10);
+  ch.send({ t: 'hello', cid: 'u1', name: 'Sam', team: 'Red' });
+  ch.send({ t: 'vote', cid: 'u1', id: 'q', picks: [0] });
+  await wait();
+  const state = msgs.filter((m) => m.t === 'state').at(-1);
+  assert.equal(state.private, true);
+  assert.equal(state.names, false);
+  assert.deepEqual(state.teams, []);
+  assert.equal(host.hasAnswers, false, 'so nothing prompts you to save');
+  assert.deepEqual(host.leaderboard(), []);
+  assert.equal(state.counts.q[0], 1, 'the poll still works on screen');
+});

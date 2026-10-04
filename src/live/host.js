@@ -50,8 +50,9 @@ export class LiveHost {
   // plan: who is hosting. It decides which kinds of question phones can answer and how many phones fit.
   // It defaults to the smallest plan, so a caller that forgets to pass one is limited, not unlimited.
   // names: ask phones for a nickname and keep a leaderboard. teams: names of teams phones may join.
-  constructor({ transport, room, title = '', now = Date.now, plan = 'free', names = false, teams = [] }) {
+  constructor({ transport, room, title = '', now = Date.now, plan = 'free', names = false, teams = [], privacy = false }) {
     this.title = title;
+    this.privacy = privacy === true; // keep nothing: no names, no report, no spreadsheet; answers vanish when the session ends
     this.plan = plan;
     this.wantNames = names;
     this.teamNames = teams.map((t) => String(t).trim()).filter(Boolean).slice(0, 8);
@@ -77,7 +78,7 @@ export class LiveHost {
   isLocked = (id) => this.#locked.has(id);
 
   // Names, teams and the leaderboard need a plan that includes them.
-  get names() { return this.wantNames && canLeaderboard(this.plan); }
+  get names() { return !this.privacy && this.wantNames && canLeaderboard(this.plan); }
   get teams() { return this.names ? this.teamNames : []; }
 
   // The leaderboard and teams, for the slide.
@@ -267,6 +268,7 @@ export class LiveHost {
 
   // Has anyone answered anything yet? (Used to offer saving a report before the session ends.)
   get hasAnswers() {
+    if (this.privacy) return false;
     return [...this.#known.values()].some(({ prompt }) => this.#tally.voters(prompt.id) > 0 || this.#boards.words(prompt.id).length > 0 || this.#boards.responses(prompt.id).length > 0 || this.#boards.questions(prompt.id).length > 0 || (this.#pins.get(prompt.id)?.size ?? 0) > 0);
   }
 
@@ -431,7 +433,7 @@ export class LiveHost {
       const left = this.remaining(p.id);
       if (left !== null) remaining[p.id] = left;
     }
-    this.#audience.send({ t: 'state', session: this.sessionId, title: this.#player?.deck.meta.title ?? this.title, prompts: this.#prompts, counts, data, names: this.names, teams: this.teams, remaining });
+    this.#audience.send({ t: 'state', session: this.sessionId, title: this.#player?.deck.meta.title ?? this.title, prompts: this.#prompts, counts, data, names: this.names, teams: this.teams, remaining, private: this.privacy });
     this.#publishRemote();
   }
 

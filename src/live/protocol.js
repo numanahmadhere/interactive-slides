@@ -117,7 +117,7 @@ export function cleanAudienceState(raw) {
   const teams = Array.isArray(raw.teams) ? raw.teams.slice(0, 8).filter((t) => typeof t === 'string' && t.trim()).map((t) => t.slice(0, 24)) : [];
   const remaining = {};
   if (isObj(raw.remaining)) for (const p of prompts) if (Number.isFinite(raw.remaining[p.id])) remaining[p.id] = Math.max(0, Math.min(300, Math.round(raw.remaining[p.id])));
-  return { title: text(raw.title, 200), prompts, counts, data, names: raw.names === true, teams, remaining, ended: raw.ended === true, session: text(raw.session, 40) };
+  return { title: text(raw.title, 200), prompts, counts, data, names: raw.names === true, teams, remaining, private: raw.private === true, ended: raw.ended === true, session: text(raw.session, 40) };
 }
 
 // What the host tells the phone remote.
@@ -288,5 +288,5 @@ export function cleanSavedSession(raw) {
   const config = cleanConfig(raw.config);
   if (!code || !key || !config) return null;
   const teams = Array.isArray(raw.teams) ? raw.teams.slice(0, 8).filter((t) => typeof t === 'string' && t.trim()).map((t) => t.trim().slice(0, 24)) : [];
-  return { room: { code, key }, config, base: text(raw.base, 300), names: raw.names === true, teams };
+  return { room: { code, key }, config, base: text(raw.base, 300), names: raw.names === true, teams, privacy: raw.privacy === true };
 }

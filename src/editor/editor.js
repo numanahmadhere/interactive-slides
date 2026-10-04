@@ -1103,14 +1103,14 @@ export class Editor {
   // ---- live sessions -----------------------------------------------------
 
   // room is given when resuming a session after a reload; otherwise a new one is made.
-  startLive({ config, base, room = newRoom(), names = false, teams = [] }) {
+  startLive({ config, base, room = newRoom(), names = false, teams = [], privacy = false }) {
     this.stopLive();
-    const host = new LiveHost({ transport: createTransport(config), room, title: this.deck.meta.title, plan: this.plan, names, teams });
+    const host = new LiveHost({ transport: createTransport(config), room, title: this.deck.meta.title, plan: this.plan, names, teams, privacy });
     host.start();
-    this.live = { host, room, config, base, names, teams };
+    this.live = { host, room, config, base, names, teams, privacy };
     // Kept for this tab only, so an accidental reload picks the same session up again
     // (same code, same links) instead of stranding everyone on their phones.
-    try { sessionStorage.setItem(LIVE_SESSION_KEY, JSON.stringify({ room, config, base, names, teams })); } catch { /* no resume without it */ }
+    try { sessionStorage.setItem(LIVE_SESSION_KEY, JSON.stringify({ room, config, base, names, teams, privacy })); } catch { /* no resume without it */ }
   }
 
   stopLive() {

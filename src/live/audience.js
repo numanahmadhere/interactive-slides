@@ -390,7 +390,7 @@ export function mountAudience(root, { code, config }) {
       input?.focus();
       input?.setSelectionRange?.(typing.pos, typing.pos);
     }
-    footStatus.textContent = status === 'error' ? 'Connection problem. Retrying...' : '';
+    footStatus.textContent = status === 'error' ? 'Connection problem. Retrying...' : state.private ? 'Private session: your answers are not stored and disappear when it ends.' : '';
   }
   // Count the clock down on the question cards without redrawing them.
   const tick = setInterval(() => {
