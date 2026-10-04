@@ -84,7 +84,7 @@ check('netlify.toml builds and publishes dist', /command\s*=\s*"npm run build"/.
 check('share-link tokens are protected (Referrer-Policy: no-referrer)', /Referrer-Policy\s*=\s*"no-referrer"/.test(toml));
 check('sw.js is never cached by the host', /for\s*=\s*"\/sw\.js"[\s\S]*no-cache/.test(toml));
 check('.env files are git-ignored', /^\.env/m.test(existsSync('.gitignore') ? readFileSync('.gitignore', 'utf8') : ''));
-const tracked = run('git', ['ls-files']).stdout.split('\n').filter((f) => /(^|\/)\.env/.test(f));
+const tracked = run('git', ['ls-files']).stdout.split('\n').filter((f) => /(^|\/)\.env/.test(f) && !/(^|\/)\.env\.example$/.test(f)); // the example file holds names only, never values
 check('no .env file is committed', tracked.length === 0, tracked.join(', '));
 check('working tree is committed (what you test is what deploys)', run('git', ['status', '--porcelain']).stdout.trim() === '', 'uncommitted changes would not be deployed');
 
