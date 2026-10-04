@@ -44,9 +44,25 @@ async function as(id, sql, params = []) {
   }
 }
 
+// Starting the in-process Postgres sometimes never finishes (a race in its WebAssembly start-up while the
+// test runner is still setting up). A short pause makes that rare, and each attempt is given a few seconds
+// before it is abandoned and tried again, so a stall costs a few seconds instead of hanging the suite.
+async function startDb(attempts = 4, waitMs = 6000) {
+  for (let i = 1; i <= attempts; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const candidate = new PGlite();
+    const worked = await Promise.race([candidate.exec(SUPABASE_LIKE).then(() => true, () => false), new Promise((resolve) => setTimeout(() => resolve(false), waitMs))]);
+    if (worked) {
+      db = candidate;
+      return;
+    }
+    candidate.close().catch(() => {});
+  }
+  throw new Error('Postgres did not start');
+}
+
 before(async () => {
-  db = new PGlite();
-  await db.exec(SUPABASE_LIKE);
+  await startDb();
   await db.exec(SCHEMA);
   // Person A is on a big plan so the older tests below can create many decks; person B stays on the free plan.
   await db.query(`insert into subscriptions (user_id, plan, status) values ($1, 'advanced', 'active')`, [A]);

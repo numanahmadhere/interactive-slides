@@ -7,7 +7,7 @@ import { highlights } from './features.js';
 import { checkoutReady, openCheckout } from './checkout.js';
 import { SUPPORT_EMAIL, supportHref } from '../shell/contact.js';
 
-const money = (n) => `$${n}`;
+const money = (n) => `$${n.toLocaleString('en-US')}`;
 
 // opts: { billing, cloud, interval, highlight, onSignIn(), onMessage(text, kind), onActivated(plan) }
 export function planPicker(opts) {

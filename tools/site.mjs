@@ -13,7 +13,7 @@ const planCards = () => PLAN_ORDER.map((id) => {
   return `<article class="bp__card${id === 'pro' ? ' is-highlight' : ''}">
 <h3 class="bp__name">${plan.name}</h3><p class="bp__blurb">${plan.blurb}</p>
 <p class="bp__price"><b>${price ? `$${price.month}` : '$0'}</b><span>${price ? ' a month' : ' forever'}</span></p>
-<p class="bp__save">${price ? `or $${price.year} a year, two months free` : ''}</p>
+<p class="bp__save">${price ? `or $${price.year.toLocaleString('en-US')} a year, two months free` : ''}</p>
 <ul class="bp__list">${highlights(id).map((t) => `<li>${t}</li>`).join('')}</ul>
 ${price ? `<a class="btn${id === 'pro' ? '' : ' ghost'}" href="/app/account?plan=${id}">Start ${TRIAL_DAYS}-day free trial</a>` : '<a class="btn ghost" href="/app/">Start building</a>'}
 </article>`;

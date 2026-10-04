@@ -235,7 +235,7 @@ test('the pricing section prints the real plans, prices and trial, and links eac
   const pricing = home.slice(home.indexOf('id="pricing"'), home.indexOf('id="features"'));
   for (const id of ['starter', 'pro', 'advanced']) {
     assert.ok(pricing.includes(`$${PRICES[id].month}</b>`), `${id} monthly price`);
-    assert.ok(pricing.includes(`$${PRICES[id].year} a year`), `${id} yearly price`);
+    assert.ok(pricing.includes(`$${PRICES[id].year.toLocaleString('en-US')} a year`), `${id} yearly price`);
     assert.ok(pricing.includes(`href="/app/account?plan=${id}"`), `${id} link`);
     assert.ok(pricing.includes(PLANS[id].name));
   }
