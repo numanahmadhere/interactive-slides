@@ -24,7 +24,7 @@ test('every CSS variable that is used is defined', () => {
     const used = new Set([...css.matchAll(/var\((--[a-z0-9-]+)/gi)].map((m) => m[1]));
     for (const name of used) {
       // slide themes set their --sp-* variables from JavaScript (theme.js), and a few are set inline
-      if (name.startsWith('--sp-') || name.startsWith('--ed-stage') || name === '--i' || name === '--w' || name === '--share') continue;
+      if (name.startsWith('--sp-') || name.startsWith('--ed-stage') || name === '--i' || name === '--w' || name === '--share' || name === '--c' || name === '--dx' || name === '--r') continue;
       assert.ok(global.has(name) || local.has(name) || fromScripts.has(name), `${f} uses ${name}, which is not defined`);
     }
   }

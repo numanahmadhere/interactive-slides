@@ -195,6 +195,8 @@ function mount(root) {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const canHover = matchMedia('(hover: hover)').matches;
   const stage = $('.show__stage');
+  const people = $('#show-people');
+  const hint = $('#show-hint');
 
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 
@@ -207,8 +209,57 @@ function mount(root) {
   let note = '';
   let ui = {};
   let swapTimer = 0;
+  let joining = false;
+  let touched = false;
+  let joinTimer = 0;
 
   const elapsed = () => ticks * TICK_MS / 1000;
+
+  // how many people look to have joined: grows while the room fills
+  function setPeople() {
+    const n = type === 'quiz' ? demo.room + 1 : Math.min(48, 12 + Math.round(ticks / CROWD_EVERY) * 2 + (demo.total ? Math.min(20, demo.total) : 0));
+    if (people.textContent !== String(n)) tween(people, n);
+  }
+
+  // a small dot travels from the phone to the big screen when you answer
+  function fly() {
+    touched = true;
+    hint.classList.add('is-gone');
+    if (reduced) return;
+    const s = stage.getBoundingClientRect();
+    const a = phone.getBoundingClientRect();
+    const b = slide.getBoundingClientRect();
+    const dot = el('span', 'show__fly');
+    dot.style.left = `${a.left - s.left + a.width / 2}px`;
+    dot.style.top = `${a.top - s.top + a.height / 3}px`;
+    stage.append(dot);
+    const dx = b.left - a.left + b.width * 0.55 - a.width / 2;
+    const dy = b.top - a.top + b.height * 0.35 - a.height / 3;
+    dot.animate([{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 60}px) scale(1.5)`, opacity: 1, offset: 0.5 }, { transform: `translate(${dx}px, ${dy}px) scale(.3)`, opacity: 0 }], { duration: 750, easing: 'cubic-bezier(.3,.7,.3,1)' }).finished.then(() => dot.remove(), () => dot.remove());
+  }
+
+  function confetti() {
+    if (reduced) return;
+    const box = $('.show__screen');
+    const colours = ['#2020E8', '#FF7FAE', '#F5B93B', '#1F9D55', '#6A3FC2', '#E8643C'];
+    for (let i = 0; i < 22; i++) {
+      const c = el('span', 'show__conf');
+      c.style.cssText = `left:${10 + Math.random() * 80}%;background:${colours[i % colours.length]};--dx:${(Math.random() - 0.5) * 160}px;--r:${Math.random() * 720 - 360}deg;animation-delay:${Math.random() * 0.25}s`;
+      box.append(c);
+      setTimeout(() => c.remove(), 2000);
+    }
+  }
+
+  // the stage tilts a little towards the pointer
+  if (!reduced && canHover) {
+    stage.addEventListener('pointermove', (e) => {
+      const r = stage.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width - 0.5;
+      const y = (e.clientY - r.top) / r.height - 0.5;
+      stage.style.transform = `perspective(1600px) rotateY(${(x * 3).toFixed(2)}deg) rotateX(${(-y * 2).toFixed(2)}deg)`;
+    });
+    stage.addEventListener('pointerleave', () => { stage.style.transform = ''; });
+  }
 
   // a number that counts up to its new value
   function tween(node, to) {
@@ -339,6 +390,11 @@ function mount(root) {
     const scene = SCENES[type];
     const focusedOpt = [...phone.querySelectorAll('.show__opt')].indexOf(document.activeElement);
     const hadInput = document.activeElement?.id === 'show-input';
+    if (joining) {
+      phone.replaceChildren(el('div', 'show__joining'), el('p', 'show__joiningnote', 'Joining 5F5BLZ...'));
+      phone.firstChild.append(el('span', 'show__spin'));
+      return;
+    }
     const kids = [el('p', 'phone__q', scene.question)];
     if (type === 'cloud' || type === 'open') {
       const form = el('form', 'show__form');
@@ -359,7 +415,7 @@ function mount(root) {
         e.preventDefault();
         const added = demo.add(input.value, true);
         if (!added) note = demo.mine?.size >= 3 ? 'You have sent three words.' : demo.mineCount >= 3 ? 'You have sent three answers.' : 'Type something first.';
-        else { note = type === 'cloud' ? 'Sent. Look at the big screen.' : 'Sent. Your answer is on the screen.'; say(`Added "${added}"`); }
+        else { note = type === 'cloud' ? 'Sent. Look at the big screen.' : 'Sent. Your answer is on the screen.'; say(`Added "${added}"`); fly(); }
         input.value = '';
         updateScreen();
         drawPhone();
@@ -371,7 +427,7 @@ function mount(root) {
         const b = el('button', `show__opt${demo.you === i ? ' is-on' : ''}`, text);
         b.type = 'button';
         b.setAttribute('aria-pressed', String(demo.you === i));
-        b.addEventListener('click', () => { if (demo.vote(i)) { note = 'Vote sent. You can change it.'; say(`You voted for ${text}`); updateScreen(); drawPhone(); } });
+        b.addEventListener('click', () => { if (demo.vote(i)) { note = 'Vote sent. You can change it.'; say(`You voted for ${text}`); fly(); updateScreen(); drawPhone(); } });
         list.append(b);
       });
       kids.push(list);
@@ -399,6 +455,7 @@ function mount(root) {
           demo.frozen = frac;
           note = 'Answer sent. Waiting for the others.';
           say('Answer sent');
+          fly();
           if (demo.everyone) { demo.reveal(); revealAt = ticks; }
           updateScreen();
           drawPhone();
@@ -436,8 +493,12 @@ function mount(root) {
       note = '';
       revealAt = 0;
       buildScreen();
+      joining = !reduced && !instant;
       drawPhone();
+      clearTimeout(joinTimer);
+      if (joining) joinTimer = setTimeout(() => { joining = false; drawPhone(); if (focus) $('#show-input')?.focus({ preventScroll: true }); }, 850);
       stage.classList.remove('is-swapping');
+      setPeople();
       if (focus) $('#show-input')?.focus({ preventScroll: true });
     };
     if (instant || reduced) apply();
@@ -447,6 +508,7 @@ function mount(root) {
   // ---- the simulated room
   function step() {
     ticks++;
+    if (ticks % 4 === 0) setPeople();
     if (type === 'quiz') {
       if (!demo.revealed) {
         if (ticks % 3 === 0) demo.crowdStep();
@@ -457,6 +519,7 @@ function mount(root) {
           demo.reveal();
           revealAt = ticks;
           drawPhone();
+          if (demo.you === demo.correct) confetti();
         }
         updateScreen();
       } else if (ticks - revealAt > REVEAL_PAUSE_TICKS) {
