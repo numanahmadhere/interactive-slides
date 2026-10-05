@@ -8,6 +8,7 @@ import { PLANS, PLAN_ORDER, PRICES, TRIAL_DAYS } from '../src/billing/plans.js';
 import { highlights } from '../src/billing/features.js';
 import { TEMPLATES } from '../src/library/templates.js';
 import { buildArt, ART_ALT } from './art.mjs';
+import qrcode from 'qrcode-generator';
 import { productPages, PRODUCTS, productHref } from './products.mjs';
 import { learnPages, GUIDES, guideHref } from './learn.mjs';
 
@@ -24,6 +25,25 @@ ${price ? `<a class="btn${id === 'pro' ? '' : ' ghost'}" href="/app/account?plan
 }).join('\n');
 
 const money = (n) => `$${n.toLocaleString('en-US')}`;
+// A QR code as one small inline SVG path, drawn in runs so it stays tiny.
+function qrSvg(text) {
+  const q = qrcode(0, 'M');
+  q.addData(text);
+  q.make();
+  const n = q.getModuleCount();
+  let d = '';
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      if (!q.isDark(r, c)) continue;
+      let len = 1;
+      while (c + len < n && q.isDark(r, c + len)) len++;
+      d += `M${c + 2} ${r + 2}h${len}v1h-${len}z`;
+      c += len - 1;
+    }
+  }
+  return `<svg viewBox="0 0 ${n + 4} ${n + 4}" shape-rendering="crispEdges" aria-hidden="true"><rect width="100%" height="100%" fill="#fff"/><path d="${d}" fill="#0F1117"/></svg>`;
+}
+
 const BLOCK_COUNT = listBlocks().filter((d) => !d.internal).length;
 
 const SITE = (process.env.SITE_URL ?? 'https://densight-slides.netlify.app').replace(/\/+$/, '');
@@ -205,24 +225,38 @@ const home = () => layout({
 <section id="tutorial" class="hero tuthero"><img class="hero__fig hero__fig--l" src="/art/hero-left.svg" alt="" width="280" height="420"><img class="hero__fig hero__fig--r" src="/art/hero-right.svg" alt="" width="280" height="420"><div class="wrap">
 <header class="tuthero__head">
 <h1>Presentations your audience can <em>answer.</em></h1>
-<p class="lead">Add live polls, quizzes and questions to the presentations you already give. Pick a question type below and use it: answer on the phone and watch your own answer appear on the big screen.</p>
+<p class="lead">Add live polls, quizzes and questions to the presentations you already give. Watch one run from start to finish in under 30 seconds, then try it yourself: answer on the phone and see your answer land on the big screen.</p>
 <p class="cta tuthero__cta"><a class="btn lg" href="/app/">Start building free</a><span class="assure">Free account, no card. Try the demo below first.</span></p>
 </header>
-<div class="show reveal" id="show">
+<div class="show reveal" id="show" data-mode="tour">
 <ul class="show__cards" aria-label="Question types">
 <li class="show__card"><button type="button" class="show__pick" data-type="cloud" aria-pressed="false"><svg class="show__ico" viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17a4 4 0 01-.6-7.96A5.5 5.5 0 0117 8.5a3.8 3.8 0 01.5 7.5H7z"/><path d="M9.5 13.5l1.3-3 1.3 3M10 12.6h1.6M14 11v3M14 12.2c.8-.9 1.9-.4 1.9.6"/></svg><span><b>Word Cloud</b><small>Visualize what people think, in real time</small></span></button><a class="show__create" href="/app/">Create</a></li>
 <li class="show__card"><button type="button" class="show__pick" data-type="quiz" aria-pressed="false"><svg class="show__ico" viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="11" height="16" rx="1.5"/><path d="M8 8h5M8 11.5h5M8 15h3"/><path d="M15 15l5-6 1.5 1.2-5 6L14 17z"/></svg><span><b>Quiz</b><small>Test participants with questions that have set correct answers</small></span></button><a class="show__create" href="/app/">Create</a></li>
 <li class="show__card"><button type="button" class="show__pick" data-type="poll" aria-pressed="false"><svg class="show__ico" viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12h4v8M10 20V5h4v15M16 20V9h4v11"/><path d="M3 20h18"/></svg><span><b>Poll</b><small>Let your participants vote on set options</small></span></button><a class="show__create" href="/app/">Create</a></li>
 <li class="show__card"><button type="button" class="show__pick" data-type="open" aria-pressed="false"><svg class="show__ico" viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 016.5 4h11A2.5 2.5 0 0120 6.5v7a2.5 2.5 0 01-2.5 2.5H11l-4.5 4v-4h0A2.5 2.5 0 014 13.5z"/><path d="M8.5 10h.01M12 10h.01M15.5 10h.01" stroke-width="2.4"/></svg><span><b>Open Ended</b><small>Collect and display responses in their own words</small></span></button><a class="show__create" href="/app/">Create</a></li>
 </ul>
-<div class="show__stage">
-<span class="show__tag show__tag--screen" aria-hidden="true">Your screen<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v15M6 13l6 6 6-6"/></svg></span>
-<span class="show__tag show__tag--phone" aria-hidden="true">Participant&rsquo;s screen<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5c0 6 3 9 9 10M10 11l4 4-4 4"/></svg></span>
-<div class="show__laptop"><div class="show__screen"><span class="show__cam" aria-hidden="true"></span>
-<div class="show__bar"><span class="show__brandline"><i aria-hidden="true"></i>Densight Slides</span><p class="show__join"><i class="show__live" aria-hidden="true"></i>Join with the code <b>5F5BLZ</b></p><span class="show__people"><span class="show__avatars" aria-hidden="true"><i style="--c:#2020E8">A</i><i style="--c:#0B7A69">J</i><i style="--c:#E8643C">M</i><i style="--c:#6A3FC2">S</i></span><b id="show-people">12</b> joined</span></div>
-<div id="show-slide" class="show__slide"></div></div><div class="show__base" aria-hidden="true"></div></div>
+<div class="show__stage tour">
+<div class="tour__head"><p class="tour__caption" id="show-caption"></p><div class="tour__ctrl"><button type="button" class="tour__btn" id="show-replay">Replay the tour</button><button type="button" class="tour__btn tour__btn--main" id="show-try">Try it yourself</button></div></div>
+<div class="tour__device">
+<div class="win" id="show-window" data-mode="edit" data-step="0">
+<div class="win__bar"><span class="win__dots" aria-hidden="true"><i></i><i></i><i></i></span><span class="win__title">Team update</span><button type="button" class="win__live" id="show-golive" tabindex="-1" aria-hidden="true"><i></i><span>Go live</span></button></div>
+<div class="win__tools" aria-hidden="true"><span class="win__tool is-main">+ Insert</span><span>Text</span><span>Image</span><span>Shape</span><span data-tool="quiz">Quiz</span><span data-tool="poll">Poll</span><span data-tool="cloud">Word cloud</span><span data-tool="open">Open answers</span></div>
+<div class="win__body">
+<div class="win__rail" aria-hidden="true"><div class="win__thumb"><i style="width:60%"></i><i style="width:38%"></i></div><div class="win__thumb is-on"><b></b><i style="width:70%"></i><i style="width:40%"></i></div><div class="win__thumb"><i style="width:52%"></i><i style="width:66%"></i></div></div>
+<div class="win__canvas"><div id="show-slide" class="show__slide"></div>
+<div class="win__join" id="show-join" aria-hidden="true"><span class="win__qr">${qrSvg(SITE + '/')}</span><span class="win__joinline">Join with the code</span><b class="win__code">5F5BLZ</b><span class="win__who"><span class="show__avatars"><i style="--c:#2020E8">A</i><i style="--c:#0B7A69">J</i><i style="--c:#E8643C">M</i><i style="--c:#6A3FC2">S</i></span><b id="show-people">0</b> joined</span></div>
+</div></div>
+<div class="win__foot" aria-hidden="true"><span class="win__nav"><i>&#9664;</i><i>&#9654;</i></span><span class="win__count">2 / 8</span><span class="win__badge"><i></i>Live</span><span class="win__clock" id="show-clock">00:00</span></div>
+</div>
 <div class="show__phone"><span class="show__hint" id="show-hint" aria-hidden="true">Your turn</span><span class="show__sidebtn" aria-hidden="true"></span><div class="show__status" aria-hidden="true"><span>9:41</span><span class="show__notch"></span><span class="show__bars"><i></i><i></i><i></i></span></div><div class="show__phonebrand">Densight Slides</div><div id="show-phone" class="show__phonebody"></div><span class="show__home" aria-hidden="true"></span></div>
-
+<span class="ghost" id="show-ghost" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 2 4 7-3 1.5-4-7-5 4z"/></svg></span>
+</div>
+<ol class="tour__steps" id="show-steps" aria-label="The four steps">
+<li><button type="button" data-step="0"><span class="tour__n">1</span><span><b>Write the question</b><small>Pick how people answer</small></span><i class="tour__bar"></i></button></li>
+<li><button type="button" data-step="1"><span class="tour__n">2</span><span><b>Go live</b><small>A code and a QR code</small></span><i class="tour__bar"></i></button></li>
+<li><button type="button" data-step="2"><span class="tour__n">3</span><span><b>Answer on a phone</b><small>No app, no account</small></span><i class="tour__bar"></i></button></li>
+<li><button type="button" data-step="3"><span class="tour__n">4</span><span><b>Watch the room</b><small>Results build live</small></span><i class="tour__bar"></i></button></li>
+</ol>
 </div>
 <p class="sr" id="show-announce" role="status" aria-live="polite"></p>
 </div>

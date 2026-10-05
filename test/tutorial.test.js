@@ -108,3 +108,24 @@ test('the script renders typed text as text only, never as markup', () => {
   const src = readFileSync(new URL('../site/tutorial.js', import.meta.url), 'utf8');
   assert.ok(!/innerHTML|insertAdjacentHTML|eval\(|document\.write/.test(src));
 });
+
+test('the tour: four steps, a real QR code, both controls, and the pieces the script drives', () => {
+  const home = buildSite()['index.html'];
+  const steps = home.slice(home.indexOf('id="show-steps"'), home.indexOf('</ol>', home.indexOf('id="show-steps"')));
+  assert.equal((steps.match(/data-step="[0-3]"/g) ?? []).length, 4);
+  for (const id of ['show-window', 'show-golive', 'show-join', 'show-ghost', 'show-clock', 'show-caption', 'show-replay', 'show-try', 'show-steps']) assert.ok(home.includes(`id="${id}"`), id);
+  const qr = /<span class="win__qr"><svg viewBox="0 0 (\d+) \1"/.exec(home);
+  assert.ok(qr && Number(qr[1]) > 25, 'the join card carries a real QR code');
+  assert.ok(home.includes('Replay the tour') && home.includes('Try it yourself'));
+  const src = readFileSync(new URL('../site/tutorial.js', import.meta.url), 'utf8');
+  assert.match(src, /#tour-\(\[0-3\]\)/, 'a link can pause the demo at a step');
+  assert.match(src, /prefers-reduced-motion/, 'motion can be switched off');
+  assert.ok(!/innerHTML/.test(src));
+});
+
+test('an empty room starts at nothing, so the tour can fill it', () => {
+  assert.equal(makeDemo('cloud', { empty: true }).total, 0);
+  assert.deepEqual(makeDemo('poll', { empty: true }).counts, [0, 0, 0]);
+  assert.equal(makeDemo('open', { empty: true }).total, 0);
+  assert.ok(makeDemo('cloud').total > 0 && makeDemo('poll').total > 0, 'the free-play room is already busy');
+});

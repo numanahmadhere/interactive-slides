@@ -168,100 +168,91 @@ export class OpenDemo {
   get total() { return this.items.length; }
 }
 
-export function makeDemo(type) {
-  if (type === 'cloud') return new CloudDemo();
+export function makeDemo(type, { empty = false } = {}) {
+  if (type === 'cloud') return new CloudDemo(empty ? [] : undefined);
   if (type === 'quiz') return new QuizDemo();
-  if (type === 'poll') return new PollDemo();
-  if (type === 'open') return new OpenDemo();
+  if (type === 'poll') return new PollDemo(SCENES.poll.options, empty ? [0, 0, 0] : SCENES.poll.seed);
+  if (type === 'open') return new OpenDemo(empty ? [] : undefined);
   throw new Error(`Unknown demo "${type}"`);
 }
 
-// ---- drawing ---------------------------------------------------------------------------
-// The big screen is built once per question and then updated in place, so bars slide, numbers count up and
-// words glide to their new places instead of the whole thing being redrawn every second.
+// ---- the tour --------------------------------------------------------------------------------------------------------
+// A guided run through the whole flow, in four steps: write the question, go live, answer on a phone, watch the room.
+// It plays by itself (a ghost pointer does the clicking and typing), you can jump to any step, and at the end it hands
+// over: the same screen and phone become yours to use.
 
 const TICK_MS = 250;
 const CROWD_EVERY = 6; // ticks, so every 1.5 seconds
 const REVEAL_PAUSE_TICKS = 28;
 const SWAP_MS = 170;
 const HOVER_INTENT_MS = 120;
+const CANCELLED = Symbol('cancelled');
+
+const CAPTIONS = [
+  ['Write the question', 'Put it on a slide and choose how people answer.'],
+  ['Go live', 'Press Go live. People join with a code or a QR code.'],
+  ['Answer on a phone', 'No app and no account. Tap or type, and it counts.'],
+  ['Watch the room', 'Results build on your screen as people answer.'],
+];
+const CAPTION_PLAY = ['Your turn', 'Answer on the phone and watch it land on the big screen.'];
+const TOOL_OF = { cloud: 'cloud', quiz: 'quiz', poll: 'poll', open: 'open' };
 
 function mount(root) {
   const $ = (sel) => root.querySelector(sel);
   const cards = [...root.querySelectorAll('[data-type]')];
+  const stepBtns = [...root.querySelectorAll('#show-steps [data-step]')];
   const slide = $('#show-slide');
   const phone = $('#show-phone');
   const announce = $('#show-announce');
+  const stage = $('.show__stage');
+  const device = $('.tour__device');
+  const win = $('#show-window');
+  const join = $('#show-join');
+  const ghost = $('#show-ghost');
+  const people = $('#show-people');
+  const clock = $('#show-clock');
+  const caption = $('#show-caption');
+  const hint = $('#show-hint');
+  const goLive = $('#show-golive');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const canHover = matchMedia('(hover: hover)').matches;
-  const stage = $('.show__stage');
-  const people = $('#show-people');
-  const hint = $('#show-hint');
 
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 
   let type = 'cloud';
-  let demo = makeDemo(type);
+  let demo = makeDemo(type, { empty: true });
+  let mode = 'tour'; // 'tour' | 'play'
+  let token = 0; // bumped whenever the tour is cancelled or restarted
   let ticks = 0;
   let revealAt = 0;
   let timer = 0;
+  let clockTimer = 0;
+  let clockStart = 0;
   let visible = false;
+  let started = false;
   let note = '';
   let ui = {};
   let swapTimer = 0;
-  let joining = false;
-  let touched = false;
-  let joinTimer = 0;
+  let phoneView = 'join'; // 'join' | 'joining' | 'question'
+  let joinText = '';
 
   const elapsed = () => ticks * TICK_MS / 1000;
+  const say = (text) => { announce.textContent = text; };
 
-  // how many people look to have joined: grows while the room fills
-  function setPeople() {
-    const n = type === 'quiz' ? demo.room + 1 : Math.min(48, 12 + Math.round(ticks / CROWD_EVERY) * 2 + (demo.total ? Math.min(20, demo.total) : 0));
-    if (people.textContent !== String(n)) tween(people, n);
-  }
-
-  // a small dot travels from the phone to the big screen when you answer
-  function fly() {
-    touched = true;
-    hint.classList.add('is-gone');
-    if (reduced) return;
-    const s = stage.getBoundingClientRect();
-    const a = phone.getBoundingClientRect();
-    const b = slide.getBoundingClientRect();
-    const dot = el('span', 'show__fly');
-    dot.style.left = `${a.left - s.left + a.width / 2}px`;
-    dot.style.top = `${a.top - s.top + a.height / 3}px`;
-    stage.append(dot);
-    const dx = b.left - a.left + b.width * 0.55 - a.width / 2;
-    const dy = b.top - a.top + b.height * 0.35 - a.height / 3;
-    dot.animate([{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 60}px) scale(1.5)`, opacity: 1, offset: 0.5 }, { transform: `translate(${dx}px, ${dy}px) scale(.3)`, opacity: 0 }], { duration: 750, easing: 'cubic-bezier(.3,.7,.3,1)' }).finished.then(() => dot.remove(), () => dot.remove());
-  }
-
-  function confetti() {
-    if (reduced) return;
-    const box = $('.show__screen');
-    const colours = ['#2020E8', '#FF7FAE', '#F5B93B', '#1F9D55', '#6A3FC2', '#E8643C'];
-    for (let i = 0; i < 22; i++) {
-      const c = el('span', 'show__conf');
-      c.style.cssText = `left:${10 + Math.random() * 80}%;background:${colours[i % colours.length]};--dx:${(Math.random() - 0.5) * 160}px;--r:${Math.random() * 720 - 360}deg;animation-delay:${Math.random() * 0.25}s`;
-      box.append(c);
-      setTimeout(() => c.remove(), 2000);
+  // ---- waiting that can be cancelled and that holds still while the demo is off screen
+  const waitFor = async (my, ms) => {
+    let left = ms;
+    while (left > 0) {
+      if (my !== token) throw CANCELLED;
+      if (!visible) { await new Promise((r) => setTimeout(r, 200)); continue; }
+      const t = Math.min(80, left);
+      await new Promise((r) => setTimeout(r, t));
+      left -= t;
     }
-  }
+    if (my !== token) throw CANCELLED;
+  };
 
-  // the stage tilts a little towards the pointer
-  if (!reduced && canHover) {
-    stage.addEventListener('pointermove', (e) => {
-      const r = stage.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width - 0.5;
-      const y = (e.clientY - r.top) / r.height - 0.5;
-      stage.style.transform = `perspective(1600px) rotateY(${(x * 3).toFixed(2)}deg) rotateX(${(-y * 2).toFixed(2)}deg)`;
-    });
-    stage.addEventListener('pointerleave', () => { stage.style.transform = ''; });
-  }
-
-  // a number that counts up to its new value
+  // ---- small effects
   function tween(node, to) {
     const from = Number(node.dataset.v ?? node.textContent) || 0;
     node.dataset.v = String(to);
@@ -275,7 +266,63 @@ function mount(root) {
     requestAnimationFrame(run);
   }
 
-  // ---- the big screen: build once ...
+  const setPeople = (n) => tween(people, n);
+
+  // a small dot travels from the phone to the big screen
+  function fly() {
+    hint.classList.add('is-gone');
+    if (reduced) return;
+    const s = device.getBoundingClientRect();
+    const a = phone.getBoundingClientRect();
+    const b = slide.getBoundingClientRect();
+    const dot = el('span', 'show__fly');
+    dot.style.left = `${a.left - s.left + a.width / 2}px`;
+    dot.style.top = `${a.top - s.top + a.height / 3}px`;
+    device.append(dot);
+    const dx = b.left - a.left + b.width * 0.55 - a.width / 2;
+    const dy = b.top - a.top + b.height * 0.4 - a.height / 3;
+    dot.animate([{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 70}px) scale(1.6)`, opacity: 1, offset: 0.5 }, { transform: `translate(${dx}px, ${dy}px) scale(.3)`, opacity: 0 }], { duration: 800, easing: 'cubic-bezier(.3,.7,.3,1)' }).finished.then(() => dot.remove(), () => dot.remove());
+  }
+
+  function confetti() {
+    if (reduced) return;
+    const box = $('.win__canvas');
+    const colours = ['#2020E8', '#FF7FAE', '#F5B93B', '#1F9D55', '#6A3FC2', '#E8643C'];
+    for (let i = 0; i < 26; i++) {
+      const c = el('span', 'show__conf');
+      c.style.cssText = `left:${10 + Math.random() * 80}%;background:${colours[i % colours.length]};--dx:${(Math.random() - 0.5) * 200}px;--r:${Math.random() * 720 - 360}deg;animation-delay:${Math.random() * 0.3}s`;
+      box.append(c);
+      setTimeout(() => c.remove(), 2200);
+    }
+  }
+
+  // ---- the ghost pointer: it moves to things and taps them
+  function ghostTo(target, { fx = 0.5, fy = 0.5 } = {}) {
+    if (!target) return Promise.resolve();
+    const d = device.getBoundingClientRect();
+    const r = target.getBoundingClientRect();
+    ghost.classList.add('is-on');
+    ghost.style.transform = `translate(${Math.round(r.left - d.left + r.width * fx)}px, ${Math.round(r.top - d.top + r.height * fy)}px)`;
+    return new Promise((res) => setTimeout(res, reduced ? 0 : 750));
+  }
+  async function ghostTap(my, target, opts) {
+    await ghostTo(target, opts);
+    if (my !== token) throw CANCELLED;
+    ghost.classList.add('is-tap');
+    await waitFor(my, 180);
+    ghost.classList.remove('is-tap');
+    target?.click?.();
+  }
+  const ghostAway = () => ghost.classList.remove('is-on');
+
+  async function typeText(my, write, text, speed = 55) {
+    for (let i = 1; i <= text.length; i++) {
+      write(text.slice(0, i));
+      await waitFor(my, reduced ? 0 : speed);
+    }
+  }
+
+  // ---- the big screen: built once, then updated in place
   function buildScreen() {
     const scene = SCENES[type];
     ui = { q: el('h2', 'show__q', scene.question), nodes: new Map() };
@@ -287,11 +334,11 @@ function mount(root) {
       slide.append(ui.cloud, ui.count);
     } else if (type === 'poll') {
       ui.list = el('ul', 'show__bars');
-      demo.options.forEach((text) => {
+      demo.options.forEach((text, i) => {
         const row = el('li', 'show__bar');
         const fill = el('span', 'show__fill');
         const pct = el('span', 'show__pct', '0%');
-        row.append(fill, el('span', 'show__label', text), pct);
+        row.append(el('span', 'show__key', String.fromCharCode(65 + i)), fill, el('span', 'show__label', text), pct);
         ui.list.append(row);
         ui.nodes.set(row, { fill, pct });
       });
@@ -316,7 +363,6 @@ function mount(root) {
     updateScreen(true);
   }
 
-  // ---- ... then update in place
   function updateScreen(firstPaint = false) {
     if (type === 'cloud') {
       const words = demo.layout();
@@ -330,9 +376,8 @@ function mount(root) {
         n.classList.toggle('is-turned', w.turn);
         n.classList.toggle('is-mine', w.mine);
         n.style.fontSize = `${w.size}em`;
-        ui.cloud.append(n); // moves it into the right order
+        ui.cloud.append(n);
       });
-      // glide: put every word that was already there back where it was, then let it travel
       if (!reduced) {
         for (const [k, n] of ui.nodes) {
           const old = before.get(k);
@@ -343,14 +388,11 @@ function mount(root) {
           if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
           n.style.transition = 'none';
           n.style.transform = `translate(${dx}px, ${dy}px)${n.classList.contains('is-turned') ? ' rotate(180deg)' : ''}`;
-          requestAnimationFrame(() => requestAnimationFrame(() => {
-            n.style.transition = '';
-            n.style.transform = '';
-          }));
+          requestAnimationFrame(() => requestAnimationFrame(() => { n.style.transition = ''; n.style.transform = ''; }));
         }
       }
       ui.cloud.setAttribute('aria-label', `Word cloud of ${demo.total} words`);
-      ui.count.textContent = `${demo.total} ${demo.total === 1 ? 'word' : 'words'}`;
+      ui.count.textContent = demo.total ? `${demo.total} ${demo.total === 1 ? 'word' : 'words'}` : 'Waiting for words';
     } else if (type === 'poll') {
       let i = 0;
       for (const [row, { fill, pct }] of ui.nodes) {
@@ -360,7 +402,7 @@ function mount(root) {
         row.classList.toggle('is-mine', demo.you === i);
         i++;
       }
-      ui.count.textContent = `${demo.total} responses`;
+      ui.count.textContent = demo.total ? `${demo.total} responses` : 'Waiting for votes';
     } else if (type === 'quiz') {
       ui.status.textContent = demo.revealed ? `The answer is ${demo.options[demo.correct]}` : demo.everyone ? 'Everyone has voted!' : `${demo.voted} of ${demo.room + 1} have answered`;
       ui.status.classList.toggle('is-done', demo.revealed || demo.everyone);
@@ -381,20 +423,24 @@ function mount(root) {
         n.classList.toggle('is-mine', item.mine);
       });
       items.forEach((item, i) => { const n = ui.nodes.get(item); if (ui.list.children[i] !== n) ui.list.insertBefore(n, ui.list.children[i] ?? null); });
-      ui.count.textContent = `${demo.total} responses`;
+      ui.count.textContent = demo.total ? `${demo.total} responses` : 'Waiting for answers';
     }
   }
 
   // ---- the phone
   function drawPhone() {
     const scene = SCENES[type];
-    const focusedOpt = [...phone.querySelectorAll('.show__opt')].indexOf(document.activeElement);
-    const hadInput = document.activeElement?.id === 'show-input';
-    if (joining) {
-      phone.replaceChildren(el('div', 'show__joining'), el('p', 'show__joiningnote', 'Joining 5F5BLZ...'));
-      phone.firstChild.append(el('span', 'show__spin'));
+    if (phoneView === 'join' || phoneView === 'joining') {
+      const field = el('div', `show__code${joinText ? '' : ' is-empty'}`, joinText || 'Enter code');
+      const go = el('button', 'show__send', phoneView === 'joining' ? 'Joining...' : 'Join');
+      go.type = 'button';
+      go.tabIndex = -1;
+      phone.replaceChildren(el('p', 'phone__q', 'Join a presentation'), el('p', 'show__codehelp', 'Enter the code on the screen'), field, go);
+      if (phoneView === 'joining') { const j = el('div', 'show__joining'); j.append(el('span', 'show__spin')); phone.append(j); }
       return;
     }
+    const focusedOpt = [...phone.querySelectorAll('.show__opt')].indexOf(document.activeElement);
+    const hadInput = document.activeElement?.id === 'show-input';
     const kids = [el('p', 'phone__q', scene.question)];
     if (type === 'cloud' || type === 'open') {
       const form = el('form', 'show__form');
@@ -469,10 +515,39 @@ function mount(root) {
     } else if (note) kids.push(el('p', 'show__note-phone', note));
     phone.replaceChildren(...kids);
     if (focusedOpt >= 0) phone.querySelectorAll('.show__opt')[focusedOpt]?.focus({ preventScroll: true });
-    if (hadInput) $('#show-input')?.focus({ preventScroll: true });
+    if (hadInput && mode === 'play') $('#show-input')?.focus({ preventScroll: true });
   }
 
-  function say(text) { announce.textContent = text; }
+  // ---- state of the window, the steps and the words above them
+  function setStep(k) {
+    win.dataset.step = String(k);
+    stepBtns.forEach((b, i) => {
+      b.classList.toggle('is-done', i < k);
+      if (i === k) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
+      const bar = b.querySelector('.tour__bar');
+      bar.classList.remove('is-run');
+      if (i === k) { void bar.offsetWidth; bar.classList.add('is-run'); }
+    });
+    caption.replaceChildren(el('b', '', `${k + 1}. ${CAPTIONS[k][0]}`), document.createTextNode(` ${CAPTIONS[k][1]}`));
+    say(`Step ${k + 1}: ${CAPTIONS[k][0]}`);
+  }
+  function setMode(m) {
+    mode = m;
+    root.dataset.mode = m;
+    if (m === 'play') {
+      stepBtns.forEach((b) => { b.removeAttribute('aria-current'); b.classList.add('is-done'); b.querySelector('.tour__bar').classList.remove('is-run'); });
+      caption.replaceChildren(el('b', '', CAPTION_PLAY[0] + ':'), document.createTextNode(` ${CAPTION_PLAY[1]}`));
+    }
+  }
+  const setWindow = (m) => { win.dataset.mode = m; };
+  const setJoin = (size) => { join.dataset.size = size; win.dataset.join = size; };
+  function startClock() {
+    clearInterval(clockTimer);
+    clockStart = Date.now();
+    clock.textContent = '00:00';
+    clockTimer = setInterval(() => { const s = Math.floor((Date.now() - clockStart) / 1000); clock.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; }, 1000);
+  }
+  const stopClock = () => clearInterval(clockTimer);
 
   function paintCards() {
     for (const c of cards) {
@@ -480,35 +555,135 @@ function mount(root) {
       c.closest('li').classList.toggle('is-on', on);
       c.setAttribute('aria-pressed', String(on));
     }
+    win.querySelectorAll('[data-tool]').forEach((t) => t.classList.toggle('is-hot', false));
   }
 
-  function select(next, { focus = false, instant = false } = {}) {
-    if (next === type && ui.q) { if (focus) $('#show-input')?.focus({ preventScroll: true }); return; }
-    type = next;
-    paintCards();
-    clearTimeout(swapTimer);
-    const apply = () => {
-      demo = makeDemo(type);
-      ticks = 0;
-      note = '';
-      revealAt = 0;
-      buildScreen();
-      joining = !reduced && !instant;
-      drawPhone();
-      clearTimeout(joinTimer);
-      if (joining) joinTimer = setTimeout(() => { joining = false; drawPhone(); if (focus) $('#show-input')?.focus({ preventScroll: true }); }, 850);
-      stage.classList.remove('is-swapping');
-      setPeople();
-      if (focus) $('#show-input')?.focus({ preventScroll: true });
-    };
-    if (instant || reduced) apply();
-    else { stage.classList.add('is-swapping'); swapTimer = setTimeout(apply, SWAP_MS); }
+  // ---- the four steps of the tour
+  async function stepWrite(my) {
+    setStep(0); setWindow('edit'); setJoin('off'); ghostAway(); stopClock();
+    phoneView = 'join'; joinText = ''; drawPhone();
+    buildScreen();
+    slide.classList.add('is-drafting');
+    ui.q.textContent = '';
+    await waitFor(my, 600);
+    win.querySelector(`[data-tool="${TOOL_OF[type]}"]`)?.classList.add('is-hot');
+    await typeText(my, (t) => { ui.q.textContent = t; }, SCENES[type].question, 42);
+    slide.classList.remove('is-drafting');
+    await waitFor(my, 500);
+    await ghostTap(my, goLive);
+    await waitFor(my, 250);
   }
 
-  // ---- the simulated room
+  async function stepLive(my) {
+    setStep(1); ghostAway();
+    goLive.classList.add('is-live'); goLive.querySelector('span').textContent = 'Live';
+    setWindow('live'); setJoin('big'); startClock(); setPeople(0);
+    await waitFor(my, 900);
+    // the phone joins: type the code, press Join
+    phoneView = 'join'; joinText = ''; drawPhone();
+    await typeText(my, (t) => { joinText = t; drawPhone(); }, JOIN_CODE, 150);
+    await waitFor(my, 300);
+    phoneView = 'joining'; drawPhone();
+    for (const n of [2, 5, 9]) { setPeople(n); await waitFor(my, 330); }
+    phoneView = 'question'; drawPhone();
+    await waitFor(my, 500);
+  }
+
+  async function stepAnswer(my) {
+    setStep(2); setJoin('small');
+    await waitFor(my, 500);
+    if (type === 'poll') {
+      await ghostTap(my, phone.querySelectorAll('.show__opt')[1]);
+    } else if (type === 'quiz') {
+      await waitFor(my, 900);
+      await ghostTap(my, phone.querySelectorAll('.show__opt')[SCENES.quiz.correct]);
+    } else {
+      const input = $('#show-input');
+      const text = type === 'cloud' ? 'focus' : 'More time for questions';
+      await ghostTo(input);
+      ghost.classList.add('is-tap');
+      await typeText(my, (t) => { input.value = t; }, text, type === 'cloud' ? 150 : 70);
+      ghost.classList.remove('is-tap');
+      await waitFor(my, 350);
+      await ghostTap(my, phone.querySelector('.show__send'));
+    }
+    ghostAway();
+    await waitFor(my, 700);
+  }
+
+  async function stepWatch(my) {
+    setStep(3);
+    const target = type === 'quiz' ? 12 : 16;
+    for (let i = 0; i < target; i++) {
+      if (type === 'quiz') { if (demo.revealed) break; }
+      demo.crowdStep();
+      if (type === 'quiz' && demo.everyone) { updateScreen(); setPeople(demo.room + 1); await waitFor(my, 500); demo.reveal(); updateScreen(); drawPhone(); if (demo.you === demo.correct) confetti(); break; }
+      updateScreen();
+      setPeople(Math.min(48, 9 + (i + 1) * 2));
+      await waitFor(my, 320);
+    }
+    if (type === 'quiz' && !demo.revealed) { while (!demo.everyone) demo.crowdStep(); updateScreen(); demo.reveal(); updateScreen(); drawPhone(); if (demo.you === demo.correct) confetti(); }
+    await waitFor(my, 1600);
+  }
+
+  // bring the screen and phone to how they look after step k - 1, without playing it
+  function prepare(k) {
+    demo = makeDemo(type, { empty: true });
+    note = '';
+    ticks = 0;
+    buildScreen();
+    slide.classList.remove('is-drafting');
+    if (k >= 1) { goLive.classList.add('is-live'); goLive.querySelector('span').textContent = 'Live'; setWindow('live'); setJoin('big'); startClock(); setPeople(0); phoneView = 'join'; joinText = ''; }
+    else { goLive.classList.remove('is-live'); goLive.querySelector('span').textContent = 'Go live'; setWindow('edit'); setJoin('off'); stopClock(); phoneView = 'join'; joinText = ''; }
+    if (k >= 2) { setJoin('small'); phoneView = 'question'; setPeople(9); }
+    if (k >= 3) {
+      if (type === 'poll') demo.vote(1); else if (type === 'quiz') { demo.answer(SCENES.quiz.correct, 3); demo.frozen = 80; } else if (type === 'cloud') demo.add('focus', true); else demo.add('More time for questions', true);
+      updateScreen(true);
+    }
+    drawPhone();
+  }
+
+  async function runTour(from = 0) {
+    const my = ++token;
+    halt();
+    ghostAway();
+    setMode('tour');
+    hint.classList.add('is-gone');
+    prepare(from);
+    try {
+      if (from <= 0) await stepWrite(my);
+      if (from <= 1) await stepLive(my);
+      if (from <= 2) await stepAnswer(my);
+      await stepWatch(my);
+      await waitFor(my, 600);
+      startPlay();
+    } catch (err) {
+      if (err !== CANCELLED) throw err;
+    }
+  }
+
+  // ---- your turn: the same screen and phone, with the room still answering
+  function startPlay() {
+    token++;
+    ghostAway();
+    demo = makeDemo(type);
+    ticks = 0; note = ''; revealAt = 0;
+    setMode('play');
+    goLive.classList.add('is-live'); goLive.querySelector('span').textContent = 'Live';
+    setWindow('live'); setJoin('small');
+    if (!clockTimer) startClock();
+    phoneView = 'question';
+    buildScreen();
+    drawPhone();
+    setPeople(type === 'quiz' ? demo.room + 1 : 18 + Math.min(20, demo.total));
+    hint.classList.remove('is-gone');
+    say('Your turn. Answer on the phone.');
+    run();
+  }
+
+  // ---- the room keeps answering while you play
   function step() {
     ticks++;
-    if (ticks % 4 === 0) setPeople();
     if (type === 'quiz') {
       if (!demo.revealed) {
         if (ticks % 3 === 0) demo.crowdStep();
@@ -523,40 +698,73 @@ function mount(root) {
         }
         updateScreen();
       } else if (ticks - revealAt > REVEAL_PAUSE_TICKS) {
-        revealAt = Infinity; // one restart only
-        stage.classList.add('is-swapping');
-        swapTimer = setTimeout(() => { demo = makeDemo('quiz'); ticks = 0; note = ''; revealAt = 0; buildScreen(); drawPhone(); stage.classList.remove('is-swapping'); }, SWAP_MS);
+        revealAt = Infinity;
+        swapTimer = setTimeout(() => { demo = makeDemo('quiz'); ticks = 0; note = ''; revealAt = 0; buildScreen(); drawPhone(); hint.classList.remove('is-gone'); }, SWAP_MS);
       }
       return;
     }
-    if (ticks % CROWD_EVERY === 0 && demo.total < 60) { demo.crowdStep(); updateScreen(); }
+    if (ticks % CROWD_EVERY === 0 && demo.total < 60) { demo.crowdStep(); updateScreen(); setPeople(Math.min(48, 18 + demo.total)); }
   }
 
   function run() {
-    if (reduced || timer || !visible || document.hidden) return;
+    if (reduced || timer || !visible || mode !== 'play') return;
     timer = setInterval(step, TICK_MS);
   }
   function halt() { clearInterval(timer); timer = 0; }
 
-  new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; if (visible) run(); else halt(); }).observe(root);
-  document.addEventListener('visibilitychange', () => (document.hidden ? halt() : run()));
+  // ---- choosing a question type restarts the tour (or the free play) for that type
+  function select(next, { fromUser = false } = {}) {
+    if (next === type && started) { if (fromUser && mode === 'tour') startPlay(); return; }
+    type = next;
+    started = true;
+    paintCards();
+    clearTimeout(swapTimer);
+    if (mode === 'play' || reduced) {
+      halt();
+      startPlay();
+    } else {
+      runTour(0);
+    }
+  }
 
-  // Pointing at a card shows it, but only if the pointer stays a moment, so sweeping across the list does not flicker.
+  // ---- wiring
+  new IntersectionObserver(([entry]) => {
+    visible = entry.isIntersecting;
+    if (visible) { run(); if (!started) { started = true; if (reduced) startPlay(); else runTour(0); } } else halt();
+  }, { threshold: 0.25 }).observe(root);
+
   cards.forEach((c) => {
     const li = c.closest('li');
     let intent = 0;
-    c.addEventListener('click', () => select(c.dataset.type, { focus: true }));
+    c.addEventListener('click', () => select(c.dataset.type, { fromUser: true }));
     c.addEventListener('focus', () => select(c.dataset.type));
     if (canHover) {
       li.addEventListener('mouseenter', () => { clearTimeout(intent); intent = setTimeout(() => select(c.dataset.type), HOVER_INTENT_MS); });
       li.addEventListener('mouseleave', () => clearTimeout(intent));
     }
   });
+  stepBtns.forEach((b) => b.addEventListener('click', () => { halt(); runTour(Number(b.dataset.step)); }));
+  $('#show-replay').addEventListener('click', () => { halt(); if (reduced) startPlay(); else runTour(0); });
+  $('#show-try').addEventListener('click', () => startPlay());
+  // touching the phone during the tour hands it over straight away
+  phone.addEventListener('pointerdown', () => { if (mode === 'tour' && phoneView === 'question') startPlay(); });
 
   paintCards();
-  select('cloud', { instant: true });
-  // With reduced motion nothing moves by itself, so start from a room that is already full.
-  if (reduced) { for (let i = 0; i < 6; i++) demo.crowdStep(); updateScreen(); }
+  // First look, before it plays: the slide as written, with the phone waiting.
+  setMode('tour');
+  setStep(0);
+  prepare(0);
+  ui.q.textContent = SCENES[type].question;
+  // A link such as /#tour-2 shows the demo paused at that step (the steps can be shared and checked one by one).
+  const linked = /^#tour-([0-3])$/.exec(location.hash);
+  if (linked) {
+    started = true;
+    const k = Number(linked[1]);
+    prepare(k);
+    setStep(k);
+    ui.q.textContent = SCENES[type].question;
+    if (k >= 1) { goLive.classList.add('is-live'); goLive.querySelector('span').textContent = 'Live'; }
+  }
 }
 
 if (typeof document !== 'undefined') {
