@@ -3,7 +3,7 @@
 import { h } from '../core/dom.js';
 import { slugify } from '../core/util.js';
 import { qrElement } from '../live/qr.js';
-import { baseAddress, isLocalAddress, joinLink, loadSettings, remoteLink, saveSettings } from '../live/config.js';
+import { baseAddress, joinBase, isLocalAddress, joinLink, loadSettings, remoteLink, saveSettings } from '../live/config.js';
 import { cleanConfig } from '../live/protocol.js';
 import { loadProject } from '../cloud/config.js';
 import { BUILD } from '../build-info.js';
@@ -117,7 +117,7 @@ export function openLiveDialog(editor) {
   function runningView() {
     const { host, room, config, base, privacy } = editor.live;
     const addr = baseAddress({ base });
-    const joinUrl = joinLink(addr, room.code, config);
+    const joinUrl = joinLink(joinBase({ base }), room.code, config);
     const remoteUrl = remoteLink(addr, room.key, config);
 
     const status = h('div', { class: 'ed-dialog-status', role: 'status', 'aria-live': 'polite' });

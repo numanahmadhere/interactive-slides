@@ -34,6 +34,11 @@ export function baseAddress(settings, here = location) {
   return `${here.origin}${here.pathname}`;
 }
 
+// The short address the audience opens: the app's front door, not the address of the deck being edited.
+export function joinBase(settings, here = location) {
+  return settings.base.trim() ? baseAddress(settings, here) : `${here.origin}/app/`;
+}
+
 export function isLocalAddress(url) {
   try {
     const host = new URL(url).hostname;

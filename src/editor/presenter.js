@@ -6,10 +6,11 @@ import { h } from '../core/dom.js';
 import { Player } from '../player/player.js';
 import { openPresenterView } from '../player/presenter-view.js';
 import { button } from './ui.js';
+import { qrElement } from '../live/qr.js';
 
 const UI_IDLE_MS = 2500;
 
-export function openPresenter({ deck, startIndex, resolveAsset, onClose, presenterView = false, onPopupBlocked, live }) {
+export function openPresenter({ deck, startIndex, resolveAsset, onClose, presenterView = false, onPopupBlocked, live, join }) {
   const overlay = h('div', { class: 'ed-present', role: 'dialog', 'aria-label': 'Presentation', 'aria-modal': 'true' });
   const closeBtn = button({ icon: 'close', label: 'Exit presentation', iconOnly: true, onClick: () => close() });
   closeBtn.classList.add('ed-present__close');
@@ -26,6 +27,7 @@ export function openPresenter({ deck, startIndex, resolveAsset, onClose, present
   });
   const detachLive = live?.attach(player);
   overlay.append(closeBtn);
+  if (join) overlay.append(joinBanner(join));
 
   let view = null;
   function showPresenterView(p) {
@@ -80,4 +82,20 @@ export function openPresenter({ deck, startIndex, resolveAsset, onClose, present
   showUi();
   if (presenterView) showPresenterView(player);
   return { close, player };
+}
+
+// While a live session runs, the audience has to be able to see how to join from the screen itself.
+function joinBanner({ code, url }) {
+  const where = url.replace(/^https?:\/\//, '').replace(/[?#].*$/, '').replace(/\/$/, '');
+  const card = h('div', { class: 'ed-join__card', hidden: true }, qrElement(url, { size: 190, label: 'QR code to join' }), h('span', { text: 'Scan to join' }));
+  const toggle = h('button', { class: 'ed-join__qr', type: 'button', 'aria-expanded': 'false', text: 'QR code' });
+  toggle.addEventListener('click', () => {
+    card.hidden = !card.hidden;
+    toggle.setAttribute('aria-expanded', String(!card.hidden));
+  });
+  return h('div', { class: 'ed-join', role: 'group', 'aria-label': 'How to join' },
+    h('span', { class: 'ed-join__bar' },
+      h('span', { text: 'Join at' }), h('b', { text: where }), h('span', { text: 'with code' }),
+      h('b', { class: 'ed-join__code', 'aria-label': code.split('').join(' '), text: code }), toggle),
+    card);
 }

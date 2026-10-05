@@ -281,8 +281,8 @@ select.ed-input { appearance: none; padding-right: 28px; background-image: linea
   .ed-thumb__preview { width: 136px; }
 }
 
-.ed-present__close { position: absolute; top: 14px; right: 14px; z-index: 5; opacity: 0; transition: opacity 0.2s; background: rgb(20 24 34 / 0.85); color: #E8EAF2; border: 1px solid #31384D; }
-.ed-present.show-ui .ed-present__close, .ed-present__close:focus-visible { opacity: 1; }
+.ed-present .ed-present__close { position: absolute; top: 14px; right: 14px; z-index: 5; opacity: 0; transition: opacity 0.2s; background: rgb(20 24 34 / 0.85); color: #E8EAF2; border: 1px solid #31384D; }
+.ed-present.show-ui .ed-present__close, .ed-present .ed-present__close:focus-visible { opacity: 1; }
 
 .ed-menu__heading { padding: 10px 10px 4px; color: var(--ed-muted); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
 .ed-menu__heading:not(:first-child) { margin-top: 6px; border-top: 1px solid var(--ed-border); padding-top: 12px; }
@@ -716,3 +716,13 @@ a.ed-logo .logo { width: 28px; height: 28px; }
   .ed-insp { max-height: 78vh; bottom: 52px; }
   .ed-scrim { bottom: 52px; }
 }
+
+/* the join banner shown on the big screen during a live session */
+.ed-join { position: absolute; top: 14px; left: 50%; z-index: 4; display: grid; justify-items: center; gap: 10px; transform: translateX(-50%); }
+.ed-join__bar { display: inline-flex; align-items: center; gap: 10px; max-width: calc(100vw - 120px); padding: 8px 8px 8px 18px; border: 1px solid #31384D; border-radius: 14px; background: rgb(20 24 34 / 0.88); color: #C8CDDD; font: 500 15px/1.2 var(--font, Inter, system-ui, sans-serif); white-space: nowrap; overflow: hidden; }
+.ed-join__bar b { color: #fff; font-weight: 650; overflow: hidden; text-overflow: ellipsis; }
+.ed-join__code { padding: 5px 12px; border-radius: 9px; background: #2020E8; letter-spacing: 0.16em; font-variant-numeric: tabular-nums; }
+.ed-join__qr { padding: 6px 12px; border: 1px solid #3A4260; border-radius: 9px; background: transparent; color: #E8EAF2; font: 600 13px var(--font, Inter, system-ui, sans-serif); cursor: pointer; }
+.ed-join__qr:hover, .ed-join__qr[aria-expanded='true'] { background: #262C40; }
+.ed-join__card { display: grid; justify-items: center; gap: 8px; padding: 14px; border-radius: 16px; background: #fff; color: #0F1117; font: 600 14px var(--font, Inter, system-ui, sans-serif); box-shadow: 0 24px 60px -16px rgb(0 0 0 / 0.7); }
+.ed-join__card[hidden] { display: none; }

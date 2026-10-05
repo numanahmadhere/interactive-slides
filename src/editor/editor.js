@@ -44,12 +44,15 @@ import { logoPair } from '../shell/chrome.js';
 import { SUPPORT_EMAIL, supportHref } from '../shell/contact.js';
 import { deckPath, DASHBOARD_PATH } from '../shell/paths.js';
 import { setFlash } from '../shell/flash.js';
+import { joinBase, joinLink } from '../live/config.js';
 
 const LIVE_SESSION_KEY = 'interactive-slides:live-session';
 const SAVE_DELAY_MS = 600;
 const SAVE_LABELS = { saved: 'Saved', saving: 'Saving...', error: 'Not saved' };
 
 const isTyping = (el) => !!el?.closest?.('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]');
+
+const QUESTION_TYPES = new Set(['quiz', 'poll', 'wordcloud', 'open-answers', 'rating', 'ranking', 'qna', 'reactions', 'pin']);
 
 export class Editor {
   constructor(mount, deckId) {
@@ -543,6 +546,13 @@ export class Editor {
 
   // target: { slot } | { afterBlockId } | { containerOf, index }
   addBlock(type, target, { at } = {}) {
+    // A question gets a slide of its own: dropped onto a slide that already has content, it would sit on top of it.
+    const untouched = (slide) => slide.blocks.every((b) => b.type === 'heading' && b.props.text === 'Slide title');
+    if (QUESTION_TYPES.has(type) && !target.containerOf && this.slide && !untouched(this.slide)) {
+      this.addSlide('free');
+      for (const b of this.slide.blocks) this.commit(ops.removeBlock(this.deck, b.id)); // the question is the slide's title
+      target = this.insertTarget();
+    }
     let block = createBlock(type);
     if (at && this.isFree && target.slot) block = { ...block, frame: this.#frameAround(type, at) };
     if (!this.commit(ops.insertBlock(this.deck, this.selection.slideId, target, block))) return;
@@ -1113,6 +1123,7 @@ export class Editor {
       startIndex: fromStart ? 0 : this.slideIndex,
       presenterView,
       live: this.live?.host,
+      join: this.live ? { code: this.live.room.code, url: joinLink(joinBase({ base: this.live.base }), this.live.room.code, this.live.config) } : null,
       onPopupBlocked: () => toast('The presenter view was blocked. Allow pop-ups for this page, then press P.', { kind: 'error', timeout: 7000 }),
       resolveAsset: this.assets.resolve,
       onClose: (index) => {
