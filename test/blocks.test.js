@@ -185,3 +185,14 @@ test('ordering items normalise to plain strings within bounds', () => {
   assert.equal(norm(Array.from({ length: 20 }, (_, i) => String(i))).length, 8);
   assert.deepEqual(norm(['x', 5, null, 'y']), ['x', '', '', 'y']);
 });
+
+test('a poll shows its results as bars, columns or a donut, and bad values fall back to bars', () => {
+  assert.equal(createBlock('poll').props.chart, 'bars');
+  const slide = createSlide('free');
+  for (const [chart, want] of [['donut', 'donut'], ['columns', 'columns'], ['pie3d', 'bars'], [undefined, 'bars']]) {
+    const block = createBlock('poll');
+    block.props.chart = chart;
+    const deck = { meta: { title: 'T' }, slides: [{ ...slide, blocks: [block] }] };
+    assert.equal(normalizeDeck(deck).deck.slides[0].blocks[0].props.chart, want);
+  }
+});

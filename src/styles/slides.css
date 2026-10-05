@@ -977,6 +977,19 @@ button.sp-poll__row:focus-visible { outline: 5px solid var(--sp-accent-text); ou
 .sp-poll__text { flex: 1; min-width: 0; }
 .sp-poll__total { margin: 0; color: var(--sp-muted); font-size: 30px; }
 
+/* other ways to show the same results: columns and a donut */
+.sp-poll--columns .sp-poll__rows { display: flex; align-items: stretch; gap: 24px; height: 440px; }
+.sp-poll--columns .sp-poll__row { flex: 1; min-width: 0; flex-direction: column-reverse; justify-content: flex-start; align-items: center; gap: 8px; padding: 14px 10px; text-align: center; font-size: 30px; }
+.sp-poll--columns .sp-poll__text { flex: none; overflow-wrap: anywhere; }
+.sp-poll--columns .sp-poll__pct { min-width: 0; text-align: center; margin-bottom: auto; }
+.sp-poll--columns .sp-choice__key { display: none; }
+.sp-poll--columns .sp-poll__bar { inset: auto 0 0 0; width: auto; height: calc(var(--share, 0) * 100%); background: color-mix(in srgb, var(--c) 55%, transparent); transition: height 0.4s ease; }
+.sp-poll--donut .sp-poll__body { display: flex; align-items: center; gap: 56px; }
+.sp-poll--donut .sp-poll__donut { flex: none; width: 400px; height: 400px; border-radius: 50%; background: var(--sp-border); -webkit-mask: radial-gradient(circle, transparent 56%, #000 57%); mask: radial-gradient(circle, transparent 56%, #000 57%); transition: background 0.4s ease; }
+.sp-poll--donut .sp-poll__rows { flex: 1; min-width: 0; }
+.sp-poll--donut .sp-poll__bar { display: none; }
+.sp-poll--donut .sp-choice__key { background: var(--c); color: #fff; }
+
 /* Free-form slides: the slot is the whole canvas and blocks position themselves. */
 .sp-slot.sp-free { position: absolute; inset: 0; display: block; overflow: hidden; }
 .sp-free > .sp-block { box-sizing: border-box; }

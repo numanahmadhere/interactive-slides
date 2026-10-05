@@ -247,13 +247,11 @@ export function openLayoutPicker(editor, anchor, onPick) {
     });
     return el;
   };
-  let group = null;
-  for (const t of TEMPLATES) {
-    if (t.group !== group) {
-      group = t.group;
-      grid.append(h('h3', { class: 'ed-insert__group ed-layouts__heading', text: group === 'Basics' ? 'Templates' : group }));
-    }
-    grid.append(card(`t:${t.id}`, t.name, stageThumb(editor, t.make(), 148), t.name));
+  // Questions first: they are what this tool is for. Each group appears once, whatever the order of the list.
+  const GROUPS = [['Audience', 'Questions for your audience'], ['Basics', 'Basic slides'], ['Content', 'Content']];
+  for (const [group, heading] of GROUPS) {
+    grid.append(h('h3', { class: 'ed-insert__group ed-layouts__heading', text: heading }));
+    for (const t of TEMPLATES.filter((x) => x.group === group)) grid.append(card(`t:${t.id}`, t.name, stageThumb(editor, t.make(), 148), t.name));
   }
   grid.append(h('h3', { class: 'ed-insert__group ed-layouts__heading', text: 'Fixed layouts' }));
   for (const layout of listLayouts()) {
