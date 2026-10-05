@@ -2,7 +2,7 @@
 // No framework and almost no JavaScript, so the first visit is fast and search
 // engines and link previews see real content.
 
-import { renderTable, CHECKED } from './compare.mjs';
+import { renderCompare, renderKey, CHECKED } from './compare.mjs';
 import { listBlocks, getBlock } from '../src/core/blocks/index.js';
 import { PLANS, PLAN_ORDER, PRICES, TRIAL_DAYS } from '../src/billing/plans.js';
 import { highlights } from '../src/billing/features.js';
@@ -274,12 +274,12 @@ ${canBand()}
 </ul></div></section>
 
 <section id="compare"><div class="wrap">
-<header class="head reveal"><p class="label">How we compare</p><h2>Pick the right tool, not just ours.</h2>
-<p class="sub">Four well-known audience tools next to Densight Slides. Where we are missing something, it says so, and where a feature needs a paid plan, it says that too. Read from each vendor's public pages in ${CHECKED}; plans change, so confirm anything that decides a purchase.</p></header>
+<header class="head reveal"><p class="label">How we compare</p><h2>Why people choose <em>Densight Slides.</em></h2>
+<p class="sub">The same job, five tools. We include more of what matters, work where the others cannot, and charge less to start. Where we are missing something we say so. Read from each vendor's public pages in ${CHECKED}; plans change, so confirm anything that decides a purchase.</p></header>
 <div class="reveal">
-${renderTable()}
-<ul class="cmp__key" aria-label="Key"><li><span class="cmp__mark cmp__yes"></span>Included</li><li><span class="cmp__mark cmp__paid"></span>Paid plan only</li><li><span class="cmp__mark cmp__part"></span>Partly</li><li><span class="cmp__mark cmp__no"></span>Not offered, as far as we could find</li><li><span class="cmp__mark cmp__soon"></span>Not yet (ours)</li><li><span class="cmp__mark cmp__check"></span>Could not confirm</li></ul>
-<p class="cmp__note">Where we win: slides, questions and results in one place, working offline, with answers that stay in your browser. Where others lead today: add-ins for PowerPoint and Google Slides, single sign-on and editing the same deck together in real time. Those are not built yet, and we would rather say so. <a href="/app/">Try it free</a> and judge for yourself.</p>
+${renderCompare()}
+${renderKey()}
+<p class="cmp__note">Where others lead today: add-ins for PowerPoint and Google Slides, single sign-on and editing the same deck together in real time. Those are not built yet, and we would rather say so. <a href="/app/">Try it free</a> and judge for yourself.</p>
 </div>
 </div></section>
 

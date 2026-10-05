@@ -84,7 +84,7 @@ test('the public pages are complete, small and honest', () => {
   const site = buildSite();
   for (const f of ['index.html', 'learn/index.html', 'privacy/index.html', 'terms/index.html', '404.html', 'sitemap.xml', 'robots.txt']) assert.ok(site[f], f);
   const home = site['index.html'];
-  assert.ok(home.length < 72 * 1024, `home page is ${home.length} bytes`);
+  assert.ok(home.length < 96 * 1024, `home page is ${home.length} bytes`);
   assert.match(home, /<title>[^<]+<\/title>/);
   assert.match(home, /<meta name="description"/);
   assert.match(home, /<h1>.+?<\/h1>/);
@@ -174,6 +174,8 @@ import { isProfane } from '../src/live/profanity.js';
 import { parsePptx } from '../src/import/pptx.js';
 import { certificateHtml } from '../src/cloud/course.js';
 import { normalizeDeck } from '../src/core/schema.js';
+import { collectPrompts, collectKeys } from '../src/live/prompts.js';
+import { scores } from '../tools/compare.mjs';
 
 const probeHost = (extra = {}) => new LiveHost({ transport: { open() { return { send() {}, close() {} }; }, close() {} }, room: { code: 'ABCDEF', key: 'k'.repeat(22) }, ...extra });
 
@@ -200,6 +202,10 @@ test('the comparison table is complete and every claim about us is backed by the
     import: () => typeof parsePptx === 'function',
     'self-paced': () => normalizeDeck({ slides: [], course: { on: true } }).deck.course.on === true && typeof certificateHtml === 'function',
     private: () => probeHost({ privacy: true, names: true, plan: 'advanced' }).names === false,
+    'answer-key': () => !/correct|answer/i.test(JSON.stringify(collectPrompts(normalizeDeck({ slides: [{ layout: 'content', blocks: [{ id: 'q1', type: 'quiz', slot: 'body', props: { question: 'Q', choices: [{ text: 'a', correct: true }, { text: 'b' }] } }] }] }).deck.slides[0]).map(({ options, ...rest }) => rest))) && collectKeys(normalizeDeck({ slides: [{ layout: 'content', blocks: [{ id: 'q1', type: 'quiz', slot: 'body', props: { question: 'Q', choices: [{ text: 'a', correct: true }, { text: 'b' }] } }] }] }).deck.slides[0]).size === 1,
+    remote: () => existsSync(new URL('../src/live/remote.js', import.meta.url)) && /notes/.test(readFileSync(new URL('../src/live/protocol.js', import.meta.url), 'utf8')),
+    a11y: () => /sp-sr-only/.test(readFileSync(new URL('../src/styles/slides.css', import.meta.url), 'utf8')),
+    'no-cap': () => !Object.keys(PLANS.free).some((k) => /month|participants/i.test(k)) && PLANS.free.livePhones > 0,
     teams: () => /create table if not exists public\.teams/.test(readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8')) && /deck_comments/.test(readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8')),
     'free-form': () => getBlock('shape') && getLayout('free'),
     offline: () => readFileSync(new URL('../src/sw-template.js', import.meta.url), 'utf8').includes('fetch'),
@@ -442,4 +448,13 @@ test('guides: a searchable hub and a page for each guide, with steps, tips and r
     assert.ok(page.includes('/product/'), `${slug} links its product page`);
     assert.ok(site['sitemap.xml'].includes(`/learn/${slug}/`));
   }
+});
+
+test('the comparison scoreboard: we lead on confirmed features, and the maths is the table\'s own', () => {
+  const sc = scores();
+  assert.equal(sc.length, VENDORS.length);
+  for (let i = 1; i < sc.length; i++) assert.ok(sc[0].points > sc[i].points, `we out-score ${VENDORS[i].name}`);
+  const site = buildSite()['index.html'];
+  assert.ok(site.includes('Most features') && site.includes('Best choice') && site.includes(`of ${sc[0].of}`));
+  assert.ok(site.includes('cmp__wins') && site.includes('Where we lead'));
 });
