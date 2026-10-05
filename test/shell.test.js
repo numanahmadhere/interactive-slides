@@ -458,3 +458,14 @@ test('the comparison scoreboard: we lead on confirmed features, and the maths is
   assert.ok(site.includes('Most features') && site.includes('Best choice') && site.includes(`of ${sc[0].of}`));
   assert.ok(site.includes('cmp__wins') && site.includes('Where we lead'));
 });
+
+test('the editor has a phone layout: bottom bar, slide strip, properties sheet, and the guide describes it', () => {
+  const css = readFileSync(new URL('../src/editor/editor.css', import.meta.url), 'utf8');
+  assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.ed-mbar[\s\S]*\.ed-insp \{ position: fixed/);
+  assert.match(css, /\.ed\.is-sheet \.ed-insp/);
+  const js = readFileSync(new URL('../src/editor/editor.js', import.meta.url), 'utf8');
+  for (const label of ["'Insert'", "'Edit'", "'Slides'", "'Present'", "'More'"]) assert.ok(js.includes(`mbtn(`) && js.includes(label), label);
+  assert.match(js, /toggleSheet\(force\)/);
+  const guide = buildSite()['learn/build-on-your-phone/index.html'];
+  assert.ok(guide.includes('bottom bar') || guide.includes('bottom of'), 'the phone guide matches the layout');
+});

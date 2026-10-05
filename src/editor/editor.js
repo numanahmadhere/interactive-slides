@@ -184,7 +184,20 @@ export class Editor {
     const main = h('main', { class: 'ed-main' }, this.quickbar, canvasHost, this.#buildNotes());
     const insp = h('aside', { class: 'ed-insp', 'aria-label': 'Inspector panel' });
 
-    this.el = h('div', { class: 'ed' }, top, side, main, insp);
+    // On a phone the three panels become: slide strip, canvas, and a sheet of properties; these buttons drive them.
+    const mbtn = (iconName, label, onClick) => { const b = button({ icon: iconName, label, variant: 'ghost', onClick }); b.classList.add('ed-mbar__btn'); return b; };
+    this.editSheetBtn = mbtn('sliders', 'Edit', () => this.toggleSheet());
+    this.editSheetBtn.setAttribute('aria-expanded', 'false');
+    this.mbar = h('nav', { class: 'ed-mbar', 'aria-label': 'Editor actions' },
+      mbtn('plus', 'Insert', (ev, el) => this.openInsert(el)),
+      this.editSheetBtn,
+      mbtn('grid', 'Slides', () => this.grid.toggle()),
+      mbtn('play', 'Present', () => this.present()),
+      mbtn('dots', 'More', (ev, el) => this.openFileMenu(el)));
+    this.scrim = h('div', { class: 'ed-scrim', 'aria-hidden': 'true' });
+    this.scrim.addEventListener('pointerdown', () => this.toggleSheet(false));
+    for (const b of [this.fileBtn, this.cloudBtn, presentGroup, this.statusEl]) b.classList.add('ed-hide-m');
+    this.el = h('div', { class: 'ed' }, top, side, main, insp, this.scrim, this.mbar);
     this.mount.replaceChildren(this.el);
 
     this.sidebar = new SlideList(side, this);
@@ -229,6 +242,14 @@ export class Editor {
     this.notesArea.addEventListener('blur', () => this.store.endCoalesce());
     this.notesEl = h('section', { class: 'ed-notes', 'aria-label': 'Speaker notes', hidden: true }, this.notesArea);
     return this.notesEl;
+  }
+
+  // Phone layout: the properties panel is a sheet that slides up over the canvas.
+  toggleSheet(force) {
+    const open = force ?? !this.el.classList.contains('is-sheet');
+    this.el.classList.toggle('is-sheet', open);
+    this.editSheetBtn.setAttribute('aria-expanded', String(open));
+    this.editSheetBtn.querySelector('span').textContent = open ? 'Done' : 'Edit';
   }
 
   toggleNotes(force) {

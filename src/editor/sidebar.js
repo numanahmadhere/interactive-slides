@@ -157,6 +157,7 @@ export class SlideList {
       this.editor.select({ slideId: id });
       this.editor.selectSlides([id]);
     }
+    if (matchMedia('(max-width: 760px)').matches) return; // on a phone the strip scrolls sideways; reordering is on the all-slides view
     const from = slides.findIndex((s) => s.id === id);
     this.drag = { id, from, to: from, startY: e.clientY, active: false, pointerId: e.pointerId, y: e.clientY, ids: this.editor.selectedSlideIds };
     try {

@@ -661,3 +661,58 @@ a.ed-logo .logo { width: 28px; height: 28px; }
 .ed-comment__meta { font-size: 12px; color: var(--ed-muted); }
 .ed-comment__body { margin: 4px 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .ed-comment__actions { display: flex; gap: 8px; }
+
+/* ======================================================================================================
+   Phones and small tablets: slide strip along the bottom, properties in a sheet, a bar of the main actions.
+   ====================================================================================================== */
+.ed-mbar, .ed-scrim { display: none; }
+@media (pointer: coarse) { .ed-grip::after { inset: calc(-20px * var(--ed-px)); } .ed-stage, .ed-canvas { touch-action: none; } }
+@media (max-width: 760px) {
+  .ed { grid-template-columns: minmax(0, 1fr); grid-template-rows: 52px minmax(0, 1fr) 96px 58px; grid-template-areas: 'top' 'main' 'side' 'bar'; }
+  .ed-hide-m, .ed-crumb, .ed-top .ed-split { display: none !important; }
+  .ed-top { gap: 6px; padding: 0 8px; }
+  .ed-title { flex: 1; width: auto; max-width: none; min-width: 0; font-size: 15px; }
+  .ed-top__spacer { display: none; }
+  .ed .ed-btn { min-height: 40px; }
+  .ed-top .ed-btn--icon, .ed-top .ed-top__group .ed-btn { min-width: 40px; }
+
+  .ed-quick { overflow-x: auto; flex-wrap: nowrap; padding: 6px 8px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .ed-quick::-webkit-scrollbar { display: none; }
+  .ed-quick > * { flex: none; }
+  .ed-quick__spacer, .ed-zoom__label { display: none; }
+  .ed-notes { display: none; }
+
+  .ed-side { grid-area: side; flex-direction: row; align-items: stretch; border-right: 0; border-top: 1px solid var(--ed-border); }
+  .ed-side__head { flex: none; flex-direction: column; justify-content: center; padding: 0 6px 0 8px; }
+  .ed-side__title { display: none; }
+  .ed-slides { overflow-x: auto; overflow-y: hidden; padding: 8px 8px 8px 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .ed-slides::-webkit-scrollbar { display: none; }
+  .ed-slides__items { display: flex; gap: 10px; align-items: center; height: 100%; }
+  .ed-thumb { display: block; flex: none; padding: 0; touch-action: pan-x; }
+  .ed-thumb__preview { width: 112px; }
+  .ed-thumb__num { position: absolute; left: 6px; top: 5px; z-index: 2; padding: 0 5px; border-radius: 4px; background: rgb(0 0 0 / .6); color: #fff; font-size: 10px; }
+  .ed-thumb__actions { display: none !important; }
+  .ed-drop-line { display: none; }
+
+  .ed-mbar { grid-area: bar; display: grid; grid-template-columns: repeat(5, 1fr); align-items: stretch; background: var(--ed-panel); border-top: 1px solid var(--ed-border); padding-bottom: env(safe-area-inset-bottom, 0); z-index: 70; }
+  .ed-mbar__btn { flex-direction: column; gap: 2px; height: 100%; min-height: 0 !important; border-radius: 0; font-size: 11.5px; font-weight: 600; }
+  .ed-mbar__btn .ed-icon, .ed-mbar__btn svg { width: 22px; height: 22px; }
+  .ed-mbar__btn[aria-expanded='true'] { color: var(--ed-focus); }
+
+  .ed-insp { position: fixed; left: 0; right: 0; bottom: 58px; z-index: 65; max-height: 66vh; border: 0; border-top: 1px solid var(--ed-border-strong); border-radius: 22px 22px 0 0; box-shadow: 0 -18px 50px rgb(0 0 0 / .35); transform: translateY(110%); visibility: hidden; transition: transform .26s var(--ease), visibility 0s .26s; }
+  .ed-insp::before { content: ''; align-self: center; width: 44px; height: 5px; margin: 8px 0 2px; border-radius: 3px; background: var(--ed-border-strong); flex: none; }
+  .ed.is-sheet .ed-insp { transform: none; visibility: visible; transition: transform .26s var(--ease); }
+  .ed-scrim { position: fixed; inset: 0 0 58px 0; z-index: 60; background: rgb(0 0 0 / .4); }
+  .ed.is-sheet .ed-scrim { display: block; }
+
+  .ed-menu, .ed-insert-pop { max-width: calc(100vw - 16px); }
+  .ed-dialog { width: min(520px, 100%); max-height: 92vh; border-radius: 22px; }
+  .ed-dialog__body { padding: 8px 16px 18px; }
+  .ed-toasts { bottom: 78px; }
+}
+@media (max-width: 760px) and (orientation: landscape) {
+  .ed { grid-template-rows: 46px minmax(0, 1fr) 76px 52px; }
+  .ed-thumb__preview { width: 92px; }
+  .ed-insp { max-height: 78vh; bottom: 52px; }
+  .ed-scrim { bottom: 52px; }
+}
