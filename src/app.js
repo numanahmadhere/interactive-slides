@@ -90,6 +90,14 @@ if (params.has('view')) {
 
   finishSignIn().then(async (notice) => {
     if (notice === 'redirecting') return;
+    // Building needs a free account. The deck list, the editor and reports sit behind a sign-in screen;
+    // the account page is where signing in happens, and audience pages, share links and the demo are open.
+    const cloudNow = getCloud();
+    if (cloudNow && !cloudNow.user && ['dashboard', 'editor', 'reports'].includes(route.page)) {
+      const { mountGate } = await import('./shell/gate.js');
+      mountGate(mount, cloudNow, { template: params.get('template') });
+      return;
+    }
     if (route.page === 'editor') {
       const editor = new Editor(mount, route.deckId);
       window.editor = editor; // handy for debugging in the console

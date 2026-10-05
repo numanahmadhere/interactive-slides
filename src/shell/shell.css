@@ -177,3 +177,15 @@ body.sh a:focus-visible, body.sh button:focus-visible, body.sh select:focus-visi
 .sh-invite { margin-top: 12px; display: grid; gap: 8px; }
 .sh-team-new { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
 .sh-team-new input { flex: 1; min-width: 200px; }
+
+/* Sign-in screen in front of the app */
+.gate { min-height: 100%; display: grid; align-content: center; justify-items: center; gap: 22px; padding: 40px 20px; background: radial-gradient(900px 500px at 15% -10%, #DCDDFF, transparent 60%), radial-gradient(700px 420px at 100% 110%, #D8F1EA, transparent 60%), var(--bg-alt); }
+.gate__brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); font-weight: 800; letter-spacing: -0.02em; text-decoration: none; }
+.gate__card { width: min(100%, 460px); padding: clamp(24px, 4vw, 36px); border: 1px solid var(--border); border-radius: 28px; background: var(--surface); box-shadow: 0 2px 6px rgb(15 17 23 / .05), 0 30px 70px -26px rgb(32 32 232 / .35); }
+.gate__label { display: inline-block; margin: 0 0 12px; padding: 4px 10px; border-radius: 8px; background: var(--blue-dim); color: var(--blue-text); font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+.gate__title { margin: 0 0 10px; color: var(--ink); font: 500 clamp(30px, 6vw, 38px)/1.1 var(--font-display); letter-spacing: -0.02em; }
+.gate__lead { margin: 0 0 20px; color: var(--muted); }
+.gate__perks { display: grid; gap: 6px; margin: 18px 0 0; padding: 16px 0 0; border-top: 1px solid var(--border); list-style: none; color: var(--muted); font-size: 14px; }
+.gate__perks li::before { content: '\2713'; margin-right: 8px; color: var(--success); font-weight: 800; }
+.gate__fine { margin: 14px 0 0; color: var(--muted); font-size: 12.5px; }
+.gate__help { max-width: 460px; margin: 0; color: var(--muted); font-size: 13px; text-align: center; }

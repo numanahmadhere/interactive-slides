@@ -315,7 +315,7 @@ test('the funnel sections are on the home page in order, with one repeated main 
   let at = -1;
   for (const marker of order) { const i = home.indexOf(marker); assert.ok(i > at, `${marker} out of order`); at = i; }
   assert.ok((home.match(/Start building free/g) ?? []).length >= 2);
-  assert.ok(home.includes('No account or card needed'));
+  assert.ok(home.includes('Free account, no card'));
   assert.ok(home.includes('Recommended'));
 });
 
@@ -398,4 +398,17 @@ test('the home page has figures beside the headline and a crowd in the closing b
     const art = site[`art/${n}.svg`];
     assert.ok(art && art.length < 30000 && !/<script|\son\w+=|javascript:|href="http/i.test(art) && art.includes('prefers-reduced-motion'), n);
   }
+});
+
+test('building needs a free account: the app routes send signed-out people to the sign-in screen, and audience pages stay open', () => {
+  const app = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+  assert.match(app, /\['dashboard', 'editor', 'reports'\]\.includes\(route\.page\)/);
+  assert.match(app, /mountGate/);
+  // the public routes are handled before the platform branch, so they are never gated
+  assert.ok(app.indexOf("params.has('view')") < app.indexOf('mountGate') && app.indexOf("params.has('join')") < app.indexOf('mountGate') && app.indexOf("params.has('play')") < app.indexOf('mountGate'));
+  const gate = readFileSync(new URL('../src/shell/gate.js', import.meta.url), 'utf8');
+  assert.ok(gate.includes('Sign in to start building') && gate.includes('signInPanel'));
+  const site = Object.values(buildSite()).join(' ');
+  assert.ok(!/no account (or card )?needed to try|without (paying or )?signing in|use the editor and present without an account/i.test(site), 'no page tells builders they can start without an account');
+  assert.match(readFileSync(new URL('../src/styles/app.css', import.meta.url), 'utf8'), /#app \{[^}]*overflow-y: auto/, 'long app pages scroll');
 });

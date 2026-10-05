@@ -208,7 +208,7 @@ const home = () => layout({
 <header class="tuthero__head">
 <h1>Presentations your audience can <em>answer.</em></h1>
 <p class="lead">Add live polls, quizzes and questions to the presentations you already give. Pick a question type below and use it: answer on the phone and watch your own answer appear on the big screen.</p>
-<p class="cta tuthero__cta"><a class="btn lg" href="/app/">Start building free</a><span class="assure">No account or card needed to try it.</span></p>
+<p class="cta tuthero__cta"><a class="btn lg" href="/app/">Start building free</a><span class="assure">Free account, no card. Try the demo below first.</span></p>
 </header>
 <div class="show reveal" id="show">
 <ul class="show__cards" aria-label="Question types">
@@ -334,7 +334,7 @@ ${planCards()}
 <section id="trust" class="band-paper"><div class="wrap">
 <header class="head head--center reveal"><p class="label">Security and privacy</p><h2>Built with confidential material in <em>mind.</em></h2></header>
 <div class="tcards">
-<article class="tcard reveal"><h3>On your device first</h3><p>Decks are stored in your browser. Nothing is uploaded unless you sign in or choose to share.</p></article>
+<article class="tcard reveal"><h3>Yours first</h3><p>Decks are stored in your browser as you work, and saved to your account so you can open them anywhere. Nothing is shared unless you choose to.</p></article>
 <article class="tcard reveal"><h3>No tracking</h3><p>No advertising, no tracking cookies and no sale of data.</p></article>
 <article class="tcard reveal"><h3>Answers stay with you</h3><p>Audience responses are held in the presenter&rsquo;s browser, not stored on our servers.</p></article>
 <article class="tcard reveal"><h3>You stay in control</h3><p>Export any deck, revoke a share link instantly, and delete everything at any time.</p></article>
@@ -381,7 +381,7 @@ ${planCards()}
 <section id="faq" class="alt"><div class="wrap faq">
 <div class="reveal"><p class="label">FAQ</p><h2>Questions, answered.</h2><p class="sub">Anything else? Read the <a href="/learn/">guides</a>.</p></div>
 <div class="reveal">
-<details><summary>Is it free?</summary><p>You can build, present and export without paying or signing in. Saving online and sharing links need a free account.</p></details>
+<details><summary>Is it free?</summary><p>Yes. Create a free account (no card) to build, present and export. Your audience never needs an account.</p></details>
 <details><summary>Does my audience need an account or an app?</summary><p>No. They open a link or scan a QR code in their phone's browser and enter nothing else.</p></details>
 <details><summary>Where are my decks stored?</summary><p>On your device first. If you sign in they are also saved to your online account so you can open them on other devices. See the <a href="/privacy/">privacy policy</a>.</p></details>
 <details><summary>Does it work offline?</summary><p>After your first visit, yes: you can edit and present without a connection. Live audience features and online saving need one.</p></details>
@@ -444,7 +444,7 @@ const privacy = () => layout({
   title: `Privacy policy | ${NAME}`,
   description: `What ${NAME} stores, where, who else handles it, and how to delete it.`,
   body: `<div class="doc"><h1>Privacy policy</h1><p class="meta">Last updated ${UPDATED}. ${NAME} is a product of <a href="${COMPANY}">Densight Labs</a> (&ldquo;we&rdquo;). This page explains what we keep about you and why. A shorter version is on the <a href="/security/">security page</a>.</p>
-<h2>The short version</h2><p>You can use the editor and present without an account, and then nothing leaves your device. If you create an account we keep your email address and the decks you save online. If you pay, our payment provider handles your payment details; we never see your card. We do not use advertising or tracking cookies and we do not sell your data.</p>
+<h2>The short version</h2><p>You need a free account to build decks. We keep your email address and the decks you save online, and the people who answer in your live sessions never need an account. If you pay, our payment provider handles your payment details; we never see your card. We do not use advertising or tracking cookies and we do not sell your data.</p>
 <h2>What we collect, and why</h2>
 <ul><li><strong>On your device only:</strong> decks, images and settings you create, kept in your browser storage so the app works and remembers your work. We do not receive them.</li>
 <li><strong>Account:</strong> your email address, used to sign you in and to write to you about your account. Sign-in and storage are provided by Supabase.</li>
@@ -473,7 +473,7 @@ const terms = () => layout({
   description: `The rules for using ${NAME}, including plans, billing, trials and cancellation.`,
   body: `<div class="doc"><h1>Terms of use</h1><p class="meta">Last updated ${UPDATED}. ${NAME} is a product of <a href="${COMPANY}">Densight Labs</a> (&ldquo;we&rdquo;).</p>
 <p>By using ${NAME} you agree to these terms. If you do not agree, please do not use the service. If you use it for an organisation, you confirm you can accept these terms for it.</p>
-<h2>The service</h2><p>${NAME} lets you build interactive presentations, present them, and run live sessions where an audience answers on their phones. You can use the editor and present without an account. An account is needed to save decks online, share them, and use paid plans.</p>
+<h2>The service</h2><p>${NAME} lets you build interactive presentations, present them, and run live sessions where an audience answers on their phones. You need a free account to build decks, save them online, share them, and use paid plans. Audience members and people viewing a shared deck do not need one.</p>
 <h2>Your account</h2><p>Keep your sign-in secure and tell us if you think someone else has used it. You are responsible for what happens under your account.</p>
 <h2>Your content</h2><p>You own the decks you make. You give us permission to store and display them as needed to run the service for you, including showing a shared deck to anyone who has its link and showing a team deck to the team&rsquo;s members. You promise you have the right to use what you upload.</p>
 <h2>Plans, trials and billing</h2><ul><li>There is a free plan and there are paid plans (Starter, Pro and Advanced). What each includes is shown on the <a href="/pricing/">pricing page</a>. We may change plans and prices; a change to the price of a plan you already pay for takes effect at your next renewal, after we tell you.</li>
@@ -584,7 +584,7 @@ const templatesPage = () => {
     title: `Ready-made slides | ${NAME}`,
     description: `${TEMPLATES.length} ready-made slides for icebreakers, quizzes, polls, feedback, tables and matrices. Pick one and edit it in your browser. Free to use.`,
     body: `<div class="doc doc--wide"><p class="label">Ready-made slides</p><h1>${TEMPLATES.length} slides to start from</h1>
-<p class="meta">Icebreakers, quizzes, polls, feedback, tables and matrices. Choose one and it opens in the editor as a new deck, ready to change. No sign-up needed. The pictures below are sketches; the real slides use your theme.</p>
+<p class="meta">Icebreakers, quizzes, polls, feedback, tables and matrices. Choose one and it opens in the editor as a new deck, ready to change. Sign in with a free account when you open one. The pictures below are sketches; the real slides use your theme.</p>
 ${groups.map((g) => `<h2 class="tpg">${esc(g)}</h2><ul class="tpl">${TEMPLATES.filter((t) => t.group === g).map((t) => `<li class="tpl__card">${thumb(t.make())}<div class="tpl__row"><b>${esc(t.name)}</b><a class="btn sm" href="/app/?template=${t.id}" aria-label="Use the ${esc(t.name)} slide">Use this slide</a></div></li>`).join('')}</ul>`).join('\n')}
 <p style="margin-top:36px"><a class="btn" href="/app/">Start from a blank deck</a></p></div>`,
   });
@@ -838,7 +838,7 @@ const pricingCards = () => PLAN_ORDER.map((id) => {
 }).join('\n');
 
 const pricingFaq = () => [
-  ['Is there a free plan?', `Yes. You can build, present, run polls and quizzes, and export your deck as a file or images without paying. The free plan keeps ${PLANS.free.cloudDecks} decks online and rooms of up to ${PLANS.free.livePhones} phones.`],
+  ['Is there a free plan?', `Yes. With a free account you can build, present, run polls and quizzes, and export your deck as a file or images without paying. The free plan keeps ${PLANS.free.cloudDecks} decks online and rooms of up to ${PLANS.free.livePhones} phones.`],
   ['How does the free trial work?', `Every paid plan starts with a ${TRIAL_DAYS}-day free trial. A card is needed to start it. Cancel before the trial ends and you pay nothing.`],
   ['Can I switch plans or cancel?', 'Yes, any time, from Account &gt; Manage billing. You keep your plan until the period you paid for ends.'],
   ['What happens to my decks if I downgrade?', 'Nothing is deleted. You can still open, edit and present every deck. The new plan limits only apply to what you add next, such as new decks online or paid question types in a live room.'],
