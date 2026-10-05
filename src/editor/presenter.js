@@ -5,7 +5,8 @@
 import { h } from '../core/dom.js';
 import { Player } from '../player/player.js';
 import { openPresenterView } from '../player/presenter-view.js';
-import { button } from './ui.js';
+import { button, toast } from './ui.js';
+import { collectPrompts } from '../live/prompts.js';
 import { qrElement } from '../live/qr.js';
 
 const UI_IDLE_MS = 2500;
@@ -28,6 +29,16 @@ export function openPresenter({ deck, startIndex, resolveAsset, onClose, present
   const detachLive = live?.attach(player);
   overlay.append(closeBtn);
   if (join) overlay.append(joinBanner(join));
+  // The plan note is for the presenter, not the room: say it once per slide in a toast instead of on the slide.
+  const warned = new Set();
+  const checkLocked = () => {
+    const slide = player.deck.slides[player.state.slide];
+    if (!slide || warned.has(slide.id) || !collectPrompts(slide).some((p) => live.isLocked?.(p.id))) return;
+    warned.add(slide.id);
+    toast('Phones cannot answer this question on your current plan. It needs Starter or above.', { kind: 'info', timeout: 7000 });
+  };
+  const offLockWatch = live ? player.subscribe(checkLocked) : null;
+  if (live) setTimeout(checkLocked, 600); // the first slide, once the session has told the host which questions are locked
 
   let view = null;
   function showPresenterView(p) {
@@ -68,6 +79,7 @@ export function openPresenter({ deck, startIndex, resolveAsset, onClose, present
     overlay.removeEventListener('pointermove', showUi);
     const index = player.state.slide;
     detachLive?.();
+    offLockWatch?.();
     player.destroy();
     overlay.remove();
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});

@@ -1,7 +1,7 @@
 import { h, rich } from '../dom.js';
 import { str } from '../util.js';
 import { registerBlock } from './registry.js';
-import { cleanList, pad, isLocked, LOCKED_NOTE } from './shared.js';
+import { cleanList, pad } from './shared.js';
 
 export default registerBlock({
   type: 'ranking',
@@ -48,7 +48,7 @@ export default registerBlock({
         row.querySelector('.sp-rk__place').textContent = voters ? String(place + 1) : '';
         row.querySelector('.sp-rk__pts').textContent = voters ? `${score} pts` : '';
       });
-      count.textContent = isLocked(live, block) ? LOCKED_NOTE : voters ? `${voters} ${voters === 1 ? 'ranking' : 'rankings'}` : live ? 'Waiting for rankings' : 'Rankings come from the audience\'s phones';
+      count.textContent = voters ? `${voters} ${voters === 1 ? 'ranking' : 'rankings'}` : live ? 'Waiting for rankings' : 'Rankings come from the audience\'s phones';
     };
     paint();
     return live?.subscribe(paint);

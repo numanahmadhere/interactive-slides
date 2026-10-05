@@ -726,3 +726,13 @@ a.ed-logo .logo { width: 28px; height: 28px; }
 .ed-join__qr:hover, .ed-join__qr[aria-expanded='true'] { background: #262C40; }
 .ed-join__card { display: grid; justify-items: center; gap: 8px; padding: 14px; border-radius: 16px; background: #fff; color: #0F1117; font: 600 14px var(--font, Inter, system-ui, sans-serif); box-shadow: 0 24px 60px -16px rgb(0 0 0 / 0.7); }
 .ed-join__card[hidden] { display: none; }
+
+/* the one-time quick start card: a slim strip under the slide, never on top of it */
+.ed-qs { box-sizing: border-box; position: fixed; z-index: 60; left: 264px; bottom: 16px; width: min(680px, calc(100vw - 264px - 340px)); padding: 12px 16px; border: 1px solid var(--ed-border-strong); border-radius: 14px; background: var(--ed-panel); color: var(--ed-text); box-shadow: 0 14px 36px -18px rgb(15 17 23 / .45); }
+.ed-qs__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.ed-qs__title { margin: 0; font-size: 14px; font-weight: 650; }
+.ed-qs__steps { margin: 0; padding: 0; list-style: none; counter-reset: qs; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; font-size: 12.5px; line-height: 1.4; color: var(--ed-muted); }
+.ed-qs__steps li { counter-increment: qs; }
+.ed-qs__steps li::before { content: counter(qs); display: inline-grid; place-items: center; width: 18px; height: 18px; margin-right: 6px; border-radius: 6px; background: var(--ed-panel-2); color: var(--ed-text); font-size: 11px; font-weight: 700; }
+.ed-qs__steps b { color: var(--ed-text); }
+@media (max-width: 1100px), (max-height: 720px) { .ed-qs { display: none; } }

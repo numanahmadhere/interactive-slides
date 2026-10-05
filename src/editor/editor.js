@@ -19,6 +19,7 @@ import { CanvasView } from './canvas.js';
 import { SlideList } from './sidebar.js';
 import { Inspector } from './inspector.js';
 import { openPresenter } from './presenter.js';
+import { mountQuickstart } from './quickstart.js';
 import { button, openMenu, toast } from './ui.js';
 import { openExportDialog } from './export-dialog.js';
 import { openFindDialog } from './find-dialog.js';
@@ -125,6 +126,7 @@ export class Editor {
     this.#build();
     this.store.subscribe((change) => this.#onChange(change));
     this.#bindGlobal();
+    mountQuickstart();
     this.#syncAll({ selectionChanged: true });
     this.#setSaveState('saved');
     this.sync = new CloudSync({

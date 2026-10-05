@@ -1,7 +1,7 @@
 import { h, rich } from '../dom.js';
 import { str, clamp } from '../util.js';
 import { registerBlock } from './registry.js';
-import { stateOf, isLocked, LOCKED_NOTE } from './shared.js';
+import { stateOf } from './shared.js';
 import { MODERATION_FIELD, queueBox, mountQueue } from './moderation.js';
 import { cleanModeration } from '../../live/boards.js';
 
@@ -41,7 +41,7 @@ export default registerBlock({
     const paint = () => {
       const items = live ? live.responses(block.id) : local.items.slice().reverse();
       wall.replaceChildren(...items.map((t) => h('li', { text: t })));
-      count.textContent = isLocked(live, block) ? LOCKED_NOTE : items.length ? `${items.length} ${items.length === 1 ? 'answer' : 'answers'}` : live ? 'Waiting for answers' : 'Add an answer to see the wall';
+      count.textContent = items.length ? `${items.length} ${items.length === 1 ? 'answer' : 'answers'}` : live ? 'Waiting for answers' : 'Add an answer to see the wall';
     };
     el.querySelector('.sp-live__try')?.addEventListener('submit', (e) => {
       e.preventDefault();

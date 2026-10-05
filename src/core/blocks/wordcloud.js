@@ -1,7 +1,7 @@
 import { h, rich } from '../dom.js';
 import { str, clamp } from '../util.js';
 import { registerBlock } from './registry.js';
-import { stateOf, isLocked, LOCKED_NOTE } from './shared.js';
+import { stateOf } from './shared.js';
 import { MODERATION_FIELD, queueBox, mountQueue } from './moderation.js';
 import { cleanModeration } from '../../live/boards.js';
 
@@ -54,7 +54,7 @@ export default registerBlock({
       const list = words();
       fill(cloud, list, false);
       const total = list.reduce((a, w) => a + w[1], 0);
-      count.textContent = isLocked(live, block) ? LOCKED_NOTE : total ? `${total} ${total === 1 ? 'word' : 'words'}` : live ? 'Waiting for words' : 'Add a word to see the cloud';
+      count.textContent = total ? `${total} ${total === 1 ? 'word' : 'words'}` : live ? 'Waiting for words' : 'Add a word to see the cloud';
     };
     el.querySelector('.sp-live__try')?.addEventListener('submit', (e) => {
       e.preventDefault();

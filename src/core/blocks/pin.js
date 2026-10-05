@@ -2,7 +2,7 @@ import { h, rich } from '../dom.js';
 import { str } from '../util.js';
 import { safeImageUrl } from '../sanitize.js';
 import { registerBlock } from './registry.js';
-import { stateOf, isLocked, LOCKED_NOTE } from './shared.js';
+import { stateOf } from './shared.js';
 
 const THUMB_WIDTH = 480;
 const THUMB_MAX_CHARS = 38000; // under the protocol's limit
@@ -66,7 +66,7 @@ export default registerBlock({
     const paint = () => {
       const pins = live ? live.pins(block.id) : local.pins;
       layer.replaceChildren(...pins.map(([x, y]) => h('span', { class: 'sp-pin__dot', style: `left:${x / 10}%;top:${y / 10}%` })));
-      count.textContent = isLocked(live, block) ? LOCKED_NOTE : pins.length ? `${pins.length} ${pins.length === 1 ? 'pin' : 'pins'}` : live ? 'Waiting for pins' : 'Click the picture to try it';
+      count.textContent = pins.length ? `${pins.length} ${pins.length === 1 ? 'pin' : 'pins'}` : live ? 'Waiting for pins' : 'Click the picture to try it';
     };
     el.querySelector('.sp-pin__frame').addEventListener('click', (e) => {
       const box = e.currentTarget.getBoundingClientRect();
