@@ -152,10 +152,10 @@ ${body}
 <div class="wrap foot-cols">
 <div class="foot-brand"><a class="brand" href="/">${LOGO_DARK_BG}<span>${NAME}</span></a>
 <p>Interactive presentations your audience can answer. A product of <a href="${COMPANY}">Densight Labs</a>, an applied AI firm.</p></div>
-<div><h3 class="foot-h">Product</h3><a href="/#tutorial">Try it live</a>${PRODUCTS.map((x) => `<a href="${productHref(x)}">${x.name}</a>`).join('')}<a href="/templates/">Templates</a><a href="/pricing/">Pricing</a></div>
-<div><h3 class="foot-h">Use cases</h3>${SEGMENTS.map((x) => `<a href="${segHref(x)}">${x.name}</a>`).join('')}<a href="/use-cases/">All use cases</a></div>
-<div><h3 class="foot-h">Resources</h3><a href="/learn/">Guides</a><a href="/#faq">FAQ</a><a href="/security/">Security</a><a href="/#compare">How we compare</a></div>
-<div><h3 class="foot-h">Company</h3><a href="${COMPANY}">Densight Labs</a><a href="${mailto()}">Contact</a><a href="${mailto('Security report')}">Report a security issue</a></div>
+<div><h2 class="foot-h">Product</h2><a href="/#tutorial">Try it live</a>${PRODUCTS.map((x) => `<a href="${productHref(x)}">${x.name}</a>`).join('')}<a href="/templates/">Templates</a><a href="/pricing/">Pricing</a></div>
+<div><h2 class="foot-h">Use cases</h2>${SEGMENTS.map((x) => `<a href="${segHref(x)}">${x.name}</a>`).join('')}<a href="/use-cases/">All use cases</a></div>
+<div><h2 class="foot-h">Resources</h2><a href="/learn/">Guides</a><a href="/#faq">FAQ</a><a href="/security/">Security</a><a href="/#compare">How we compare</a></div>
+<div><h2 class="foot-h">Company</h2><a href="${COMPANY}">Densight Labs</a><a href="${mailto()}">Contact</a><a href="${mailto('Security report')}">Report a security issue</a></div>
 </div><div class="wrap foot-end"><span>&copy; ${new Date().getFullYear()} <a href="${COMPANY}">Densight Labs</a>. All rights reserved.</span><span class="foot-legal"><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a><a href="/refund/">Refunds</a><a href="${mailto()}">${SUPPORT}</a></span></div></footer>
 <a class="stickycta" id="stickycta" href="/app/" hidden>Start building free</a>
 <script>
@@ -407,22 +407,40 @@ ${planCards()}
 </script>`,
 });
 
+
+// Long documents (policies, security) get a header band and a table of contents, so they read like part of the site.
+const slug = (t) => t.toLowerCase().replace(/<[^>]*>/g, '').replace(/&[a-z]+;/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+function docify(html, { eyebrow }) {
+  const inner = html.replace(/^<div class="doc">/, '').replace(/<\/div>\s*$/, '');
+  const h1 = /<h1>([\s\S]*?)<\/h1>/.exec(inner)?.[1] ?? '';
+  const meta = /<p class="meta">([\s\S]*?)<\/p>/.exec(inner)?.[1] ?? '';
+  let rest = inner.replace(/<p class="label">[\s\S]*?<\/p>/, '').replace(/<h1>[\s\S]*?<\/h1>/, '').replace(/<p class="meta">[\s\S]*?<\/p>/, '');
+  const heads = [];
+  rest = rest.replace(/<h2>([\s\S]*?)<\/h2>/g, (m, t) => { const id = slug(t); heads.push([id, t]); return `<h2 id="${id}">${t}</h2>`; });
+  return `<section class="dochero"><div class="wrap"><p class="label">${eyebrow}</p><h1>${h1}</h1><p class="meta">${meta}</p></div></section>
+<div class="wrap docgrid">${heads.length > 2 ? `<nav class="doctoc" aria-label="On this page"><b>On this page</b><ol>${heads.map(([id, t]) => `<li><a href="#${id}">${t}</a></li>`).join('')}</ol></nav>` : ''}<article class="docbody">${rest}</article></div>`;
+}
+
 const welcome = () => layout({
   path: '/welcome/',
   title: `Thank you: ${NAME}`,
   description: 'Your payment went through.',
   index: false,
-  body: `<div class="doc"><h1>Thank you</h1><p class="meta">Your payment went through and your plan is being switched on.</p>
-<p>It usually takes a few seconds. We are taking you to your account now; if nothing happens, <a href="/app/account?welcome=1">open your account</a>.</p>
-<p>A receipt is on its way to your email from Paddle, who handle payments for us. Questions? Write to <a href="${mailto('My payment')}">${SUPPORT}</a>.</p></div>
-<script>setTimeout(function(){location.replace('/app/account?welcome=1')},2500)</script>`,
+  body: `<section class="seg welcome"><div class="wrap seg__grid"><div>
+<span class="welcome__tick" aria-hidden="true"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="24"/><path d="M14 27l8 8 16-17"/></svg></span>
+<h1>Thank you. <em>You are in.</em></h1>
+<p class="lead">Your payment went through and your plan is being switched on. It usually takes a few seconds, and we are taking you to your account now.</p>
+<p class="cta"><a class="btn lg" href="/app/account?welcome=1">Open my account</a><a class="textlink" href="/learn/">Learn the basics <span aria-hidden="true">&rarr;</span></a></p>
+<p class="seg__fine">A receipt is on its way to your email from Paddle, who handle payments for us. Questions? Write to <a href="${mailto('My payment')}">${SUPPORT}</a>.</p></div>
+<img class="seg__art" src="/art/cta.svg" alt="" width="800" height="420"></div></section>
+<script>setTimeout(function(){location.replace('/app/account?welcome=1')},4000)</script>`,
 });
 
 const privacy = () => layout({
   path: '/privacy/',
   title: `Privacy policy | ${NAME}`,
   description: `What ${NAME} stores, where, who else handles it, and how to delete it.`,
-  body: `<div class="doc"><h1>Privacy policy</h1><p class="meta">Last updated ${UPDATED}. ${NAME} is a product of <a href="${COMPANY}">Densight Labs</a> (&ldquo;we&rdquo;). This page explains what we keep about you and why. A shorter version is on the <a href="/security/">security page</a>.</p>
+  body: docify(`<div class="doc"><h1>Privacy policy</h1><p class="meta">Last updated ${UPDATED}. ${NAME} is a product of <a href="${COMPANY}">Densight Labs</a> (&ldquo;we&rdquo;). This page explains what we keep about you and why. A shorter version is on the <a href="/security/">security page</a>.</p>
 <h2>The short version</h2><p>You need a free account to build decks. We keep your email address and the decks you save online, and the people who answer in your live sessions never need an account. If you pay, our payment provider handles your payment details; we never see your card. We do not use advertising or tracking cookies and we do not sell your data.</p>
 <h2>What we collect, and why</h2>
 <ul><li><strong>On your device only:</strong> decks, images and settings you create, kept in your browser storage so the app works and remembers your work. We do not receive them.</li>
@@ -443,14 +461,14 @@ const privacy = () => layout({
 <h2>Your choices and rights</h2><ul><li>Delete a deck, or all decks on this device, from My decks and Account.</li><li>Delete your account and all online data from Account &gt; Delete my account.</li><li>Export any deck as a file at any time.</li><li>Ask us for a copy of the personal data we hold about you, to correct it, or to delete it, by writing to <a href="${mailto('My data')}">${SUPPORT}</a>. Depending on where you live you may have further rights, and you may complain to your local data protection authority.</li></ul>
 <h2>Shared decks</h2><p>Anyone with a share link can view that deck without an account. Turn sharing off and the link stops working immediately. Do not put information in a shared deck that you do not want others to see.</p>
 <h2>Children</h2><p>The service is not directed at children under 13, and accounts are for people old enough to agree to the terms where they live. Teachers should not require pupils to create accounts; audience members never need one.</p>
-<h2>Changes and contact</h2><p>If this policy changes we will update the date above. Questions or requests about your data: write to <a href="${mailto('Densight Slides privacy')}">${SUPPORT}</a>. ${NAME} is a product of <a href="${COMPANY}">Densight Labs</a>. See also the <a href="/terms/">terms of use</a> and <a href="/refund/">refund policy</a>.</p></div>`,
+<h2>Changes and contact</h2><p>If this policy changes we will update the date above. Questions or requests about your data: write to <a href="${mailto('Densight Slides privacy')}">${SUPPORT}</a>. ${NAME} is a product of <a href="${COMPANY}">Densight Labs</a>. See also the <a href="/terms/">terms of use</a> and <a href="/refund/">refund policy</a>.</p></div>`, { eyebrow: 'Legal' }),
 });
 
 const terms = () => layout({
   path: '/terms/',
   title: `Terms of use | ${NAME}`,
   description: `The rules for using ${NAME}, including plans, billing, trials and cancellation.`,
-  body: `<div class="doc"><h1>Terms of use</h1><p class="meta">Last updated ${UPDATED}. ${NAME} is a product of <a href="${COMPANY}">Densight Labs</a> (&ldquo;we&rdquo;).</p>
+  body: docify(`<div class="doc"><h1>Terms of use</h1><p class="meta">Last updated ${UPDATED}. ${NAME} is a product of <a href="${COMPANY}">Densight Labs</a> (&ldquo;we&rdquo;).</p>
 <p>By using ${NAME} you agree to these terms. If you do not agree, please do not use the service. If you use it for an organisation, you confirm you can accept these terms for it.</p>
 <h2>The service</h2><p>${NAME} lets you build interactive presentations, present them, and run live sessions where an audience answers on their phones. You need a free account to build decks, save them online, share them, and use paid plans. Audience members and people viewing a shared deck do not need one.</p>
 <h2>Your account</h2><p>Keep your sign-in secure and tell us if you think someone else has used it. You are responsible for what happens under your account.</p>
@@ -468,14 +486,14 @@ const terms = () => layout({
 <h2>No warranty and limits of liability</h2><p>The service is provided as is. To the extent the law allows, Densight Labs is not liable for indirect or consequential losses, or for losses from content you or others create or share, and our total liability to you is limited to the amount you paid us in the twelve months before the claim. Nothing here limits rights you have by law that cannot be limited.</p>
 <h2>Ending</h2><p>You can stop using the service and delete your account at any time. We may end or limit access if these terms are broken or if a payment cannot be collected.</p>
 <h2>Privacy</h2><p>How we handle personal data is described in the <a href="/privacy/">privacy policy</a>.</p>
-<h2>Changes and contact</h2><p>We may update these terms and will change the date above. If a change is significant we will tell signed-in users. Continuing to use the service after a change means you accept it. Questions: <a href="${mailto('Densight Slides terms')}">${SUPPORT}</a>.</p></div>`,
+<h2>Changes and contact</h2><p>We may update these terms and will change the date above. If a change is significant we will tell signed-in users. Continuing to use the service after a change means you accept it. Questions: <a href="${mailto('Densight Slides terms')}">${SUPPORT}</a>.</p></div>`, { eyebrow: 'Legal' }),
 });
 
 const refund = () => layout({
   path: '/refund/',
   title: `Refund policy | ${NAME}`,
   description: `Full refund within ${REFUND_DAYS} days of any payment, no questions asked. How trials, cancellation and refunds work.`,
-  body: `<div class="doc"><h1>Refund policy</h1><p class="meta">Last updated ${UPDATED}.</p>
+  body: docify(`<div class="doc"><h1>Refund policy</h1><p class="meta">Last updated ${UPDATED}.</p>
 <p>We want you to pay for ${NAME} only if it is useful to you. Here is exactly how that works.</p>
 <h2>${REFUND_DAYS} days, full refund</h2><p>If you are not happy with a paid plan, ask within <strong>${REFUND_DAYS} days of any payment</strong>, the first one or a renewal, and we will refund that payment in full. You do not need to give a reason.</p>
 <h2>Free trial</h2><p>Every paid plan starts with a ${TRIAL_DAYS}-day free trial. If you cancel before the trial ends you are not charged at all. You can cancel from Account &gt; Manage billing.</p>
@@ -485,7 +503,7 @@ const refund = () => layout({
 <h2>How to ask</h2><ol><li>Write to <a href="${mailto('Refund request')}">${SUPPORT}</a> from the email address on your account, or reply to your receipt.</li><li>Tell us which payment (the date or the receipt number helps).</li><li>We confirm and refund it. Refunds are processed by our payment provider, Paddle, and go back to the payment method you used. Your bank may take several days to show it.</li></ol>
 <h2>What happens to your decks</h2><p>If you get a refund and your plan ends, nothing is deleted. You can still open, edit, present and export your decks; the free plan&rsquo;s limits apply to what you add next. See the <a href="/terms/">terms of use</a>.</p>
 <h2>Your legal rights</h2><p>This policy is in addition to any rights you have by law, which it does not limit. Paddle&rsquo;s own terms for buyers may also apply to your purchase.</p>
-<p style="margin-top:28px"><a class="btn" href="${mailto('Refund request')}">Ask for a refund</a></p></div>`,
+<p style="margin-top:28px"><a class="btn" href="${mailto('Refund request')}">Ask for a refund</a></p></div>`, { eyebrow: 'Legal' }),
 });
 
 const notFound = () => layout({
@@ -493,7 +511,12 @@ const notFound = () => layout({
   title: `Page not found | ${NAME}`,
   description: 'That page does not exist.',
   index: false,
-  body: `<div class="doc"><h1>Page not found</h1><p>That address does not exist. <a href="/">Go to the home page</a> or <a href="/app/">open the app</a>.</p></div>`,
+  body: `<section class="seg notfound"><div class="wrap seg__grid"><div>
+<p class="label">Error 404</p><h1>That page <em>wandered off.</em></h1>
+<p class="lead">The address does not exist, or it moved. Here is where most people were headed.</p>
+<ul class="chips"><li><a href="/">Home</a></li><li><a href="/product/">Product</a></li><li><a href="/templates/">Templates</a></li><li><a href="/pricing/">Pricing</a></li><li><a href="/learn/">Guides</a></li><li><a href="/app/">Open the app</a></li></ul>
+<p class="seg__fine">Still lost? Write to <a href="${mailto('A broken link')}">${SUPPORT}</a>.</p></div>
+<img class="seg__art" src="/art/webinars.svg" alt="" width="800" height="560"></div></section>`,
 });
 
 // ---- template previews: a flat sketch of each ready-made slide, drawn from its real block positions ----------
@@ -852,7 +875,7 @@ const securityPage = () => layout({
   path: '/security/',
   title: `Security and privacy | ${NAME}`,
   description: 'What Densight Slides stores, where it is kept, who handles payments, and how to delete everything. Plain statements, no certifications we do not hold.',
-  body: `<div class="doc"><p class="label">Security and privacy</p><h1>What we keep, and what we do not</h1>
+  body: docify(`<div class="doc"><p class="label">Security and privacy</p><h1>What we keep, and what we do not</h1>
 <p class="meta">Last updated ${UPDATED}. Written for people who have to decide whether it is safe to put their material here. The <a href="/privacy/">privacy policy</a> has the legal wording.</p>
 <h2>Your decks</h2><p>Decks are stored in your browser first. Nothing is uploaded unless you sign in to save online or choose to share. Signed-in decks are kept in our database, provided by Supabase, and every account can read and change only its own decks; that rule is enforced inside the database, not just in the app. Decks can be moved into a team workspace only by their owner.</p>
 <h2>Live sessions</h2><p>Audience answers pass through a realtime messaging service between your page and the phones. They are held in your browser while the session runs and are not saved on our servers. Answer keys for quizzes never leave your page. Names are only collected if you turn them on. A private session turns names, reports and downloads off entirely.</p>
@@ -862,7 +885,7 @@ const securityPage = () => layout({
 <h2>Deleting everything</h2><p>You can delete a deck, all decks on your device, or your whole account and every online deck at any time from the Account page. You can also export any deck as a file.</p>
 <h2>What we do not claim</h2><p>We do not currently hold security certifications such as SOC 2 or ISO 27001, and we do not offer single sign-on yet. If your organisation needs a security review, a data-processing agreement or another document, write to us and we will tell you plainly what we can and cannot provide.</p>
 <h2>Report a problem</h2><p>If you find a security problem, write to <a href="${mailto('Security report')}">${SUPPORT}</a>. A person at <a href="${COMPANY}">Densight Labs</a> will read it.</p>
-<p style="margin-top:28px"><a class="btn" href="${mailto('Security review')}">Ask a security question</a></p></div>`,
+<p style="margin-top:28px"><a class="btn" href="${mailto('Security review')}">Ask a security question</a></p></div>`, { eyebrow: 'Trust' }),
 });
 
 const pageCtx = () => ({ layout, esc, mailto, SUPPORT, COMPANY, NAME, ico, CHECK, SEGMENTS, segHref, mkWin, mockEditor, mockResults, mockReport, mockCourse, mockTeam });
