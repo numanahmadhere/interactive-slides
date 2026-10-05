@@ -248,7 +248,7 @@ const home = () => layout({
 </div></div>
 <div class="win__foot" aria-hidden="true"><span class="win__nav"><i>&#9664;</i><i>&#9654;</i></span><span class="win__count">2 / 8</span><span class="win__badge"><i></i>Live</span><span class="win__clock" id="show-clock">00:00</span></div>
 </div>
-<div class="show__phone"><span class="show__hint" id="show-hint" aria-hidden="true">Your turn</span><span class="show__sidebtn" aria-hidden="true"></span><div class="show__status" aria-hidden="true"><span>9:41</span><span class="show__notch"></span><span class="show__bars"><i></i><i></i><i></i></span></div><div class="show__phonebrand">Densight Slides</div><div id="show-phone" class="show__phonebody"></div><span class="show__home" aria-hidden="true"></span></div>
+<div class="show__phone"><span class="show__hint" id="show-hint" aria-hidden="true">Your turn</span><span class="show__sidebtn" aria-hidden="true"></span><div class="show__pstat" aria-hidden="true"><span>9:41</span><span class="show__notch"></span><span class="show__signal"><i></i><i></i><i></i></span></div><div class="show__phonebrand">Densight Slides</div><div id="show-phone" class="show__phonebody"></div><span class="show__home" aria-hidden="true"></span></div>
 <span class="ghost" id="show-ghost" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 2 4 7-3 1.5-4-7-5 4z"/></svg></span>
 </div>
 <ol class="tour__steps" id="show-steps" aria-label="The four steps">

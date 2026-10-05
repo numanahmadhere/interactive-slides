@@ -164,7 +164,7 @@ kbd { padding: 1px 7px; border: 1px solid var(--border-strong); border-bottom-wi
   .rules.four { grid-template-columns: repeat(2, 1fr); }
   footer.site .foot-cols { grid-template-columns: 1fr 1fr; }
 }
-@media (max-width: 860px) {
+@media (max-width: 1080px) {
   nav.main, .link-quiet { display: none; }
   .menu { display: block; }
 }
@@ -298,7 +298,7 @@ details.dd summary:hover, details.dd[open] summary { color: var(--ink); }
   .uc, .cases { grid-template-columns: 1fr; }
   .easy ul { grid-template-columns: 1fr 1fr; }
 }
-@media (max-width: 860px) { details.dd { display: none; } }
+@media (max-width: 1080px) { details.dd { display: none; } }
 @media (max-width: 600px) { .easy ul { grid-template-columns: 1fr; } }
 
 nav.main { align-items: center; }
@@ -842,20 +842,20 @@ footer.site .foot-h { font-family: var(--font); font-weight: 700; line-height: 1
 /* =====================================================================================================
    The tour: a presenter window and a phone that play through the four steps by themselves, then hand over.
    ===================================================================================================== */
-.show { display: grid; grid-template-columns: minmax(270px, 0.5fr) minmax(0, 1.5fr); gap: clamp(24px, 3.5vw, 48px); align-items: start; }
+.show { display: grid; grid-template-columns: minmax(300px, 0.62fr) minmax(0, 1.38fr); gap: clamp(24px, 3.5vw, 44px); align-items: start; }
 .show__cards { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
 .show__card { position: relative; border: 1px solid var(--border-strong); border-radius: 20px; background: var(--surface); box-shadow: var(--lift); transition: border-color .2s ease, box-shadow .25s ease, background .2s ease, transform .2s ease; }
 .show__card:not(.is-on):hover { transform: translateY(-2px); box-shadow: var(--lift-hover); }
-.show__pick { display: flex; align-items: center; gap: 18px; width: 100%; min-height: 88px; padding: 16px 22px; padding-right: 130px; border: 0; border-radius: 20px; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.show__pick { display: flex; align-items: center; gap: 18px; width: 100%; min-height: 88px; padding: 16px 22px; border: 0; border-radius: 20px; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
 .show__ico { flex: none; color: var(--ink); transition: transform .25s ease; }
 .show__card:nth-child(1) .show__ico { color: var(--tile-a-ink); } .show__card:nth-child(2) .show__ico { color: var(--tile-b-ink); } .show__card:nth-child(3) .show__ico { color: var(--tile-c-ink); } .show__card:nth-child(4) .show__ico { color: var(--tile-d-ink); }
 .show__pick b { display: block; font-size: 19px; font-weight: 650; letter-spacing: -0.01em; }
 .show__pick small { display: block; margin-top: 2px; color: var(--muted); font-size: 14.5px; line-height: 1.35; }
 .show__card.is-on { border: 2px solid var(--blue); background: color-mix(in srgb, var(--blue) 7%, var(--surface)); box-shadow: var(--lift-hover); }
-.show__card.is-on .show__pick { padding: 15px 21px; padding-right: 129px; }
+.show__card.is-on .show__pick { padding: 15px 21px; }
 .show__card.is-on .show__ico { transform: scale(1.08); }
-.show__create { position: absolute; right: 18px; top: 50%; padding: 10px 20px; border-radius: 14px; background: #0F1117; color: #fff; font-size: 14.5px; font-weight: 650; text-decoration: none; opacity: 0; visibility: hidden; transform: translateY(-50%) translateX(8px); transition: opacity .2s ease, transform .25s var(--ease), visibility 0s .2s; }
-.show__card.is-on .show__create { opacity: 1; visibility: visible; transform: translateY(-50%); transition-delay: 0s; }
+.show__create { display: block; width: fit-content; max-height: 0; margin: 0 0 0 80px; padding: 0 20px; overflow: hidden; border-radius: 14px; background: #0F1117; color: #fff; font-size: 14.5px; font-weight: 650; line-height: 40px; text-decoration: none; opacity: 0; visibility: hidden; transition: max-height .3s var(--ease), margin .3s var(--ease), opacity .2s ease, visibility 0s .3s; }
+.show__card.is-on .show__create { max-height: 40px; margin-bottom: 18px; opacity: 1; visibility: visible; transition-delay: 0s; }
 :root[data-theme='dark'] .show__create { background: #fff; color: #0F1117; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .show__create { background: #fff; color: #0F1117; } }
 
@@ -871,7 +871,7 @@ footer.site .foot-h { font-family: var(--font); font-weight: 700; line-height: 1
 .show[data-mode='play'] #show-try { display: none; }
 .show__stage { transition: transform .35s var(--ease); will-change: transform; }
 
-.tour__device { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 218px; align-items: center; gap: 0; }
+.tour__device { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 218px; align-items: center; gap: 20px; padding-top: 18px; }
 .win { position: relative; z-index: 1; min-width: 0; border: 1px solid #D5D9E6; border-radius: 20px; background: #fff; color: #0F1117; box-shadow: 0 2px 6px rgb(15 17 23 / .06), 0 36px 80px -28px rgb(15 17 23 / .5); overflow: hidden; }
 .win__bar { display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 12px; background: #F4F5FA; border-bottom: 1px solid #E6E8F0; }
 .win__dots { display: inline-flex; gap: 6px; } .win__dots i { width: 10px; height: 10px; border-radius: 50%; background: #D5D9E4; }
@@ -957,11 +957,11 @@ footer.site .foot-h { font-family: var(--font); font-weight: 700; line-height: 1
 @keyframes tourtap { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.2); opacity: 0; } }
 
 /* the phone */
-.show__phone { position: relative; z-index: 2; width: 218px; margin-left: -34px; padding: 8px; border-radius: 36px; background: #0F1117; box-shadow: 0 30px 60px -14px rgb(15 17 23 / .5); animation: tourfloat 7s ease-in-out infinite; }
+.show__phone { position: relative; z-index: 2; width: 218px; padding: 8px; border-radius: 36px; background: #0F1117; box-shadow: 0 30px 60px -14px rgb(15 17 23 / .5); animation: tourfloat 7s ease-in-out infinite; }
 @keyframes tourfloat { 50% { translate: 0 -5px; } }
-.show__status { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px 0; border-radius: 28px 28px 0 0; background: #fff; color: #0F1117; font-size: 10.5px; font-weight: 700; }
+.show__pstat { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px 0; border-radius: 28px 28px 0 0; background: #fff; color: #0F1117; font-size: 10.5px; font-weight: 700; }
 .show__notch { width: 54px; height: 15px; border-radius: 9px; background: #0F1117; }
-.show__bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 10px; } .show__bars i { width: 3px; border-radius: 1px; background: #0F1117; } .show__bars i:nth-child(1) { height: 4px; } .show__bars i:nth-child(2) { height: 7px; } .show__bars i:nth-child(3) { height: 10px; }
+.show__signal { display: inline-flex; align-items: flex-end; gap: 2px; height: 10px; } .show__signal i { width: 3px; border-radius: 1px; background: #0F1117; } .show__signal i:nth-child(1) { height: 4px; } .show__signal i:nth-child(2) { height: 7px; } .show__signal i:nth-child(3) { height: 10px; }
 .show__phonebrand { padding: 6px 0; background: #fff; text-align: center; color: #0F1117; font-size: 11px; font-weight: 700; letter-spacing: .04em; }
 .show__phonebody { position: relative; height: 372px; padding: 12px 14px 26px; border-radius: 0 0 28px 28px; background: #fff; color: #0F1117; overflow: hidden; }
 .show__phonebody .phone__q { margin: 6px 0 12px; font-size: 15px; font-weight: 600; line-height: 1.25; color: #0F1117; }
@@ -1020,16 +1020,21 @@ footer.site .foot-h { font-family: var(--font); font-weight: 700; line-height: 1
 @media (max-width: 760px) {
   .tour__head { flex-direction: column; align-items: flex-start; }
   .tour__device { grid-template-columns: 1fr; gap: 16px; justify-items: center; }
-  .show__phone { margin-left: 0; width: min(260px, 100%); animation: none; }
+  .show__phone { margin: 14px 0 0; width: min(260px, 100%); animation: none; }
   .win__tools { display: none; } .win__rail { display: none; }
   .win__body { display: block; } .win__canvas { width: 100%; }
-  .show__q { font-size: 5cqw; max-width: 100%; } .win[data-join='big'] .show__q { max-width: 100%; }
+  .show__q { font-size: 5cqw; max-width: 100%; } .win[data-join='big'] .show__q, .win[data-join='big'] .show__bars, .win[data-join='big'] .show__notes, .win[data-join='big'] .show__cloud { max-width: 62%; }
   .win__join { width: 30cqw; }
   .tour__steps { grid-template-columns: 1fr 1fr; } .tour__steps small { display: none; }
-  .show__cards { grid-template-columns: 1fr; }
+  .show__cards { gap: 8px; }
+  .show__pick, .show__card.is-on .show__pick { min-height: 60px; gap: 10px; padding: 10px 12px; }
+  .show__ico { width: 30px; height: 30px; }
+  .show__pick b { font-size: 15.5px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .show__phone, .win__live i, .win__badge i, .show__spin, .show__hint, .show__opt, .show__send, .win__tools .is-hot, .show__word, .show__note, .tour__bar { animation: none !important; }
   .win__join, .win__rail, .win__tools, .win__foot, .ghost, .show__fill, .show__stage { transition: none !important; }
 }
 @media (max-width: 760px) { .tour__device > .win { width: 100%; } }
+.tuthero > .wrap { max-width: 1360px; }
+@media (min-width: 1181px) { .show { grid-template-columns: minmax(340px, 0.56fr) minmax(0, 1.44fr); } .show__phone { width: 232px; } .tour__device { grid-template-columns: minmax(0, 1fr) 232px; } }
