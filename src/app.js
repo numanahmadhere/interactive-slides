@@ -1,3 +1,4 @@
+/* global __DEV__ */
 import './styles/fonts.css';
 import './styles/tokens.css';
 import './styles/slides.css';
@@ -93,7 +94,13 @@ if (params.has('view')) {
     // Building needs a free account. The deck list, the editor and reports sit behind a sign-in screen;
     // the account page is where signing in happens, and audience pages, share links and the demo are open.
     const cloudNow = getCloud();
-    if (cloudNow && !cloudNow.user && ['dashboard', 'editor', 'reports'].includes(route.page)) {
+    const needsAccount = ['dashboard', 'editor', 'reports'].includes(route.page);
+    // A live build with no account system set up must not quietly let everyone in; only local development does.
+    if (!cloudNow && needsAccount && !__DEV__) {
+      showMessage(mount, 'Sign-in is unavailable', 'Accounts are not reachable right now, so decks cannot be opened. Please try again shortly.', { href: '/', label: 'Back to home' });
+      return;
+    }
+    if (cloudNow && !cloudNow.user && needsAccount) {
       const { mountGate } = await import('./shell/gate.js');
       mountGate(mount, cloudNow, { template: params.get('template') });
       return;
