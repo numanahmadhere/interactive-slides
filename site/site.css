@@ -998,3 +998,29 @@ details.dd[open] .dd__panel { animation: ddin .22s var(--ease) both; }
 @media (max-width: 980px) { .docgrid { grid-template-columns: 1fr; } .doctoc { position: static; } .doctoc ol { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 560px) { .doctoc ol { grid-template-columns: 1fr; } }
 footer.site .foot-h { font-family: var(--font); font-weight: 700; line-height: 1.4; }
+
+
+/* ---- the comparison, second pass: ticks, not words ---- */
+.cmp { min-width: 780px; }
+.cmp tbody th[scope='row'] { width: 34%; padding: 12px 18px; font-size: 15.5px; line-height: 1.35; }
+.cmp tbody td { padding: 11px 8px; text-align: center; white-space: nowrap; }
+.cmp tbody td .cm { margin: 0; vertical-align: middle; width: 22px; height: 22px; }
+.cmp__tag { display: inline-block; margin-left: 7px; padding: 2px 9px; border-radius: 8px; background: var(--paper-2); color: var(--blue-text); font-size: 11.5px; font-weight: 700; letter-spacing: .02em; vertical-align: middle; }
+.cmp__yes:not(.is-paid) .cmp__tag { background: transparent; }
+.cmp__part .cmp__tag, .cmp__soon .cmp__tag { background: #FBF0D9; color: #8A5A0B; }
+.cmp tbody tr:hover th, .cmp tbody tr:hover td:not(:nth-child(2)) { background: color-mix(in srgb, var(--blue) 3%, var(--surface)); }
+.cmp thead th { padding: 18px 8px 14px; vertical-align: bottom; }
+.cmp thead th:first-child { width: 34%; }
+.cmp__vname { display: block; }
+.cmp thead th.cmp__us { padding-top: 14px; border-radius: 18px 18px 0 0; }
+.cmp__best { position: static; display: inline-block; transform: none; margin-bottom: 6px; padding: 2px 9px; border-radius: 8px; background: #34D27B; color: #06351B; font-size: 10.5px; letter-spacing: .08em; }
+.cmp__scroll { overflow-y: hidden; }
+.cmp__key { gap: 10px 20px; }
+.cmp__key li { display: inline-flex; align-items: center; gap: 6px; }
+.cmp__key .cm { width: 18px; height: 18px; margin: 0; }
+@media (max-width: 640px) { .cmp tbody th[scope='row'] { min-width: 160px; font-size: 14px; } }
+.cmp { table-layout: fixed; min-width: 760px; }
+.cmp thead th:first-child, .cmp tbody th[scope='row'] { width: 31%; }
+.cmp td:not(.cmp__text) { white-space: nowrap; }
+.cmp td.cmp__text { white-space: normal; font-size: 13px; line-height: 1.35; padding: 10px 10px; }
+.cmp__vname a { color: inherit; }

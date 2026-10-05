@@ -6,7 +6,7 @@
 // sites that quote their plans), last read in the month below. Where a feature could not
 // be confirmed from public pages the cell says "Check" instead of guessing.
 
-import { PRICES } from '../src/billing/plans.js';
+import { PRICES, PLANS, PLAN_ORDER } from '../src/billing/plans.js';
 
 export const CHECKED = 'October 2026';
 
@@ -73,9 +73,24 @@ const ICON = Object.fromEntries(Object.keys(ICON_PATHS).map((k) => [k, `<svg cla
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
-export function renderCell(cell) {
+// The lowest plan that includes a feature we call "paid", worked out from the plan table so the tag cannot drift.
+const GATES = {
+  leaderboard: (p) => p.leaderboard, csv: (p) => p.csv, reports: (p) => p.reports, 'self-paced': (p) => p.selfPaced, teams: (p) => p.teamSeats > 0,
+};
+function minPlan(gate) {
+  const test = gate.startsWith('kind:') ? (p) => p.kinds.includes(gate.slice(5)) : GATES[gate];
+  const id = test && PLAN_ORDER.find((x) => test(PLANS[x]));
+  return id && id !== 'free' ? PLANS[id].name : 'Paid';
+}
+const tagOf = (row) => (row.cells[0] === 'paid' ? minPlan(row.gated?.[0] ?? '') : '');
+
+const SR = { yes: 'Included', paid: 'Included on a paid plan', part: 'Partly', no: 'Not offered', soon: 'Not yet', check: 'Could not confirm' };
+// Ticks stand alone; only the exceptions carry a word. A feature on a paid plan still gets the green tick, with the plan beside it.
+export function renderCell(cell, tag = '') {
   if (cell.startsWith('text:')) return `<td class="cmp__text">${esc(cell.slice(5))}</td>`;
-  return `<td class="cmp__${cell}">${ICON[cell]}<span class="cmp__word">${LABELS[cell]}</span></td>`;
+  const kind = cell === 'paid' ? 'yes' : cell;
+  const word = cell === 'paid' ? (tag || 'Paid') : { part: 'Partly', soon: 'Soon', check: '' }[cell] ?? '';
+  return `<td class="cmp__${kind}${cell === 'paid' ? ' is-paid' : ''}">${ICON[kind]}${word ? `<span class="cmp__tag">${word}</span>` : ''}<span class="sr">${SR[cell]}</span></td>`;
 }
 
 // Points: included on any plan counts 1, partly counts a half. "Not yet", "No" and "Check" (could not confirm) count 0,
@@ -96,9 +111,9 @@ export function renderCompare() {
     ['Lowest paid price', `From $${PRICES.starter.month} a month, below the other three that publish a price.`],
     ['Slides and questions in one', 'Design the slide and add the question in the same editor.'],
   ].map(([t, d]) => `<li><b>${t}</b><span>${d}</span></li>`).join('');
-  const head = VENDORS.map((v) => `<th scope="col"${v.us ? ' class="cmp__us"' : ''}>${v.us ? '<span class="cmp__best">Best choice</span>' : ''}${v.url ? `<a href="${v.url}" rel="noopener nofollow">${esc(v.name)}</a>` : esc(v.name)}</th>`).join('');
+  const head = VENDORS.map((v) => `<th scope="col"${v.us ? ' class="cmp__us"' : ''}>${v.us ? '<span class="cmp__best">Best choice</span>' : ''}<span class="cmp__vname">${v.url ? `<a href="${v.url}" rel="noopener nofollow">${esc(v.name)}</a>` : esc(v.name)}</span></th>`).join('');
   const body = GROUPS.map((g) => `<tbody><tr class="cmp__group"><th scope="colgroup" colspan="${VENDORS.length + 1}">${esc(g.title)}</th></tr>
-${g.rows.map((r) => `<tr><th scope="row">${esc(r.name)}</th>${r.cells.map(renderCell).join('')}</tr>`).join('\n')}</tbody>`).join('\n');
+${g.rows.map((r) => `<tr><th scope="row">${esc(r.name)}</th>${r.cells.map((c, i) => renderCell(c, i === 0 ? tagOf(r) : '')).join('')}</tr>`).join('\n')}</tbody>`).join('\n');
   return `${SPRITE}<ul class="cmp__wins" aria-label="Where we lead">${wins}</ul>
 <div class="cmp__board"><h3 class="cmp__bh">Features confirmed, out of ${sc[0].of}</h3><ol class="cmp__scores">${board}</ol><p class="cmp__bnote">Included on any plan counts as 1 and partly counts as a half. &ldquo;Not yet&rdquo;, &ldquo;No&rdquo; and &ldquo;Check&rdquo; (could not confirm) count as 0.</p></div>
 <div class="cmp__scroll" tabindex="0" role="region" aria-label="Comparison table, scrolls sideways on small screens"><table class="cmp"><caption class="sr">How Densight Slides compares with four other tools, checked ${CHECKED}</caption>
@@ -107,4 +122,4 @@ ${body}
 </table></div>`;
 }
 
-export const renderKey = () => `<ul class="cmp__key" aria-label="Key">${['yes', 'paid', 'part', 'no', 'soon', 'check'].map((k) => `<li class="cmp__${k}">${ICON[k]}${{ yes: 'Included on every plan', paid: 'Included on a paid plan', part: 'Partly', no: 'Not offered, as far as we could find', soon: 'Not yet (ours)', check: 'Could not confirm' }[k]}</li>`).join('')}</ul>`;
+export const renderKey = () => `<ul class="cmp__key" aria-label="Key">${[['yes', 'Included', ''], ['yes', 'Included on a paid plan (the plan is shown)', 'Starter'], ['part', 'Partly', 'Partly'], ['no', 'Not offered, as far as we could find', ''], ['soon', 'Not yet (ours)', 'Soon'], ['check', 'Could not confirm', '']].map(([k, t, tag]) => `<li class="cmp__${k}">${ICON[k]}${tag ? `<span class="cmp__tag">${tag}</span>` : ''}${t}</li>`).join('')}</ul>`;
