@@ -4,7 +4,7 @@
 import { h } from '../core/dom.js';
 import { signInPanel } from '../cloud/sign-in-panel.js';
 import { logoPair } from './chrome.js';
-import { COMPANY_NAME, COMPANY_URL, SUPPORT_EMAIL, supportHref } from './contact.js';
+import { SUPPORT_EMAIL, supportHref } from './contact.js';
 
 export function mountGate(root, cloud, { template = null } = {}) {
   document.body.className = 'sh';
@@ -21,15 +21,10 @@ export function mountGate(root, cloud, { template = null } = {}) {
   root.replaceChildren(h('main', { class: 'gate', id: 'main' },
     h('a', { class: 'gate__brand', href: '/', 'aria-label': 'Densight Slides home' }, ...logoPair(36), h('span', { text: 'Densight Slides' })),
     h('div', { class: 'gate__card' },
-      h('p', { class: 'gate__label', text: template ? 'Your slide is ready' : 'Free account' }),
-      h('h1', { class: 'gate__title', text: template ? 'Sign in to open it in the editor' : 'Sign in to start building' }),
-      h('p', { class: 'gate__lead', text: 'Create a free account in a few seconds, with Google or an emailed link. It keeps your decks safe, lets you open them on any device, and your audience never needs one.' }),
+      h('h1', { class: 'gate__title', text: template ? 'Sign in to open your slide' : 'Sign in to continue' }),
+      h('p', { class: 'gate__lead', text: 'Free, no card. Google or an emailed link. Your audience never needs an account.' }),
       signInPanel({ cloud, run, say, onSignedIn: () => location.reload() }),
       status,
-      h('ul', { class: 'gate__perks' },
-        h('li', { text: 'No card, and nothing to install' }),
-        h('li', { text: 'Your decks save as you work' }),
-        h('li', { text: 'Share a link or present from any device' })),
       h('p', { class: 'gate__fine' }, 'By continuing you agree to the ', h('a', { href: '/terms/', text: 'terms' }), ' and ', h('a', { href: '/privacy/', text: 'privacy policy' }), '.')),
-    h('p', { class: 'gate__help' }, 'Joining a live session instead? Use the code on the presenter\'s screen at ', h('a', { href: '/', text: 'the home page' }), '. Questions: ', h('a', { href: supportHref('Sign in help'), text: SUPPORT_EMAIL }), '. A product of ', h('a', { href: COMPANY_URL, text: COMPANY_NAME }), '.')));
+    h('p', { class: 'gate__help' }, 'Joining a session? Enter the code on the ', h('a', { href: '/', text: 'home page' }), '. Help: ', h('a', { href: supportHref('Sign in help'), text: SUPPORT_EMAIL }), '.')));
 }

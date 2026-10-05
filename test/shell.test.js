@@ -413,7 +413,7 @@ test('building needs a free account: the app routes send signed-out people to th
   // the public routes are handled before the platform branch, so they are never gated
   assert.ok(app.indexOf("params.has('view')") < app.indexOf('mountGate') && app.indexOf("params.has('join')") < app.indexOf('mountGate') && app.indexOf("params.has('play')") < app.indexOf('mountGate'));
   const gate = readFileSync(new URL('../src/shell/gate.js', import.meta.url), 'utf8');
-  assert.ok(gate.includes('Sign in to start building') && gate.includes('signInPanel'));
+  assert.ok(gate.includes('signInPanel'));
   const site = Object.values(buildSite()).join(' ');
   assert.ok(!/no account (or card )?needed to try|without (paying or )?signing in|use the editor and present without an account/i.test(site), 'no page tells builders they can start without an account');
   assert.match(readFileSync(new URL('../src/styles/app.css', import.meta.url), 'utf8'), /#app \{[^}]*overflow-y: auto/, 'long app pages scroll');
