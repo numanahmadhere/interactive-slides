@@ -285,7 +285,7 @@ test('every internal link on the public pages goes somewhere that exists', () =>
   const site = buildSite();
   const pages = new Set(Object.keys(site).filter((f) => f.endsWith('index.html')).map((f) => '/' + f.replace('index.html', '')));
   pages.add('/');
-  const appPaths = /^\/app\/(\?[\w=&.:%-]*|account(\?[\w=&.:%-]*)?)?$/;
+  const appPaths = /^\/app\/(\?[\w=&.:%-]*|account(\?[\w=&.:%-]*)?|reports)?$/;
   for (const [file, html] of Object.entries(site)) {
     if (!file.endsWith('.html')) continue;
     for (const m of html.matchAll(/<a\b[^>]*?href="(\/[^"#]*)(#([^"]*))?"/g)) {
@@ -411,4 +411,35 @@ test('building needs a free account: the app routes send signed-out people to th
   const site = Object.values(buildSite()).join(' ');
   assert.ok(!/no account (or card )?needed to try|without (paying or )?signing in|use the editor and present without an account/i.test(site), 'no page tells builders they can start without an account');
   assert.match(readFileSync(new URL('../src/styles/app.css', import.meta.url), 'utf8'), /#app \{[^}]*overflow-y: auto/, 'long app pages scroll');
+});
+
+test('product pages: a hub and one page per part of the product, linked from the menu, each with steps, features and a guide', () => {
+  const site = buildSite();
+  const slugs = ['live-sessions', 'questions', 'moderation-privacy', 'courses', 'teams', 'import-export', 'editor', 'reports'];
+  assert.ok(site['product/index.html']);
+  for (const slug of slugs) {
+    const page = site[`product/${slug}/index.html`];
+    assert.ok(page, slug);
+    assert.ok(site['product/index.html'].includes(`href="/product/${slug}/"`) && site['index.html'].includes(`href="/product/${slug}/"`), `${slug} is linked from the hub and the menu`);
+    assert.ok(site['sitemap.xml'].includes(`/product/${slug}/`));
+    assert.ok((page.match(/class="psteps__n"/g) ?? []).length === 3 && (page.match(/class="fcard /g) ?? []).length >= 3, `${slug} has three steps and features`);
+    assert.match(page, /href="\/learn\/[a-z-]+\/"/, `${slug} points to its guide`);
+  }
+  assert.ok(!site['index.html'].includes('href="/learn/#'), 'the menu no longer sends everyone to one guide page');
+  assert.ok(site['product/questions/index.html'].includes('Word cloud') && site['product/questions/index.html'].includes('Starter and above'));
+});
+
+test('guides: a searchable hub and a page for each guide, with steps, tips and real next links', () => {
+  const site = buildSite();
+  const hub = site['learn/index.html'];
+  assert.ok(hub.includes('type="search"') && hub.includes('Start here'));
+  const guides = [...hub.matchAll(/href="\/learn\/([a-z-]+)\/"/g)].map((m) => m[1]);
+  assert.ok(new Set(guides).size >= 12, 'at least twelve guides');
+  for (const slug of new Set(guides)) {
+    const page = site[`learn/${slug}/index.html`];
+    assert.ok(page, slug);
+    assert.ok((page.match(/<li><h2>/g) ?? []).length >= 3, `${slug} has steps`);
+    assert.ok(page.includes('/product/'), `${slug} links its product page`);
+    assert.ok(site['sitemap.xml'].includes(`/learn/${slug}/`));
+  }
 });

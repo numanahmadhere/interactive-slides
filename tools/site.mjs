@@ -8,6 +8,8 @@ import { PLANS, PLAN_ORDER, PRICES, TRIAL_DAYS } from '../src/billing/plans.js';
 import { highlights } from '../src/billing/features.js';
 import { TEMPLATES } from '../src/library/templates.js';
 import { buildArt, ART_ALT } from './art.mjs';
+import { productPages, PRODUCTS, productHref } from './products.mjs';
+import { learnPages, GUIDES, guideHref } from './learn.mjs';
 
 const planCards = () => PLAN_ORDER.map((id) => {
   const plan = PLANS[id];
@@ -122,16 +124,12 @@ ${index ? '' : '<meta name="robots" content="noindex">\n'}<link rel="canonical" 
 <nav class="main" aria-label="Main">
 <details class="dd dd--wide"><summary>Product</summary><div class="dd__panel mm" role="group" aria-label="Product">
 <div class="mm__cols"><div class="mm__col"><span class="mm__h">Ask your audience</span>
-<a class="mm__item" href="/#tutorial"><span class="mm__ico mm__ico--a">${ico('bars')}</span><span class="mm__txt"><b>Polls, quizzes, word clouds</b><small>Try them live on this page</small></span></a>
-<a class="mm__item" href="/learn/#live-session"><span class="mm__ico mm__ico--b">${ico('live')}</span><span class="mm__txt"><b>Live sessions</b><small>Codes, phones and results</small></span></a>
-<a class="mm__item" href="/learn/#moderation"><span class="mm__ico mm__ico--c">${ico('shield')}</span><span class="mm__txt"><b>Moderation and privacy</b><small>Swear filter, approve first, private mode</small></span></a>
+${[0, 1, 2].map((i) => { const x = PRODUCTS[i]; return `<a class="mm__item" href="${productHref(x)}"><span class="mm__ico mm__ico--${x.tone}">${ico(x.icon)}</span><span class="mm__txt"><b>${x.name}</b><small>${x.short}</small></span></a>`; }).join('')}
 </div><div class="mm__col"><span class="mm__h">Build and share</span>
-<a class="mm__item" href="/templates/"><span class="mm__ico mm__ico--d">${ico('grid')}</span><span class="mm__txt"><b>Ready-made slides</b><small>${TEMPLATES.length} to start from</small></span></a>
-<a class="mm__item" href="/learn/#import"><span class="mm__ico mm__ico--a">${ico('upload')}</span><span class="mm__txt"><b>Import PowerPoint</b><small>Bring the deck you have</small></span></a>
-<a class="mm__item" href="/learn/#course"><span class="mm__ico mm__ico--b">${ico('cap')}</span><span class="mm__txt"><b>Self-paced courses</b><small>Completion list and certificates</small></span></a>
-<a class="mm__item" href="/learn/#team"><span class="mm__ico mm__ico--c">${ico('team')}</span><span class="mm__txt"><b>Teams</b><small>Shared decks, comments, brand</small></span></a>
+${[3, 4, 5, 6].map((i) => { const x = PRODUCTS[i]; return `<a class="mm__item" href="${productHref(x)}"><span class="mm__ico mm__ico--${x.tone}">${ico(x.icon)}</span><span class="mm__txt"><b>${x.name}</b><small>${x.short}</small></span></a>`; }).join('')}
 </div></div>
 <a class="mm__feat" href="/#tutorial"><span class="mm__badge">Live demo</span><b>Answer on a phone and watch it land on the big screen</b><span class="mm__mini" aria-hidden="true"><i style="--w:72%"></i><i style="--w:48%"></i><i style="--w:30%"></i></span><span class="mm__go">Try it now <span aria-hidden="true">&rarr;</span></span></a>
+<a class="mm__foot" href="/product/"><span>Results, reports and everything else</span><b>See the whole product <span aria-hidden="true">&rarr;</span></b></a>
 </div></details>
 <details class="dd"><summary>Solutions</summary><div class="dd__panel mm mm--solutions" role="group" aria-label="Solutions">
 <a class="mm__card mm__card--a" href="/training/"><span class="mm__ico mm__ico--a">${ico('briefcase')}</span><b>Training and meetings</b><small>Workshops, town halls, client briefings and onboarding where the room answers.</small><span class="mm__go">See how teams use it <span aria-hidden="true">&rarr;</span></span></a>
@@ -144,7 +142,7 @@ ${index ? '' : '<meta name="robots" content="noindex">\n'}<link rel="canonical" 
 <span class="grow"></span>
 <a class="link-quiet" href="/app/account">Sign in</a><a class="btn sm" href="/app/">Start building</a>
 <details class="menu"><summary aria-label="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
-<div class="menu__panel"><a href="/#tutorial">Try it</a><a href="/#features">Features</a><a href="/use-cases/">Use cases</a><a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/security/">Security</a><a href="/learn/">Guides</a><a href="/app/account">Sign in</a></div></details>
+<div class="menu__panel"><a href="/#tutorial">Try it</a><a href="/product/">Product</a><a href="/use-cases/">Use cases</a><a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/security/">Security</a><a href="/learn/">Guides</a><a href="/app/account">Sign in</a></div></details>
 </div></header>
 <div class="flash" id="flash" role="status" hidden>Your account and online decks were deleted. Decks on this device were kept.</div>
 <main id="main">
@@ -154,7 +152,7 @@ ${body}
 <div class="wrap foot-cols">
 <div class="foot-brand"><a class="brand" href="/">${LOGO_DARK_BG}<span>${NAME}</span></a>
 <p>Interactive presentations your audience can answer. A product of <a href="${COMPANY}">Densight Labs</a>, an applied AI firm.</p></div>
-<div><h3 class="foot-h">Product</h3><a href="/#tutorial">Try it live</a><a href="/#features">Features</a><a href="/templates/">Templates</a><a href="/pricing/">Pricing</a><a href="/learn/#import">Import PowerPoint</a><a href="/app/">Open the app</a></div>
+<div><h3 class="foot-h">Product</h3><a href="/#tutorial">Try it live</a>${PRODUCTS.map((x) => `<a href="${productHref(x)}">${x.name}</a>`).join('')}<a href="/templates/">Templates</a><a href="/pricing/">Pricing</a></div>
 <div><h3 class="foot-h">Use cases</h3>${SEGMENTS.map((x) => `<a href="${segHref(x)}">${x.name}</a>`).join('')}<a href="/use-cases/">All use cases</a></div>
 <div><h3 class="foot-h">Resources</h3><a href="/learn/">Guides</a><a href="/#faq">FAQ</a><a href="/security/">Security</a><a href="/#compare">How we compare</a></div>
 <div><h3 class="foot-h">Company</h3><a href="${COMPANY}">Densight Labs</a><a href="${mailto()}">Contact</a><a href="${mailto('Security report')}">Report a security issue</a></div>
@@ -260,9 +258,9 @@ const home = () => layout({
 <header class="head head--center reveal"><p class="label">One account</p><h2>Three ways to <em>engage.</em></h2>
 <p class="sub">The same slides work in the room, on their own, and across a team.</p></header>
 <div class="pcards">
-<article class="pcard pcard--a reveal"><div class="pcard__vis">${mockResults()}</div><h3>Present live</h3><p>Polls, quizzes, word clouds, open answers and audience Q&amp;A, in the room or online. Any phone, no app, no login for the audience.</p><a class="prod__go" href="/learn/#live-session">Discover live sessions <span aria-hidden="true">&rarr;</span></a></article>
-<article class="pcard pcard--b reveal"><div class="pcard__vis">${mockCourse()}</div><h3>Run a course</h3><p>Share a deck as a self-paced course. Learners go through it in their own time, you see who finished, and they can print a certificate. Starter plan and above.</p><a class="prod__go" href="/learn/#course">Discover courses <span aria-hidden="true">&rarr;</span></a></article>
-<article class="pcard pcard--c reveal"><div class="pcard__vis">${mockTeam()}</div><h3>Work as a team</h3><p>Share decks with colleagues, comment on slides, and keep one logo and colour set for everyone. People join with a link. Pro plan and above.</p><a class="prod__go" href="/learn/#team">Discover teams <span aria-hidden="true">&rarr;</span></a></article>
+<article class="pcard pcard--a reveal"><div class="pcard__vis">${mockResults()}</div><h3>Present live</h3><p>Polls, quizzes, word clouds, open answers and audience Q&amp;A, in the room or online. Any phone, no app, no login for the audience.</p><a class="prod__go" href="/learn/live-session/">Discover live sessions <span aria-hidden="true">&rarr;</span></a></article>
+<article class="pcard pcard--b reveal"><div class="pcard__vis">${mockCourse()}</div><h3>Run a course</h3><p>Share a deck as a self-paced course. Learners go through it in their own time, you see who finished, and they can print a certificate. Starter plan and above.</p><a class="prod__go" href="/learn/course/">Discover courses <span aria-hidden="true">&rarr;</span></a></article>
+<article class="pcard pcard--c reveal"><div class="pcard__vis">${mockTeam()}</div><h3>Work as a team</h3><p>Share decks with colleagues, comment on slides, and keep one logo and colour set for everyone. People join with a link. Pro plan and above.</p><a class="prod__go" href="/learn/team/">Discover teams <span aria-hidden="true">&rarr;</span></a></article>
 </div></div></section>
 
 ${canBand()}
@@ -372,7 +370,7 @@ ${planCards()}
 <div class="rules">
 <article class="item prod reveal"><h3>Pick a ready-made slide</h3><p>${TEMPLATES.length} slides for icebreakers, quizzes, feedback, tables and matrices. Every part can be edited or removed.</p><a class="prod__go" href="/templates/">Browse the slides <span aria-hidden="true">&rarr;</span></a></article>
 <article class="item prod reveal"><h3>Start from a blank slide</h3><p>Drag text, pictures and interactive blocks anywhere, with guides that snap them into line. It saves as you go.</p><a class="prod__go" href="/app/">Open the editor <span aria-hidden="true">&rarr;</span></a></article>
-<article class="item prod reveal"><h3>Bring your PowerPoint</h3><p>Import a .pptx file, or a Google Slides deck downloaded as PowerPoint. Text, pictures and notes come across.</p><a class="prod__go" href="/learn/#import">How importing works <span aria-hidden="true">&rarr;</span></a></article>
+<article class="item prod reveal"><h3>Bring your PowerPoint</h3><p>Import a .pptx file, or a Google Slides deck downloaded as PowerPoint. Text, pictures and notes come across.</p><a class="prod__go" href="/learn/import/">How importing works <span aria-hidden="true">&rarr;</span></a></article>
 </div>
 <div class="easy reveal"><h3>New tools? No trouble.</h3>
 <ul><li><b>Nothing for the audience to install.</b> A link or a QR code is enough.</li><li><b>Take your slides with you.</b> Export to a web page, PDF, images or PowerPoint.</li><li><b>Works offline.</b> Build and present without a connection.</li><li><b>A person answers.</b> Write to <a href="${mailto()}">${SUPPORT}</a>.</li></ul></div>
@@ -415,28 +413,6 @@ const welcome = () => layout({
 <p>It usually takes a few seconds. We are taking you to your account now; if nothing happens, <a href="/app/account?welcome=1">open your account</a>.</p>
 <p>A receipt is on its way to your email from Paddle, who handle payments for us. Questions? Write to <a href="${mailto('My payment')}">${SUPPORT}</a>.</p></div>
 <script>setTimeout(function(){location.replace('/app/account?welcome=1')},2500)</script>`,
-});
-
-const guides = [ // [title, body, anchor]
-  ['Make your first deck', '<ol><li>Open <a href="/app/">My decks</a> and choose <strong>Blank deck</strong>.</li><li>Click the title text on the slide and type. Click it again to edit in place.</li><li>Press <strong>Insert</strong> above the slide (or type <kbd>/</kbd>) to add text, images, quizzes and more, then drag them where you want. Double-click empty space to type there.</li><li>Your deck saves on your device as you work. Rename it with the title box at the top.</li></ol>'],
-  ['Add a quiz or poll', '<p>Press <strong>Insert</strong> or type <kbd>/</kbd>, then choose <em>Quiz question</em> or <em>Live poll</em>. Type the question, edit the choices, and tick which choice is correct for a quiz. Add a <em>Score summary</em> block on a later slide to total every quiz.</p>'],
-  ['Present your deck', '<p>Press <strong>Present</strong> or <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Enter</kbd>. Move with the arrow keys or space. <kbd>O</kbd> opens an overview, <kbd>L</kbd> is a laser pointer, <kbd>D</kbd> draws, <kbd>F</kbd> is full screen and <kbd>?</kbd> lists every shortcut. Choose <em>With presenter view</em> for notes and a timer on a second screen.</p>'],
-  ['Run a live session with phones', '<ol><li>Open a slide that has a poll or quiz, then choose <strong>Present &gt; Go live &gt; Start session</strong>.</li><li>Show the code or QR to the room. Phones open the link and see the question when you reach that slide.</li><li>Votes appear on your slide as they arrive. Scan the second QR code with your own phone to use it as a remote with your notes.</li></ol><p>If you reload your page mid-session, the same code resumes and phones send their answers again.</p>', 'live-session'],
-  ['Run a self-paced course', '<p>Save the deck online (<strong>File &gt; Cloud</strong>), press <em>Share</em>, then turn on <em>Self-paced course</em>. Anyone with the link goes through the slides in their own time; the page remembers which they have seen. When they have seen every slide they can type their name to be recorded as finished and print a certificate. You see the list under the same dialog and can download it as a spreadsheet. Starter plan and above. &ldquo;Finished&rdquo; means every slide was viewed; quizzes are not graded.</p>', 'course'],
-  ['Work as a team', '<p>On the Pro and Advanced plans, open <strong>Account &gt; Team</strong> and create a team, then <em>Invite someone</em> to get a link that works once and expires in seven days. People join by opening it while signed in; they do not need a plan of their own. In the editor, <strong>File &gt; Cloud</strong> lets you put a deck in the team, apply or save the team&rsquo;s logo and colours, and <strong>File &gt; Comments</strong> opens comments on the slide you are looking at. Pro includes 5 people, Advanced 25.</p>', 'team'],
-  ['Import a PowerPoint or Google Slides deck', '<p>On <a href="/app/">My decks</a> choose <strong>Import a deck</strong> and pick a .pptx file. For Google Slides use <em>File &gt; Download &gt; Microsoft PowerPoint (.pptx)</em> first. Titles, text, bullet lists, pictures, speaker notes and positions come across. Tables become plain text. Charts, SmartArt, video, animations and master styling do not, and the app tells you what it left out. You get a new deck; your original is untouched.</p>', 'import'],
-  ['Keep answers moderated and private', '<p>Word clouds, open answers and Q&amp;A hide swearing by default; choose <em>Approve first</em> in the block&rsquo;s panel to hold every answer until you let it through. In the live dialog, <em>Private session</em> keeps nothing: no names or teams, no report and no spreadsheet, and answers disappear when you end the session.</p>', 'moderation'],
-  ['Save online and share', '<p>Choose <strong>Sign in</strong>, enter your email, and open the link we send. From then on your decks also save online. In the editor open <strong>File &gt; Cloud</strong> and press <em>Share</em> to get a link anyone can view. <em>Stop sharing</em> ends it immediately.</p>'],
-  ['Export', '<p>Open <strong>File &gt; Export</strong> for a standalone web page (every interaction works), a PDF, PNG images, PowerPoint, or the deck file to reopen later.</p>'],
-];
-
-const learn = () => layout({
-  path: '/learn/',
-  title: `Learn ${NAME}`,
-  description: 'Short guides: make a deck, add quizzes and polls, present, run a live session with phones, save and share, export.',
-  body: `<div class="doc"><h1>Learn ${NAME}</h1><p class="meta">Short guides. The app also has an optional guided tour that you can skip.</p>
-${guides.map(([t, b, id]) => `<div class="guide"${id ? ` id="${id}"` : ''}><h2>${esc(t)}</h2>${b}</div>`).join('\n')}
-<p style="margin-top:32px"><a class="btn" href="/app/">Open the app</a> &nbsp; Need a hand? <a href="${mailto()}">${SUPPORT}</a></p></div>`,
 });
 
 const privacy = () => layout({
@@ -886,11 +862,14 @@ const securityPage = () => layout({
 <p style="margin-top:28px"><a class="btn" href="${mailto('Security review')}">Ask a security question</a></p></div>`,
 });
 
+const pageCtx = () => ({ layout, esc, mailto, SUPPORT, COMPANY, NAME, ico, CHECK, SEGMENTS, segHref, mkWin, mockEditor, mockResults, mockReport, mockCourse, mockTeam });
+
 // path (relative to dist/) -> file contents
 export function buildSite() {
   const pages = {
     'index.html': home(),
-    'learn/index.html': learn(),
+    ...productPages(pageCtx()),
+    ...learnPages(pageCtx()),
     'privacy/index.html': privacy(),
     'terms/index.html': terms(),
     'refund/index.html': refund(),
@@ -905,7 +884,7 @@ export function buildSite() {
     '404.html': notFound(),
     ...buildArt(),
     'robots.txt': `User-agent: *\nAllow: /\nDisallow: /app/\nDisallow: /welcome/\n\nSitemap: ${SITE}/sitemap.xml\n`,
-    'sitemap.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', '/templates/', '/use-cases/', ...SEGMENTS.map(segHref), '/pricing/', '/security/', '/learn/', '/privacy/', '/terms/', '/refund/'].map((p) => `<url><loc>${SITE}${p}</loc></url>`).join('\n')}\n</urlset>\n`,
+    'sitemap.xml': `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${['/', '/product/', ...PRODUCTS.map(productHref), '/templates/', '/use-cases/', ...SEGMENTS.map(segHref), '/pricing/', '/security/', '/learn/', ...GUIDES.map(guideHref), '/privacy/', '/terms/', '/refund/'].map((p) => `<url><loc>${SITE}${p}</loc></url>`).join('\n')}\n</urlset>\n`,
   };
   return pages;
 }
