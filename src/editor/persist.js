@@ -10,7 +10,7 @@
 import { uid } from '../core/util.js';
 
 const DB_NAME = 'interactive-slides';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const LEGACY_DECK_ID = 'current'; // version 1 kept exactly one deck under this id
 const LS_LIBRARY = 'interactive-slides:library';
 const LS_LEGACY = 'interactive-slides:deck';
@@ -64,7 +64,7 @@ export class Persistence {
   constructor() {
     this.db = null;
     this.mode = 'memory'; // 'idb' | 'local' | 'memory'
-    this.memory = { metas: {}, decks: {}, reports: {} };
+    this.memory = { metas: {}, decks: {}, reports: {}, versions: [] };
   }
 
   async init() {
@@ -79,6 +79,7 @@ export class Persistence {
             db.createObjectStore('assets', { keyPath: 'id' });
           }
           if (event.oldVersion < 3) db.createObjectStore('reports', { keyPath: 'id' }); // saved live-session reports
+          if (event.oldVersion < 4) db.createObjectStore('versions', { keyPath: 'id' }).createIndex('deckId', 'deckId'); // version history
           if (event.oldVersion < 2) {
             // The single deck of version 1 becomes the first deck in the library.
             const meta = db.createObjectStore('meta', { keyPath: 'id' });
@@ -210,6 +211,7 @@ export class Persistence {
   }
 
   async deleteDeck(id) {
+    for (const v of await this.listVersions(id)) await this.deleteVersion(v.id);
     if (this.mode === 'idb') {
       const tx = this.db.transaction(['decks', 'meta'], 'readwrite');
       tx.objectStore('decks').delete(id);
@@ -268,6 +270,44 @@ export class Persistence {
       if (lib.reports) delete lib.reports[id];
       this.#writeLibrary(lib);
     }
+  }
+
+  // ---- version history ------------------------------------------------------------------
+  // Snapshots of a deck, kept on this device. Newest first. Only the latest `keep` unnamed ones are kept.
+
+  async saveVersion(deckId, deck, label = '') {
+    const record = { id: uid('v_'), deckId, at: Date.now(), label, title: String(deck?.meta?.title ?? ''), slideCount: Array.isArray(deck?.slides) ? deck.slides.length : 0, deck };
+    if (this.mode === 'idb') {
+      const tx = this.db.transaction('versions', 'readwrite');
+      tx.objectStore('versions').put(record);
+      await done(tx);
+    } else {
+      (this.memory.versions ??= []).push(record);
+    }
+    await this.#pruneVersions(deckId);
+    return record;
+  }
+
+  async listVersions(deckId) {
+    let all;
+    if (this.mode === 'idb') all = await wrap(this.db.transaction('versions').objectStore('versions').index('deckId').getAll(deckId));
+    else all = (this.memory.versions ?? []).filter((v) => v.deckId === deckId);
+    return all.sort((a, b) => b.at - a.at);
+  }
+
+  async deleteVersion(id) {
+    if (this.mode === 'idb') {
+      const tx = this.db.transaction('versions', 'readwrite');
+      tx.objectStore('versions').delete(id);
+      await done(tx);
+    } else {
+      this.memory.versions = (this.memory.versions ?? []).filter((v) => v.id !== id);
+    }
+  }
+
+  async #pruneVersions(deckId, keep = 40) {
+    const unnamed = (await this.listVersions(deckId)).filter((v) => !v.label);
+    for (const v of unnamed.slice(keep)) await this.deleteVersion(v.id);
   }
 
   // ---- images -------------------------------------------------------------------------

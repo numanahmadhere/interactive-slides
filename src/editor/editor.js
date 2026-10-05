@@ -53,6 +53,7 @@ const SAVE_LABELS = { saved: 'Saved', saving: 'Saving...', error: 'Not saved' };
 
 const isTyping = (el) => !!el?.closest?.('input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]');
 
+const VERSION_EVERY_MS = 10 * 60 * 1000;
 const QUESTION_TYPES = new Set(['quiz', 'poll', 'wordcloud', 'open-answers', 'rating', 'ranking', 'qna', 'reactions', 'pin']);
 
 export class Editor {
@@ -461,11 +462,28 @@ export class Editor {
     }, 4000);
   }
 
+  // At most one automatic snapshot every ten minutes, and only when the deck actually changed since the last one.
+  async #autoVersion(deck) {
+    try {
+      const json = JSON.stringify(deck);
+      if (this.lastVersion === undefined) {
+        const latest = (await this.persist.listVersions(this.deckId))[0];
+        this.lastVersion = latest ? { at: latest.at, json: JSON.stringify(latest.deck) } : { at: 0, json: '' };
+      }
+      if (json === this.lastVersion.json || Date.now() - this.lastVersion.at < VERSION_EVERY_MS) return;
+      await this.persist.saveVersion(this.deckId, deck);
+      this.lastVersion = { at: Date.now(), json };
+    } catch (err) {
+      console.warn('Could not save a version', err);
+    }
+  }
+
   async flushSave() {
     clearTimeout(this.saveTimer);
     const deck = this.deck;
     try {
       this.meta = await this.persist.saveDeck(this.deckId, deck);
+      this.#autoVersion(deck);
       if (deck === this.deck) this.#setSaveState('saved');
       this.#scheduleThumb();
     } catch (err) {
@@ -1020,6 +1038,7 @@ export class Editor {
         { label: 'Open interactive demo', value: 'interactive' },
         { label: 'Import deck...', value: 'import', hint: 'PowerPoint, JSON' },
         { label: 'Cloud: save, open, share...', value: 'cloud', hint: 'Account' },
+        { label: 'Version history...', value: 'history', hint: 'Restore' },
         { label: 'Comments...', value: 'comments', hint: 'Team' },
         { label: 'Find and replace...', value: 'find', hint: 'Ctrl+H' },
         { label: 'Keyboard shortcuts', value: 'keys', hint: '?' },
@@ -1034,6 +1053,7 @@ export class Editor {
         else if (value === 'interactive') this.openAsNew(demoDeckCopy());
         else if (value === 'import') this.#pickImportFile();
         else if (value === 'find') openFindDialog(this);
+        else if (value === 'history') import('./history-dialog.js').then((m) => m.openHistoryDialog(this));
         else if (value === 'comments') import('./comments-dialog.js').then((m) => m.openCommentsDialog(this));
         else if (value === 'keys') openShortcuts();
         else if (value === 'cloud') openCloudDialog(this);
