@@ -1038,3 +1038,18 @@ footer.site .foot-h { font-family: var(--font); font-weight: 700; line-height: 1
 @media (max-width: 760px) { .tour__device > .win { width: 100%; } }
 .tuthero > .wrap { max-width: 1360px; }
 @media (min-width: 1181px) { .show { grid-template-columns: minmax(340px, 0.56fr) minmax(0, 1.44fr); } .show__phone { width: 232px; } .tour__device { grid-template-columns: minmax(0, 1fr) 232px; } }
+
+/* tighter rhythm: less empty space between and inside sections */
+section { padding-block: clamp(44px, 5.5vw, 80px); }
+.cta-band { padding: clamp(48px, 6vw, 84px) 0; }
+.head { margin-bottom: clamp(24px, 3vw, 40px); }
+.head--center .sub, .head .sub { margin-top: 12px; }
+section h2 { font-size: clamp(32px, 4.2vw, 52px); }
+.story__panels { gap: clamp(24px, 6vh, 64px); }
+.uc__more { margin-top: clamp(20px, 3vw, 32px); }
+.clients { padding-block: clamp(24px, 3vw, 36px); }
+.cmp__scroll[data-collapsed] tbody:nth-of-type(n+2) { display: none; }
+.cmp__more { display: flex; margin: 16px auto 0; }
+section { padding-block: clamp(40px, 4.6vw, 64px); }
+.can, .cta-band { padding-block: clamp(40px, 4.6vw, 64px); }
+.seg { padding-top: clamp(40px, 5vw, 72px); padding-bottom: clamp(32px, 4vw, 56px); }

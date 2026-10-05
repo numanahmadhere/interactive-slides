@@ -300,7 +300,6 @@ const home = () => layout({
 <article class="pcard pcard--c reveal"><div class="pcard__vis">${mockTeam()}</div><h3>Work as a team</h3><p>Share decks with colleagues, comment on slides, and keep one logo and colour set for everyone. People join with a link. Pro plan and above.</p><a class="prod__go" href="/learn/team/">Discover teams <span aria-hidden="true">&rarr;</span></a></article>
 </div></div></section>
 
-${canBand()}
 
 <section id="stats" class="band-ink"><div class="wrap">
 <ul class="stats">
@@ -344,27 +343,7 @@ ${planCards()}
 <article class="fcard reveal"><span class="fcard__ico">${ico('team')}</span><h3>Teams</h3><p>On Pro and Advanced, share decks with your team, comment on slides, and keep one logo and colour set for everyone.</p></article>
 </div></div></section>
 
-<section id="live" class="dark"><div class="wrap split">
-<div class="reveal"><p class="label on-dark">Live audience</p><h2>Your audience joins in seconds.</h2>
-<p class="sub">No sign-up and no app. Names only if you ask for them. They scan, they answer, you see it happen.</p>
-<ul class="checks">
-<li>${CHECK}<span><b>Scan or type a code.</b> A QR code and a six-character code, shown on your screen.</span></li>
-<li>${CHECK}<span><b>Answers appear live.</b> Bars grow on your slide as votes arrive.</span></li>
-<li>${CHECK}<span><b>You stay in control.</b> Votes count for the slide you are showing, and the answer key never leaves your page.</span></li>
-<li>${CHECK}<span><b>Survives a refresh.</b> Reload your page mid-session and the same code carries on.</span></li>
-</ul>
-<p><a class="btn lg light" href="/app/">Try a live session</a></p></div>
-<figure class="reveal flow">
-<svg viewBox="0 0 600 330" role="img" aria-label="How a live session connects: your browser holds the slides and the totals; a message relay passes questions to audience phones and their answers back; your own phone can act as a remote">
-<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="fl-ah"/></marker></defs>
-<rect class="fl-box" x="8" y="108" width="170" height="104" rx="10"/><text class="fl-t1" x="93" y="146" text-anchor="middle">Your browser</text><text class="fl-t2" x="93" y="170" text-anchor="middle">Slides and totals</text><text class="fl-t2" x="93" y="190" text-anchor="middle">Answer key stays here</text>
-<rect class="fl-box" x="214" y="130" width="140" height="60" rx="10"/><text class="fl-t1" x="284" y="156" text-anchor="middle">Message relay</text><text class="fl-t2" x="284" y="177" text-anchor="middle">Nothing is stored</text>
-<rect class="fl-box" x="396" y="22" width="196" height="92" rx="10"/><text class="fl-t1" x="494" y="58" text-anchor="middle">Audience phones</text><text class="fl-t2" x="494" y="82" text-anchor="middle">Questions in, answers out</text>
-<rect class="fl-box" x="396" y="206" width="196" height="92" rx="10"/><text class="fl-t1" x="494" y="242" text-anchor="middle">Your phone</text><text class="fl-t2" x="494" y="266" text-anchor="middle">Remote and notes</text>
-<path class="fl-ln" d="M178 160H214" marker-end="url(#ah)" marker-start="url(#ah)"/><path class="fl-ln" d="M354 148L396 92" marker-end="url(#ah)" marker-start="url(#ah)"/><path class="fl-ln" d="M354 172L396 228" marker-end="url(#ah)" marker-start="url(#ah)"/>
-</svg>
-<figcaption>Everything the audience sends is checked before it is counted.</figcaption></figure>
-</div></section>
+
 
 <section id="trust" class="band-paper"><div class="wrap">
 <header class="head head--center reveal"><p class="label">Security and privacy</p><h2>Built with confidential material in <em>mind.</em></h2></header>

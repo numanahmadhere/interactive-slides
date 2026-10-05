@@ -392,7 +392,7 @@ test('illustrations: every use-case page has its own animated scene, the files a
     assert.ok(art.includes('prefers-reduced-motion') && art.includes('@keyframes'), `${slug} animates, and stops on request`);
   }
   for (const n of ['ask', 'quiz', 'rank', 'discuss']) assert.ok(site[`art/spot-${n}.svg`], n);
-  assert.ok(site['index.html'].includes('/art/training.svg') && site['index.html'].includes('/art/spot-quiz.svg'), 'the home page uses them too');
+  assert.ok(site['index.html'].includes('/art/training.svg') && site['index.html'].includes('/art/hero-left.svg'), 'the home page uses them too');
   assert.ok(site['use-cases/index.html'].includes('/art/community.svg'));
 });
 

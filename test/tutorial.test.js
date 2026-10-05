@@ -101,7 +101,7 @@ test('the home page leads with the tutorial, wired to the script, with the real 
   for (const m of src.matchAll(/\$\('([^']+)'\)/g)) if (m[1].startsWith('#') && m[1] !== '#show-input') assert.ok(home.includes(`id="${m[1].replace(/^#/, '')}"`), `the script looks for ${m[1]}`);
   assert.ok(home.indexOf('id="tutorial"') < home.indexOf('id="compare"'));
   assert.ok(home.includes('<noscript>'), 'a text fallback without JavaScript');
-  assert.ok((home.match(/<svg[^>]+role="img"[^>]+aria-label=/g) ?? []).length >= 1, 'meaningful drawings are labelled');
+  for (const svg of home.match(/<svg[^>]+role="img"[^>]*>/g) ?? []) assert.ok(/aria-label=/.test(svg), 'meaningful drawings are labelled');
 });
 
 test('the script renders typed text as text only, never as markup', () => {

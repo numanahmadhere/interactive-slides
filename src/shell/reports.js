@@ -52,7 +52,11 @@ export async function mountReports(root) {
         h('div', {}, h('div', { class: 'sh-report__title', text: r.title }),
           h('div', { class: 'sh-report__meta', text: `${when(r.startedAt)} · ${r.participants} ${r.participants === 1 ? 'person' : 'people'} · ${r.questions.length} ${r.questions.length === 1 ? 'question' : 'questions'}` })),
         button({ label: 'Open', onClick: () => show(r) }))))
-      : h('p', { class: 'sh-lead', text: 'No reports yet. During a live session, choose "Save report" in the Go live window, or when you end the session.' });
+      : h('div', { class: 'sh-empty' },
+        h('div', { class: 'sh-empty__art', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')),
+        h('h2', { text: 'No reports yet' }),
+        h('p', { text: 'Run a live session, then choose "Save report" in the Go live window or when you end it. Your results will be listed here.' }),
+        h('a', { class: 'sh-btn sh-btn--primary', href: '/app/', text: 'Open my decks', style: 'margin-top:14px' }));
     root.replaceChildren(appHeader({ active: 'reports' }),
       h('main', { class: 'sh-main sh-narrow', id: 'main' },
         h('h1', { class: 'sh-title', text: 'Session reports' }),

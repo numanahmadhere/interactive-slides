@@ -771,3 +771,26 @@ if (typeof document !== 'undefined') {
   const root = document.getElementById('show');
   if (root) mount(root);
 }
+
+// The comparison table is long: show the first group and let the visitor open the rest.
+if (typeof document !== 'undefined') {
+  const scroll = document.querySelector('#compare .cmp__scroll');
+  const groups = scroll?.querySelectorAll('tbody').length ?? 0;
+  if (scroll && groups > 1) {
+    const rows = scroll.querySelectorAll('tbody tr:not(.cmp__group)').length;
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'btn ghost cmp__more';
+    more.setAttribute('aria-expanded', 'false');
+    const label = (open) => { more.textContent = open ? 'Show fewer features' : `Show all ${rows} features`; };
+    label(false);
+    scroll.dataset.collapsed = '';
+    scroll.after(more);
+    more.addEventListener('click', () => {
+      const open = scroll.hasAttribute('data-collapsed');
+      if (open) scroll.removeAttribute('data-collapsed'); else scroll.dataset.collapsed = '';
+      more.setAttribute('aria-expanded', String(open));
+      label(open);
+    });
+  }
+}
