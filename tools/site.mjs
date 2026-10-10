@@ -277,7 +277,7 @@ const home = () => layout({
 </div></section>
 
 <section id="loop" class="story-sec"><div class="wrap">
-<header class="head head--center reveal"><p class="label">Why it works</p><h2>Good questions, great <em>insights.</em></h2>
+<header class="head head--center reveal"><h2>Good questions, great <em>insights.</em></h2>
 <p class="sub">Start with a question. See the answers arrive. Act on what the room just told you.</p></header>
 <div class="story" id="story">
 <div class="story__side"><ol class="story__steps" aria-label="Three steps">
@@ -292,7 +292,7 @@ const home = () => layout({
 </div></div></div></section>
 
 <section id="products"><div class="wrap">
-<header class="head head--center reveal"><p class="label">One account</p><h2>Three ways to <em>engage.</em></h2>
+<header class="head head--center reveal"><h2>Three ways to engage.</h2>
 <p class="sub">The same slides work in the room, on their own, and across a team.</p></header>
 <div class="pcards">
 <article class="pcard pcard--a reveal"><div class="pcard__vis">${mockResults()}</div><h3>Present live</h3><p>Polls, quizzes, word clouds, open answers and audience Q&amp;A, in the room or online. Any phone, no app, no login for the audience.</p><a class="prod__go" href="/learn/live-session/">Discover live sessions <span aria-hidden="true">&rarr;</span></a></article>
@@ -310,17 +310,16 @@ const home = () => layout({
 </ul></div></section>
 
 <section id="compare"><div class="wrap">
-<header class="head reveal"><p class="label">How we compare</p><h2>Why people choose <em>Densight Slides.</em></h2>
+<header class="head reveal"><h2>Why people choose <em>Densight Slides.</em></h2>
 <p class="sub">The same job, five tools. We include more of what matters, work where the others cannot, and charge less to start. Where we are missing something we say so. Read from each vendor's public pages in ${CHECKED}; plans change, so confirm anything that decides a purchase.</p></header>
 <div class="reveal">
-${renderCompare()}
-${renderKey()}
+${renderCompare({ fold: true })}
 <p class="cmp__note">Where others lead today: add-ins for PowerPoint and Google Slides, single sign-on and editing the same deck together in real time. Those are not built yet, and we would rather say so. <a href="/app/">Try it free</a> and judge for yourself.</p>
 </div>
 </div></section>
 
 <section id="pricing" class="alt"><div class="wrap">
-<header class="head reveal"><p class="label">Pricing</p><h2>Start free. Pay when you outgrow it.</h2>
+<header class="head reveal"><h2>Start free. Pay when you outgrow it.</h2>
 <p class="sub">Building and presenting are free. Paid plans add bigger rooms, more question types, your own branding and more ways to export. Every paid plan starts with a ${TRIAL_DAYS}-day free trial; a card is needed to start it and you can cancel before it ends to pay nothing.</p></header>
 <div class="reveal"><div class="bp__grid">
 ${planCards()}
@@ -329,7 +328,7 @@ ${planCards()}
 </div></section>
 
 <section id="features" class="band-paper"><div class="wrap">
-<header class="head head--center reveal"><p class="label">Features</p><h2>Everything a live presentation <em>needs.</em></h2>
+<header class="head head--center reveal"><h2>Everything a live presentation needs.</h2>
 <p class="sub">Built for rooms where people are expected to take part, not just watch.</p></header>
 <div class="fcards">
 <article class="fcard reveal"><span class="fcard__ico">${ico('quiz')}</span><h3>Interactive blocks</h3><p>Timed quizzes, polls, word clouds, open answers, ratings, rankings, audience Q&amp;A, pins on a picture, reactions, tables, 2x2 matrices, matching, flip cards, hotspots, timelines, charts and calculators, all inside your slides.</p></article>
@@ -346,7 +345,7 @@ ${planCards()}
 
 
 <section id="trust" class="band-paper"><div class="wrap">
-<header class="head head--center reveal"><p class="label">Security and privacy</p><h2>Built with confidential material in <em>mind.</em></h2></header>
+<header class="head head--center reveal"><h2>Built with confidential material in mind.</h2></header>
 <div class="tcards">
 <article class="tcard reveal"><h3>Yours first</h3><p>Decks are stored in your browser as you work, and saved to your account so you can open them anywhere. Nothing is shared unless you choose to.</p></article>
 <article class="tcard reveal"><h3>No tracking</h3><p>No advertising, no tracking cookies and no sale of data.</p></article>
@@ -355,7 +354,7 @@ ${planCards()}
 </div><p class="head--center reveal" style="margin-top:28px"><a class="btn ghost" href="/security/">Read the security summary</a></p></div></section>
 
 <section id="usecases"><div class="wrap">
-<header class="head reveal"><p class="label">Use cases</p><h2>More <em>engagement,</em> every day.</h2>
+<header class="head reveal"><h2>More <em>engagement,</em> every day.</h2>
 <p class="sub">Easily add participation to more of the moments where you talk and others listen.</p></header>
 <div class="uc">
 <div class="uc__col reveal"><img class="uc__art" src="/art/training.svg" alt="" width="800" height="560" loading="lazy"><h3>At work</h3>
@@ -381,7 +380,7 @@ ${planCards()}
 </div></section>
 
 <section id="start" class="alt"><div class="wrap">
-<header class="head reveal"><p class="label">Getting started</p><h2>Easy to start. Simple to <em>connect.</em></h2>
+<header class="head reveal"><h2>Easy to start. Simple to connect.</h2>
 <p class="sub">Choose a ready-made slide, start from a blank one, or bring the slides you already have.</p></header>
 <div class="rules">
 <article class="item prod reveal"><h3>Pick a ready-made slide</h3><p>${TEMPLATES.length} slides for icebreakers, quizzes, feedback, tables and matrices. Every part can be edited or removed.</p><a class="prod__go" href="/templates/">Browse the slides <span aria-hidden="true">&rarr;</span></a></article>
@@ -393,7 +392,7 @@ ${planCards()}
 </div></section>
 
 <section id="faq" class="alt"><div class="wrap faq">
-<div class="reveal"><p class="label">FAQ</p><h2>Questions, answered.</h2><p class="sub">Anything else? Read the <a href="/learn/">guides</a>.</p></div>
+<div class="reveal"><h2>Questions, answered.</h2><p class="sub">Anything else? Read the <a href="/learn/">guides</a>.</p></div>
 <div class="reveal">
 <details><summary>Is it free?</summary><p>Yes. Create a free account (no card) to build, present and export. Your audience never needs an account.</p></details>
 <details><summary>Does my audience need an account or an app?</summary><p>No. They open a link or scan a QR code in their phone's browser and enter nothing else.</p></details>

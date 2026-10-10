@@ -101,7 +101,7 @@ export function scores() {
   return VENDORS.map((_, i) => ({ points: rows.reduce((a, r) => a + (POINTS[r.cells[i]] ?? 0), 0), of: rows.length }));
 }
 
-export function renderCompare() {
+export function renderCompare({ fold = false } = {}) {
   const sc = scores();
   const top = Math.max(...sc.map((x) => x.points));
   const board = VENDORS.map((v, i) => `<li class="cmp__score${v.us ? ' is-us' : ''}${sc[i].points === top ? ' is-top' : ''}"><span class="cmp__sname">${esc(v.name)}${sc[i].points === top ? ' <b class="cmp__crown">Most features</b>' : ''}</span><span class="cmp__sbar"><i style="--w:${Math.round((sc[i].points / sc[i].of) * 100)}%"></i></span><span class="cmp__snum"><b>${Number.isInteger(sc[i].points) ? sc[i].points : sc[i].points.toFixed(1)}</b> of ${sc[i].of}</span></li>`).join('');
@@ -116,10 +116,10 @@ export function renderCompare() {
 ${g.rows.map((r) => `<tr><th scope="row">${esc(r.name)}</th>${r.cells.map((c, i) => renderCell(c, i === 0 ? tagOf(r) : '')).join('')}</tr>`).join('\n')}</tbody>`).join('\n');
   return `${SPRITE}<ul class="cmp__wins" aria-label="Where we lead">${wins}</ul>
 <div class="cmp__board"><h3 class="cmp__bh">Features confirmed, out of ${sc[0].of}</h3><ol class="cmp__scores">${board}</ol><p class="cmp__bnote">Included on any plan counts as 1 and partly counts as a half. &ldquo;Not yet&rdquo;, &ldquo;No&rdquo; and &ldquo;Check&rdquo; (could not confirm) count as 0.</p></div>
-<div class="cmp__scroll" tabindex="0" role="region" aria-label="Comparison table, scrolls sideways on small screens"><table class="cmp"><caption class="sr">How Densight Slides compares with four other tools, checked ${CHECKED}</caption>
+${fold ? `<details class="cmp__fold"><summary>See all ${sc[0].of} features side by side</summary>` : ''}<div class="cmp__scroll" tabindex="0" role="region" aria-label="Comparison table, scrolls sideways on small screens"><table class="cmp"><caption class="sr">How Densight Slides compares with four other tools, checked ${CHECKED}</caption>
 <thead><tr><th scope="col"><span class="sr">Feature</span></th>${head}</tr></thead>
 ${body}
-</table></div>`;
+</table></div>${fold ? `${renderKey()}</details>` : ''}`;
 }
 
 export const renderKey = () => `<ul class="cmp__key" aria-label="Key">${[['yes', 'Included', ''], ['yes', 'Included on a paid plan (the plan is shown)', 'Starter'], ['part', 'Partly', 'Partly'], ['no', 'Not offered, as far as we could find', ''], ['soon', 'Not yet (ours)', 'Soon'], ['check', 'Could not confirm', '']].map(([k, t, tag]) => `<li class="cmp__${k}">${ICON[k]}${tag ? `<span class="cmp__tag">${tag}</span>` : ''}${t}</li>`).join('')}</ul>`;
