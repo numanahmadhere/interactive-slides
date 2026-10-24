@@ -8,6 +8,7 @@ import { signInPanel } from '../cloud/sign-in-panel.js';
 import { appFooter, appHeader } from './chrome.js';
 import { COMPANY_NAME, COMPANY_URL, SUPPORT_EMAIL, supportHref } from './contact.js';
 import { takeFlash } from './flash.js';
+import { connectorSection } from './connector.js';
 import { teamSection } from './teams.js';
 
 export async function mountAccount(root) {
@@ -26,6 +27,8 @@ export async function mountAccount(root) {
 
   const section = (title, ...children) => h('section', { class: 'sh-section' }, h('h2', { text: title }), ...children);
   const danger = (title, ...children) => h('section', { class: 'sh-section sh-section--danger' }, h('h2', { text: title }), ...children);
+
+  let newLink = null;
 
   async function render() {
     const local = await persist.listDecks();
@@ -60,6 +63,11 @@ export async function mountAccount(root) {
       let teams = [];
       try { teams = await cloud.teams(); } catch (err) { console.error(err); }
       body.push(teamSection({ cloud, teams, run, say, rerender: render }));
+      let info;
+      try { info = await cloud.connectorInfo(); } catch (err) { console.error(err); }
+      const connector = connectorSection({ cloud, info, shown: newLink, run, rerender: (link) => { newLink = link; return render(); } });
+      if (connector) body.push(connector);
+      newLink = null; // a new link is shown once; redrawing the page forgets it
     } else if (cloud && new URLSearchParams(location.search).get('invite')) {
       body.unshift(h('p', { class: 'ed-hint ed-hint--warn', role: 'status', text: 'You have been invited to a team. Sign in below to join it. If you are sent back here without the invite, open the link again.' }));
     }

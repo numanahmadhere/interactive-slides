@@ -189,3 +189,6 @@ body.sh a:focus-visible, body.sh button:focus-visible, body.sh select:focus-visi
 .gate__perks li::before { content: '\2713'; margin-right: 8px; color: var(--success); font-weight: 800; }
 .gate__fine { margin: 14px 0 0; color: var(--muted); font-size: 12.5px; }
 .gate__help { max-width: 400px; margin: 0; color: var(--muted); font-size: 13px; text-align: center; }
+
+.sh-steps { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 6px; color: var(--muted); }
+.ed-live__url .ed-input { width: 100%; font-family: ui-monospace, Menlo, monospace; font-size: 13px; }

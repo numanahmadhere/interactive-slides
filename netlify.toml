@@ -52,3 +52,8 @@
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache"
+
+# The Claude connector (netlify/functions/mcp.mjs).
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"

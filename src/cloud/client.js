@@ -292,6 +292,18 @@ export class Cloud {
     }
   }
 
+  // The Claude connector link: only a hash of it is stored. -> { created_at, last_used_at } | null (no link yet) | undefined (not installed)
+  async connectorInfo() {
+    try {
+      const rows = await this.#call('/rest/v1/rpc/connector_key_info', { method: 'POST', body: {}, auth: await this.#token() });
+      return rows?.[0] ?? null;
+    } catch (err) {
+      if (err.status === 404 || err.status === 400) return undefined;
+      throw err;
+    }
+  }
+  async setConnectorKey(hash) { await this.#call('/rest/v1/rpc/set_connector_key', { method: 'POST', body: { h: hash }, auth: await this.#token() }); }
+  async removeConnectorKey() { await this.#call('/rest/v1/rpc/remove_connector_key', { method: 'POST', body: {}, auth: await this.#token() }); }
   createTeam(name) { return this.#rpc('create_team', { n: name }); }
   createInvite(teamId) { return this.#rpc('create_team_invite', { t: teamId }); }
   acceptInvite(token) { return this.#rpc('accept_team_invite', { tok: token }); }

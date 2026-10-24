@@ -319,3 +319,29 @@ test('leaving and removing: the owner removes people, people leave, decks go bac
   await as(B, 'select accept_team_invite($1)', [t]);
   assert.equal((await as(B, 'select remove_team_member($1, $2) as ok', [team.id, B]))[0].ok, true, 'anyone can leave');
 });
+
+// ---- the Claude connector link -------------------------------------------------------------
+const HASH1 = 'a'.repeat(64);
+const HASH2 = 'b'.repeat(64);
+
+test('a person can make, replace and remove their own connector link, and nobody can read anyone\'s hash', async () => {
+  assert.ok((await as(null, `select set_connector_key($1)`, [HASH1])).error, 'signed-out people cannot');
+  assert.ok((await as(B, `select set_connector_key('not-a-hash')`)).error, 'only a sha-256 hex string is accepted');
+  assert.ok(!(await as(B, `select set_connector_key($1)`, [HASH1])).error);
+  assert.equal((await as(B, 'select count(*)::int as n from connector_key_info()'))[0].n, 1);
+  assert.ok((await as(B, 'select token_hash from connector_keys')).error, 'the hash is not readable from the browser');
+  assert.equal((await as(A, 'select count(*)::int as n from connector_key_info()'))[0].n, 0, 'A sees nothing of B\'s link');
+  assert.ok(!(await as(B, `select set_connector_key($1)`, [HASH2])).error);
+  assert.equal((await db.query('select token_hash from connector_keys where user_id = $1', [B])).rows[0].token_hash, HASH2, 'a new link replaces the old one');
+  assert.ok((await as(A, `select set_connector_key($1)`, [HASH2])).error, 'two people cannot share one link');
+  assert.ok((await as(B, 'insert into connector_keys (user_id, token_hash) values ($1, $2)', [B, HASH1])).error, 'no direct writes');
+  await as(B, 'select remove_connector_key()');
+  assert.equal((await as(B, 'select count(*)::int as n from connector_key_info()'))[0].n, 0);
+});
+
+test('deleting an account removes its connector link', async () => {
+  await as(B, `select set_connector_key($1)`, [HASH1]);
+  await db.query('delete from auth.users where id = $1', [B]);
+  assert.equal((await db.query('select count(*)::int as n from connector_keys')).rows[0].n, 0);
+  await db.query(`insert into auth.users (id, email) values ($1, 'b@example.test') on conflict do nothing`, [B]);
+});

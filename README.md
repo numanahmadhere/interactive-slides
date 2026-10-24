@@ -421,6 +421,24 @@ the other caps live in the page.
 
 Building needs a free account (the sign-in screen in `src/shell/gate.js`); the audience never needs one.
 
+## Claude connector
+
+A person can connect their Claude chat to their account and ask it for decks. It is an MCP server
+(`netlify/functions/mcp.mjs`, answering `POST /api/mcp/<secret>`) with six tools: `create_deck`, `add_slides`,
+`replace_slide`, `delete_slide`, `list_decks` and `get_deck`. Claude describes slides in plain JSON (title, bullets,
+questions) and `src/connector/build.js` turns them into real slides, so nothing Claude sends can produce a deck the
+editor cannot open. The app itself still contains no AI.
+
+How the login works: the Account page makes a 43-character secret in the browser, stores only its SHA-256 in
+`connector_keys` (through `set_connector_key()`), and shows the link once. The function hashes the secret in the
+address, finds the owner, and reads and writes only that person's decks. Making a new link replaces the old one;
+turning it off deletes it.
+
+Set up, once: run `supabase/schema.sql`, then add `SUPABASE_SERVICE_ROLE_KEY` (and the existing `SUPABASE_URL`) to
+the Netlify environment, scoped to Functions, and redeploy. Never put the service role key in the page or the repo.
+Known limits: the link is a bearer secret (anyone holding it can act as that person), there is no rate limit beyond
+the 1 MB request cap and the online-deck cap, and decks made this way have no images.
+
 ## More features and what they need
 
 All of these are in the code and covered by tests. None needs a new server; the ones marked "SQL" need `supabase/schema.sql` to be run again (it is safe to re-run).

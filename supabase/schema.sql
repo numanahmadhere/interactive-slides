@@ -360,3 +360,46 @@ end $$;
 drop trigger if exists comments_guard on public.deck_comments;
 create trigger comments_guard before insert or update on public.deck_comments
   for each row execute function public.comments_guard();
+
+-- ---------------------------------------------------------------------------------
+-- Claude connector. Safe to run again.
+--
+-- One secret link per person lets Claude build decks in their account (netlify/functions/mcp.mjs).
+-- Only a hash of the secret is stored here, so a database leak does not reveal working links. The server
+-- reads the table with the service role key; people manage their own link through the three functions below.
+-- ---------------------------------------------------------------------------------
+
+create table if not exists public.connector_keys (
+  user_id      uuid primary key references auth.users (id) on delete cascade,
+  token_hash   text not null unique check (token_hash ~ '^[0-9a-f]{64}$'),
+  created_at   timestamptz not null default now(),
+  last_used_at timestamptz
+);
+alter table public.connector_keys enable row level security;
+revoke all on public.connector_keys from anon, authenticated;
+
+create or replace function public.set_connector_key(h text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'not signed in'; end if;
+  if h is null or h !~ '^[0-9a-f]{64}$' then raise exception 'bad key'; end if;
+  insert into public.connector_keys (user_id, token_hash) values (auth.uid(), h)
+  on conflict (user_id) do update set token_hash = excluded.token_hash, created_at = now(), last_used_at = null;
+end $$;
+revoke all on function public.set_connector_key(text) from public, anon;
+grant execute on function public.set_connector_key(text) to authenticated;
+
+create or replace function public.remove_connector_key() returns void
+language sql security definer set search_path = public as $$
+  delete from public.connector_keys where user_id = auth.uid()
+$$;
+revoke all on function public.remove_connector_key() from public, anon;
+grant execute on function public.remove_connector_key() to authenticated;
+
+-- Whether a link exists and when it was made and last used. Never the hash.
+create or replace function public.connector_key_info() returns table (created_at timestamptz, last_used_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select k.created_at, k.last_used_at from public.connector_keys k where k.user_id = auth.uid()
+$$;
+revoke all on function public.connector_key_info() from public, anon;
+grant execute on function public.connector_key_info() to authenticated;
