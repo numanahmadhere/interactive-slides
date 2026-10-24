@@ -8,7 +8,6 @@ import { execSync } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { serviceWorkerSource } from './src/sw-template.js';
 import { buildSite } from './tools/site.mjs';
-import { paddleFromEnv } from './tools/paddle-env.mjs';
 import { cleanConfig } from './src/live/protocol.js';
 
 // The project this build talks to. Real environment variables win over .env.local
@@ -42,8 +41,6 @@ function projectFromEnv(env) {
 }
 
 const project = projectFromEnv(await readEnv());
-
-const paddle = paddleFromEnv(await readEnv());
 
 // A short label for this build: the commit when known (Netlify sets COMMIT_REF), plus the date.
 function buildLabel() {
@@ -95,7 +92,7 @@ const options = {
   // iPhones in the audience may be a few iOS versions behind: compile for Safari 15 and up.
   target: ['es2022', 'safari15', 'chrome100', 'firefox100'],
   loader: { '.woff2': 'dataurl' },
-  define: { __BUILD__: JSON.stringify(serve ? 'dev' : buildLabel()), __DEV__: String(serve), __SUPABASE_URL__: JSON.stringify(project.url), __SUPABASE_KEY__: JSON.stringify(project.key), __PADDLE_TOKEN__: JSON.stringify(paddle.token), __PADDLE_ENV__: JSON.stringify(paddle.environment) },
+  define: { __BUILD__: JSON.stringify(serve ? 'dev' : buildLabel()), __DEV__: String(serve), __SUPABASE_URL__: JSON.stringify(project.url), __SUPABASE_KEY__: JSON.stringify(project.key) },
   sourcemap: serve,
   minify: !serve,
   logLevel: 'info',

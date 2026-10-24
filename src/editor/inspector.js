@@ -17,7 +17,6 @@ import { safeImageUrl } from '../core/sanitize.js';
 import * as ops from './ops.js';
 import { ARRANGEMENTS } from './arrange.js';
 import { stageThumb } from './insert.js';
-import { canBrand, canUseTheme, PLANS, planFor } from '../billing/plans.js';
 import { button, field, segmented, toggle, select, textInput, numberInput, rangeInput, listEditor, colorInput } from './ui.js';
 
 const TRANSITION_LABELS = { fade: 'Fade', slide: 'Slide', zoom: 'Zoom', none: 'None' };
@@ -627,11 +626,8 @@ export class Inspector {
       const b = h('button', { class: 'ed-theme', type: 'button', 'aria-pressed': String(deck.theme.id === t.id), 'aria-label': `Theme: ${t.name}` },
         sample,
         h('span', { text: t.name }));
-      const locked = !canUseTheme(this.editor.plan, t.id);
-      if (locked) b.append(h('span', { class: 'ed-theme__lock', text: PLANS[planFor((p) => p.themes.includes(t.id))].name }));
       b.addEventListener('click', () => {
         this.editor.canvas.previewTheme(null);
-        if (locked && !this.editor.requirePlan((p) => p.themes.includes(t.id), `The ${t.name} theme is not part of the ${PLANS[this.editor.plan].name} plan.`)) return;
         this.#rebuilding(ops.setTheme(this.editor.deck, t.id));
       });
       b.addEventListener('pointerenter', () => this.editor.canvas.previewTheme(t.id));
@@ -656,8 +652,8 @@ export class Inspector {
         })),
         h('p', { class: 'ed-hint', text: `${deck.slides.length} ${deck.slides.length === 1 ? 'slide' : 'slides'}` }),
       ),
-      canBrand(this.editor.plan) ? this.#colorsSection() : this.#brandLocked(),
-      canBrand(this.editor.plan) ? this.#logoSection() : null,
+      this.#colorsSection(),
+      this.#logoSection(),
       section('Auto-play',
         field('Move on every (seconds)', numberInput({
           value: deck.autoplay.seconds, min: 0, max: 3600,
@@ -666,13 +662,5 @@ export class Inspector {
         toggle({ label: 'Start over at the end', value: deck.autoplay.loop, onChange: (v) => this.#live(ops.setAutoplay(this.editor.deck, { loop: v }), 'deck:autoplay-loop') }),
       ),
     ].filter(Boolean);
-  }
-
-  // Free plans keep the theme's own colours and fonts and have no logo.
-  #brandLocked() {
-    const need = PLANS[planFor((p) => p.brand)].name;
-    return section('Your colours, font and logo',
-      h('p', { class: 'ed-hint', text: `Put your own logo, colours and font on every slide. Part of ${need} and above.` }),
-      button({ label: `See the plans`, variant: 'wide', onClick: () => this.editor.requirePlan((p) => p.brand, 'Your own colours, font and logo are not part of your plan.') }));
   }
 }

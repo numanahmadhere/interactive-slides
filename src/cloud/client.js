@@ -11,10 +11,9 @@ const REFRESH_MARGIN_S = 60;
 
 // The database raises short codes for team rules; say them in words.
 const TEAM_MESSAGES = {
-  team_needs_plan: 'Team workspaces come with the Pro and Advanced plans.',
   team_needs_name: 'Give the team a name.',
   team_limit: 'You can own up to three teams.',
-  team_full: 'This team has no free seats. Ask its owner to upgrade, or to free one up.',
+  team_full: 'This team has no free seats. Ask its owner to free one up.',
   invite_invalid: 'This invite link is not valid any more. Ask for a new one.',
   not_team_owner: 'Only the person who made the team can do that.',
   not_in_team: 'You are not in that team.',
@@ -187,10 +186,10 @@ export class Cloud {
     try {
       return (await this.#rest('/rest/v1/decks', { method: 'POST', body: this.#payload(title, data, thumb), prefer: 'return=representation' }))[0];
     } catch (err) {
-      // The database refuses a new online deck past the plan's limit (supabase/schema.sql).
+      // The database refuses a new online deck past the account's limit (supabase/schema.sql).
       if (/deck_limit/.test(err.message)) {
         const limit = Number.parseInt(err.detail ?? '', 10) || null;
-        throw new CloudError(`Your plan keeps ${limit ?? 'a limited number of'} decks online. Upgrade to save more, or delete one you no longer need.`, { code: 'deck_limit' });
+        throw new CloudError(`Your account keeps up to ${limit ?? 'a limited number of'} decks online. Delete one you no longer need to save another.`, { code: 'deck_limit' });
       }
       throw err;
     }
@@ -199,18 +198,6 @@ export class Cloud {
   // The current session token, refreshed if needed, for calling our own server functions.
   async accessToken() {
     return this.#token();
-  }
-
-  // The signed-in person's subscription row, or null (no paid plan, or the billing part of
-  // schema.sql has not been run yet). Read-only: only the Paddle webhook writes it.
-  async subscription() {
-    try {
-      const rows = await this.#rest('/rest/v1/subscriptions?select=plan,status,billing_interval,ends_at,trial_ends_at,update_payment_url,cancel_url,paddle_subscription_id&limit=1');
-      return rows[0] ?? null;
-    } catch (err) {
-      if (err.status === 404 || err.status === 400) return null;
-      throw err;
-    }
   }
 
   // expectedUpdatedAt is the online copy's time when we last saw it. If someone (or

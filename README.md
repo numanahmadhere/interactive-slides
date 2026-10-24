@@ -411,66 +411,15 @@ Known limits: Inter is bundled as the Latin subset only, so other scripts
 fall back to system fonts. Code blocks are not syntax-highlighted yet.
 
 
-## Plans and billing (Paddle)
+## Everything is free
 
-Four plans: Free, Starter ($10 a month), Pro ($40) and Advanced ($120); yearly is ten months'
-price, and paid plans start with a 7-day trial that needs a card. **One table**, `src/billing/plans.js`,
-says what each plan includes; the pricing section, the upgrade dialog, the account page, the live room and
-the database all read it (tests check they agree).
+There are no plans, prices or payments. Every feature is open to every signed-in person: all question types,
+every export, your own brand, results as a spreadsheet, session reports, self-paced courses and team workspaces.
+`src/billing/plans.js` holds the only limits, as sanity caps (1,000 phones in a live room, 1,000 online decks per
+account, 25 seats in a team). The database enforces the online-deck cap with a trigger in `supabase/schema.sql`;
+the other caps live in the page.
 
-| | Free | Starter | Pro | Advanced |
-| --- | --- | --- | --- | --- |
-| Decks online | 3 | 25 | 100 | 1,000 |
-| Phones in a live room | 25 | 100 | 500 | 1,000 |
-| Question types phones can answer | poll, quiz, rating | + word cloud, open answers, ranking, Q&A | same | same |
-| Your logo, colours, font | no | yes | yes | yes |
-| Results as a spreadsheet | no | yes | yes | yes |
-| Exports | deck file, PNG | + web page, PDF | + PowerPoint | same |
-| Themes | 2 | 4 | 4 | 4 |
-
-Building, presenting and everything on the device stay free. **What is actually enforced:** the online
-deck limit is enforced by the database (a trigger in `supabase/schema.sql`; existing decks are never
-deleted, only new ones refused). The rest (room size, question types, exports, branding) are locks in the
-browser, because a page running on the customer's computer cannot truly stop them from editing it. They
-are fair-use gates, not security.
-
-How a purchase flows: the page opens Paddle's checkout (`src/billing/checkout.js`) with the signed-in
-person's id in `custom_data`; Paddle sends a signed webhook to `/api/paddle-webhook`
-(`netlify/functions/paddle-webhook.mjs`); it verifies the signature, ignores replays and old events, and
-writes the `subscriptions` row through `paddle_apply()` (service role only). The page reads its own row.
-Cancelling or updating a card uses the links Paddle puts in each subscription (stored on the row).
-
-Set up, once:
-1. Run the new part of `supabase/schema.sql` (it is safe to run again).
-2. Create the catalog in each Paddle account and put the price ids in `src/billing/catalog.js`
-   (live ids are in; fill in the sandbox ids when the sandbox catalog exists).
-3. Add the variables in `.env.example` to Netlify, add a notification destination in each Paddle account
-   pointing at `https://YOUR-SITE/api/paddle-webhook` (events: all `subscription.*`), and paste each
-   destination's secret into `PADDLE_WEBHOOK_SECRET_LIVE` / `_SANDBOX`.
-4. Build with a `test_` client token to try it with Paddle's sandbox cards; a `live_` token for real
-   payments. Real payments also need a verified Paddle account and an approved checkout domain.
-
-What the webhook keeps (all written by `/api/paddle-webhook`, nothing from the browser): one `subscriptions`
-row per paying person (plan, status, trial and end dates, the Paddle ids, and which Paddle account it came from), a
-`paddle_customers` mirror (id and email), and a log of delivery ids so retries and out-of-order deliveries change
-nothing. Events handled: `subscription.created/activated/updated/trialing/past_due/paused/resumed/canceled`,
-`customer.created/updated` and `transaction.completed`; anything else is acknowledged and ignored. A bad signature
-gets a 401 so Paddle retries; a database failure gets a 500 for the same reason.
-
-Access rule (`planOf` in `src/billing/plans.js`, and `plan_of()` in the database): `active`, `trialing` and
-`past_due` keep access; `paused` and `canceled` do not. A scheduled cancellation does **not** revoke anything: the
-plan stays until its end date, then the `canceled` event arrives. `past_due` keeps access while Paddle retries the
-card; change that one word in both places if you would rather lock at once.
-
-Customer portal: the account page's **Manage billing** button calls `/api/paddle-portal`
-(`netlify/functions/paddle-portal.mjs`) with the person's session. The server checks the session with Supabase,
-finds *their* Paddle customer id in the database (nothing about who they are is read from the request), and asks
-Paddle for a portal session for that live or sandbox account. It needs `PADDLE_API_KEY_LIVE` /
-`PADDLE_API_KEY_SANDBOX` (server only).
-
-Known limits: switching between paid plans is done through support for now (a plan change needs
-Paddle's subscription API, which needs a server key); the page asks you to write to support. Team
-workspaces and single sign-on do not exist yet, so the Advanced plan sells room size and priority support only.
+Building needs a free account (the sign-in screen in `src/shell/gate.js`); the audience never needs one.
 
 ## More features and what they need
 

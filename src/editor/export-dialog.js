@@ -3,7 +3,6 @@
 import { h } from '../core/dom.js';
 import { embedCode } from '../export/embed.js';
 import { button, openDialog, select, textInput, toggle, toast } from './ui.js';
-import { PLANS, canExport, planFor } from '../billing/plans.js';
 
 export function openExportDialog(editor) {
   const exporter = editor.exporter;
@@ -31,13 +30,6 @@ export function openExportDialog(editor) {
       for (const b of buttons) b.disabled = false;
     }
   };
-  // Formats outside the plan open the plans instead of exporting.
-  const gate = (format, what, fn) => () => {
-    if (canExport(editor.plan, format)) return fn();
-    editor.requirePlan((p) => p.exports.includes(format), `${what} is not part of the ${PLANS[editor.plan].name} plan.`);
-    return undefined;
-  };
-  const tag = (format) => (canExport(editor.plan, format) ? '' : ` (${PLANS[planFor((p) => p.exports.includes(format))].name})`);
   const action = (label, fn, variant = '') => {
     const b = button({ label, variant, onClick: fn });
     buttons.push(b);
@@ -80,15 +72,15 @@ export function openExportDialog(editor) {
   const content = h('div', null,
     toggle({ label: 'Include speaker notes (web page and PowerPoint)', value: false, onChange: (v) => { includeNotes = v; } }),
     row('Web page (HTML)', 'One file that plays anywhere with every interaction working. Share it or host it.',
-      action(`Download${tag('html')}`, gate('html', 'Web page export', run('Building the page', async () => exporter.html({ includeNotes }))), 'primary')),
+      action('Download', run('Building the page', async () => exporter.html({ includeNotes })), 'primary')),
     row('PDF', 'One slide per page with everything shown. Opens your browser\'s print dialog.',
-      action(`Open${tag('pdf')}`, gate('pdf', 'PDF export', run('Preparing the PDF', async () => (await exporter.pdf() ? 'Choose "Save as PDF" in the print dialog.' : (() => { throw new Error('The print window was blocked. Allow pop-ups for this page and try again.'); })()))))),
+      action('Open', run('Preparing the PDF', async () => (await exporter.pdf() ? 'Choose "Save as PDF" in the print dialog.' : (() => { throw new Error('The print window was blocked. Allow pop-ups for this page and try again.'); })())))),
     row('Images (PNG)', 'Every slide as a picture, in one zip, or just the slide you are on.',
       h('div', { class: 'ed-xrow__actions' }, sizeSelect,
         action('Zip', run('Rendering', (progress) => exporter.pngZip({ scale, onProgress: progress }))),
         action('This slide', run('Rendering', () => exporter.pngCurrent({ scale }))))),
     row('PowerPoint (PPTX)', 'Slide pictures with editable text on top. Interactions become still pictures.',
-      action(`Download${tag('pptx')}`, gate('pptx', 'PowerPoint export', run('Building the deck', (progress) => exporter.pptx({ includeNotes, onProgress: progress }))))),
+      action('Download', run('Building the deck', (progress) => exporter.pptx({ includeNotes, onProgress: progress })))),
     row('Deck file (JSON)', 'Reopen and keep editing later, here or on another machine. Images included.',
       action('Download', run('Saving', () => exporter.json()))),
     embedRow,

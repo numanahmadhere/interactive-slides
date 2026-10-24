@@ -252,10 +252,10 @@ test('word clouds size words by how common they are and keep a stable order', ()
 // ---- plans decide what a room can do ----------------------------------------------------
 
 const slideWith = (blocks) => normalizeDeck({ slides: [{ id: 's', layout: 'content', blocks: blocks.map((b) => ({ slot: 'body', ...b })) }] }).deck;
-function runHost(deck, plan) {
+function runHost(deck, plan, extra = {}) {
   const h = hub();
   const room = newRoom();
-  const host = new LiveHost({ transport: h.transport(), room, plan });
+  const host = new LiveHost({ transport: h.transport(), room, plan, ...extra });
   host.start();
   const player = { deck, state: { slide: 0, step: 0 }, nav: { stepCounts: [0] }, subscribe: () => () => {}, next() {}, prev() {}, first() {}, last() {} };
   host.attach(player);
@@ -264,7 +264,7 @@ function runHost(deck, plan) {
   return { host, ch, msgs };
 }
 
-test('a free room sends polls and ratings to phones but holds back word clouds and Q&A', async () => {
+test('every kind of question reaches phones, and answers to each are accepted', async () => {
   const deck = slideWith([
     { id: 'poll1', type: 'poll', props: { question: 'Q', options: [{ text: 'A' }, { text: 'B' }] } },
     { id: 'wc1', type: 'wordcloud', props: { question: 'Words?' } },
@@ -274,26 +274,17 @@ test('a free room sends polls and ratings to phones but holds back word clouds a
   const { host, ch, msgs } = runHost(deck, 'free');
   after(() => host.stop());
   await wait(10);
-  assert.deepEqual(host.prompts.map((p) => p.kind), ['poll', 'rating']);
-  assert.ok(host.isLocked('wc1') && host.isLocked('qa1') && !host.isLocked('poll1'));
-  ch.send({ t: 'text', cid: 'u1', id: 'wc1', text: 'sneaky' });
-  ch.send({ t: 'ask', cid: 'u1', id: 'qa1', text: 'sneaky?' });
-  await wait();
-  assert.deepEqual(host.words('wc1'), [], 'a locked question takes no answers even if a phone sends one');
-  assert.deepEqual(host.questions('qa1'), []);
-  assert.deepEqual(msgs.filter((m) => m.t === 'state').at(-1).prompts.map((p) => p.kind), ['poll', 'rating']);
-  host.setPlan('starter'); // a purchase goes through
-  await wait();
   assert.deepEqual(host.prompts.map((p) => p.kind), ['poll', 'cloud', 'rating', 'qna']);
-  assert.ok(!host.isLocked('wc1'));
-  ch.send({ t: 'text', cid: 'u1', id: 'wc1', text: 'now fine' });
+  assert.ok(!host.isLocked('wc1') && !host.isLocked('qa1') && !host.isLocked('poll1'));
+  ch.send({ t: 'text', cid: 'u1', id: 'wc1', text: 'fine' });
   await wait();
-  assert.deepEqual(host.words('wc1'), [['now fine', 1]]);
+  assert.deepEqual(host.words('wc1'), [['fine', 1]]);
+  assert.deepEqual(msgs.filter((m) => m.t === 'state').at(-1).prompts.map((p) => p.kind), ['poll', 'cloud', 'rating', 'qna']);
 });
 
-test('a room holds as many phones as the plan allows; the next is told it is full; those inside keep working', async () => {
+test('a room holds as many phones as its cap allows; the next is told it is full; those inside keep working', async () => {
   const deck = slideWith([{ id: 'poll1', type: 'poll', props: { question: 'Q', options: [{ text: 'A' }, { text: 'B' }] } }]);
-  const { host, ch, msgs } = runHost(deck, 'free');
+  const { host, ch, msgs } = runHost(deck, 'free', { maxPhones: 25 });
   after(() => host.stop());
   await wait(10);
   assert.equal(host.maxPhones, 25);
@@ -311,15 +302,10 @@ test('a room holds as many phones as the plan allows; the next is told it is ful
   ch.send({ t: 'vote', cid: 'p3', id: 'poll1', picks: [1] }); // someone already inside changes their answer
   await wait(20);
   assert.deepEqual(host.counts('poll1', 2), [24, 1]);
-  host.setPlan('pro');
-  assert.equal(host.maxPhones, 500);
-  ch.send({ t: 'vote', cid: 'late', id: 'poll1', picks: [1] });
-  await wait(20);
-  assert.deepEqual(host.counts('poll1', 2), [24, 2], 'after an upgrade the waiting phone gets in');
+  host.stop();
 });
 
-test('a host created without a plan is the smallest one, not unlimited', () => {
+test('a room holds a thousand phones unless told otherwise', () => {
   const host = new LiveHost({ transport: hub().transport(), room: newRoom() });
-  assert.equal(host.plan, 'free');
-  assert.equal(host.maxPhones, 25);
+  assert.equal(host.maxPhones, 1000);
 });

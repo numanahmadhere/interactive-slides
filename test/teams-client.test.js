@@ -21,7 +21,7 @@ function signedIn(replies) {
 }
 
 test('database team rules come back as plain sentences', async () => {
-  const cases = { team_needs_plan: /Pro and Advanced/, team_full: /no free seats/, invite_invalid: /not valid any more/, team_limit: /three teams/, not_team_owner: /person who made the team/ };
+  const cases = { team_full: /no free seats/, invite_invalid: /not valid any more/, team_limit: /three teams/, not_team_owner: /person who made the team/ };
   for (const [code, words] of Object.entries(cases)) {
     const { cloud } = signedIn([{ status: 400, body: { message: code, code: 'P0001' } }]);
     await assert.rejects(cloud.createTeam('X'), (err) => words.test(err.message) && err.code === code, code);

@@ -33,12 +33,12 @@ test('new blocks survive the deck gate with their props intact', () => {
   assert.equal(deck.slides[0].blocks[0].props.header, false);
 });
 
-test('reactions become a free poll for phones; pins need a paid plan', () => {
+test('reactions become a poll for phones, and every kind is open to everyone', () => {
   const deck = slide([{ id: 'r', type: 'reactions', props: { options: [{ text: 'Agree' }, { text: 'Hand up' }] } }, { id: 'p', type: 'pin', props: { question: 'Where?' } }]);
   const prompts = collectPrompts(deck.slides[0]);
   assert.deepEqual(prompts.map((p) => p.kind), ['poll', 'pin']);
   assert.deepEqual(prompts[0].options, ['Agree', 'Hand up']);
-  assert.ok(canUseKind('free', 'poll') && !canUseKind('free', 'pin') && canUseKind('starter', 'pin'));
+  assert.ok(canUseKind('free', 'poll') && canUseKind('free', 'pin'));
 });
 
 test('a pin message is only accepted for a pin prompt, with coordinates in range', () => {
@@ -86,11 +86,11 @@ test('phones place one pin each; moving it replaces it; the picture reaches phon
   assert.deepEqual(host.pins('p'), []);
 });
 
-test('on the free plan the phone never gets a pin prompt', async () => {
+test('phones get a pin prompt and the pins are counted', async () => {
   const deck = slide([{ id: 'p', type: 'pin', props: { question: 'Where?' } }]);
   const h = hub();
   const room = newRoom();
-  const host = new LiveHost({ transport: h.transport(), room, plan: 'free' });
+  const host = new LiveHost({ transport: h.transport(), room });
   host.start();
   after(() => host.stop());
   host.attach({ deck, state: { slide: 0, step: 0 }, nav: { stepCounts: [0] }, subscribe: () => () => {}, next() {}, prev() {}, first() {}, last() {} });
@@ -99,8 +99,8 @@ test('on the free plan the phone never gets a pin prompt', async () => {
   await wait(10);
   ch.send({ t: 'pin', cid: 'u1', id: 'p', x: 1, y: 1 });
   await wait();
-  assert.deepEqual(host.pins('p'), []);
-  assert.deepEqual(msgs.filter((m) => m.t === 'state').at(-1).prompts, []);
+  assert.equal(host.pins('p').length, 1);
+  assert.deepEqual(msgs.filter((m) => m.t === 'state').at(-1).prompts.map((p) => p.kind), ['pin']);
 });
 
 test('a private session keeps nothing: no names, nothing to save, and phones are told', async () => {

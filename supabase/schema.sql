@@ -71,53 +71,13 @@ revoke all on function public.delete_my_account() from public, anon;
 grant execute on function public.delete_my_account() to authenticated;
 
 -- ---------------------------------------------------------------------------------
--- Plans and billing (Paddle). Safe to run again.
---
--- subscriptions has one row per paying person, written only by the Paddle webhook
--- (netlify/functions/paddle-webhook.mjs, using the service role key). Signed-in people
--- can read their own row to see their plan; nobody can write it from the browser.
+-- Limits. Everything is free: there are no plans, so every account gets the same caps.
+-- Safe to run again. (Older installs may still hold unused subscription tables from
+-- when there were paid plans; nothing reads them any more and they can be dropped.)
 -- ---------------------------------------------------------------------------------
 
-create table if not exists public.subscriptions (
-  user_id                uuid primary key references auth.users (id) on delete cascade,
-  plan                   text not null check (plan in ('free', 'starter', 'pro', 'advanced')),
-  status                 text not null,                       -- Paddle: active, trialing, past_due, paused, canceled
-  billing_interval       text check (billing_interval in ('month', 'year')),
-  paddle_customer_id     text,
-  paddle_subscription_id text unique,
-  trial_ends_at          timestamptz,
-  ends_at                timestamptz,                         -- when access stops (a scheduled cancel, or period end)
-  update_payment_url     text,
-  cancel_url             text,
-  event_at               timestamptz not null default now(),  -- time of the newest Paddle event applied
-  updated_at             timestamptz not null default now()
-);
-
-alter table public.subscriptions enable row level security;
-drop policy if exists "subscriptions: owner reads" on public.subscriptions;
-create policy "subscriptions: owner reads" on public.subscriptions for select to authenticated using (user_id = auth.uid());
-revoke all on public.subscriptions from anon, authenticated;
-grant select on public.subscriptions to authenticated;
-
--- Webhook deliveries already handled, so a retried delivery changes nothing.
-create table if not exists public.paddle_events (
-  event_id    text primary key,
-  event_type  text not null,
-  received_at timestamptz not null default now()
-);
-alter table public.paddle_events enable row level security;
-revoke all on public.paddle_events from anon, authenticated;
-
--- The plan someone is on right now, worked out in the database.
 create or replace function public.plan_of(uid uuid) returns text
-language sql stable security definer set search_path = public as $$
-  select coalesce(
-    (select s.plan from public.subscriptions s
-      where s.user_id = uid
-        and s.status in ('active', 'trialing', 'past_due')
-        and (s.ends_at is null or s.ends_at > now())),
-    'free')
-$$;
+language sql immutable as $$ select 'free'::text $$;
 revoke all on function public.plan_of(uuid) from public, anon, authenticated;
 
 create or replace function public.my_plan() returns text
@@ -127,15 +87,13 @@ $$;
 revoke all on function public.my_plan() from public, anon;
 grant execute on function public.my_plan() to authenticated;
 
--- How many decks each plan may keep online. Keep these numbers the same as
+-- How many decks one account may keep online. Keep the number the same as
 -- src/billing/plans.js (a test checks they match).
 create or replace function public.deck_limit(p text) returns int
-language sql immutable as $$
-  select case p when 'starter' then 25 when 'pro' then 100 when 'advanced' then 1000 else 3 end
-$$;
+language sql immutable as $$ select 1000 $$;
 
--- Saving a new deck online past the plan's limit is refused. Opening, editing and
--- deleting existing decks always works, so downgrading never locks anyone out of their work.
+-- Saving a new deck online past the limit is refused. Opening, editing and
+-- deleting existing decks always works.
 create or replace function public.decks_enforce_limit() returns trigger
 language plpgsql security definer set search_path = public as $$
 declare
@@ -154,106 +112,6 @@ drop trigger if exists decks_enforce_limit on public.decks;
 create trigger decks_enforce_limit before insert on public.decks
   for each row execute function public.decks_enforce_limit();
 
--- Applied by the Paddle webhook, and only by it. One transaction records the delivery
--- (so a retry does nothing), checks the person exists, ignores an event older than the
--- one already applied, and never lets a second subscription replace one that is
--- paying. Returns: applied | duplicate | stale | unknown_user | conflict.
-create or replace function public.paddle_apply(p_event_id text, p_event_type text, p_occurred timestamptz, rec jsonb)
-returns text
-language plpgsql security definer set search_path = public as $$
-declare
-  uid uuid := (rec->>'user_id')::uuid;
-  n int;
-  current_row public.subscriptions%rowtype;
-begin
-  insert into public.paddle_events (event_id, event_type) values (p_event_id, p_event_type) on conflict do nothing;
-  get diagnostics n = row_count;
-  if n = 0 then return 'duplicate'; end if;
-
-  if not exists (select 1 from auth.users where id = uid) then return 'unknown_user'; end if;
-
-  select * into current_row from public.subscriptions where user_id = uid;
-  if found
-     and current_row.paddle_subscription_id is distinct from rec->>'paddle_subscription_id'
-     and current_row.status in ('active', 'trialing', 'past_due')
-     and (current_row.ends_at is null or current_row.ends_at > now()) then
-    return 'conflict';   -- someone else's payment must not replace a paying subscription
-  end if;
-
-  begin
-    insert into public.subscriptions as s
-      (user_id, plan, status, billing_interval, paddle_customer_id, paddle_subscription_id, trial_ends_at, ends_at, update_payment_url, cancel_url, event_at, updated_at, paddle_env)
-    values
-      (uid, rec->>'plan', rec->>'status', nullif(rec->>'billing_interval', ''), rec->>'paddle_customer_id', rec->>'paddle_subscription_id',
-       nullif(rec->>'trial_ends_at', '')::timestamptz, nullif(rec->>'ends_at', '')::timestamptz,
-       nullif(rec->>'update_payment_url', ''), nullif(rec->>'cancel_url', ''), p_occurred, now(), nullif(rec->>'paddle_env', ''))
-    on conflict (user_id) do update set
-      plan = excluded.plan, status = excluded.status, billing_interval = excluded.billing_interval,
-      paddle_customer_id = excluded.paddle_customer_id, paddle_subscription_id = excluded.paddle_subscription_id,
-      trial_ends_at = excluded.trial_ends_at, ends_at = excluded.ends_at,
-      update_payment_url = excluded.update_payment_url, cancel_url = excluded.cancel_url,
-      event_at = excluded.event_at, updated_at = now(), paddle_env = excluded.paddle_env
-      where s.event_at <= excluded.event_at;
-    get diagnostics n = row_count;
-  exception when unique_violation then
-    return 'conflict';   -- that Paddle subscription already belongs to another account
-  end;
-  return case when n = 0 then 'stale' else 'applied' end;
-end $$;
-revoke all on function public.paddle_apply(text, text, timestamptz, jsonb) from public, anon, authenticated;
-
--- ---------------------------------------------------------------------------------
--- Customers and payments mirrored from Paddle, and which Paddle account (live or sandbox) each
--- row came from. Written only by the webhook. Safe to run again.
--- ---------------------------------------------------------------------------------
-
-alter table public.subscriptions add column if not exists paddle_env text check (paddle_env in ('live', 'sandbox'));
-alter table public.subscriptions add column if not exists last_paid_at timestamptz;
-
-create table if not exists public.paddle_customers (
-  customer_id text primary key,
-  email       text not null,
-  paddle_env  text not null check (paddle_env in ('live', 'sandbox')),
-  event_at    timestamptz not null default now(),
-  updated_at  timestamptz not null default now()
-);
-alter table public.paddle_customers enable row level security;
-revoke all on public.paddle_customers from anon, authenticated;
-
--- A customer event: upsert by Paddle's id, ignoring a delivery older than the one already applied.
-create or replace function public.paddle_apply_customer(p_event_id text, p_event_type text, p_occurred timestamptz, rec jsonb)
-returns text
-language plpgsql security definer set search_path = public as $$
-declare n int;
-begin
-  insert into public.paddle_events (event_id, event_type) values (p_event_id, p_event_type) on conflict do nothing;
-  get diagnostics n = row_count;
-  if n = 0 then return 'duplicate'; end if;
-  insert into public.paddle_customers as c (customer_id, email, paddle_env, event_at, updated_at)
-  values (rec->>'customer_id', coalesce(rec->>'email', ''), rec->>'paddle_env', p_occurred, now())
-  on conflict (customer_id) do update set email = excluded.email, paddle_env = excluded.paddle_env, event_at = excluded.event_at, updated_at = now()
-    where c.event_at <= excluded.event_at;
-  get diagnostics n = row_count;
-  return case when n = 0 then 'stale' else 'applied' end;
-end $$;
-revoke all on function public.paddle_apply_customer(text, text, timestamptz, jsonb) from public, anon, authenticated;
-
--- A completed payment: note when a subscription was last paid. If we have not seen the subscription yet
--- nothing is stored and the later subscription event tells the story.
-create or replace function public.paddle_apply_transaction(p_event_id text, p_event_type text, p_occurred timestamptz, rec jsonb)
-returns text
-language plpgsql security definer set search_path = public as $$
-declare n int;
-begin
-  insert into public.paddle_events (event_id, event_type) values (p_event_id, p_event_type) on conflict do nothing;
-  get diagnostics n = row_count;
-  if n = 0 then return 'duplicate'; end if;
-  update public.subscriptions set last_paid_at = greatest(coalesce(last_paid_at, p_occurred), p_occurred)
-    where paddle_subscription_id = rec->>'paddle_subscription_id';
-  get diagnostics n = row_count;
-  return case when n = 0 then 'no_subscription_yet' else 'applied' end;
-end $$;
-revoke all on function public.paddle_apply_transaction(text, text, timestamptz, jsonb) from public, anon, authenticated;
 
 -- Self-paced courses: someone who finishes a shared deck can leave their name, and the deck's owner sees the list.
 -- Visitors can only add a row through record_completion() for a deck that is shared right now; they cannot read anything back.
@@ -323,9 +181,9 @@ create table if not exists public.team_invites (
 alter table public.decks add column if not exists team_id uuid references public.teams (id) on delete set null;
 create index if not exists decks_team_idx on public.decks (team_id) where team_id is not null;
 
--- How many people a team may hold, by its owner's plan. Keep in step with src/billing/plans.js (a test checks).
+-- How many people a team may hold. Keep in step with src/billing/plans.js (a test checks).
 create or replace function public.team_seats(p text) returns int
-language sql immutable as $$ select case p when 'pro' then 5 when 'advanced' then 25 else 0 end $$;
+language sql immutable as $$ select 25 $$;
 
 create or replace function public.is_team_member(t uuid) returns boolean
 language sql stable security definer set search_path = public as $$

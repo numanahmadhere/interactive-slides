@@ -6,7 +6,6 @@
 // sites that quote their plans), last read in the month below. Where a feature could not
 // be confirmed from public pages the cell says "Check" instead of guessing.
 
-import { PRICES, PLANS, PLAN_ORDER } from '../src/billing/plans.js';
 
 export const CHECKED = 'October 2026';
 
@@ -19,28 +18,28 @@ export const VENDORS = [
 ];
 
 // yes | no | paid (only on a paid plan) | part (partly) | soon (not yet, ours only) | check (not confirmed) | text:...
-// "needs" names what must exist in the product for a Yes or Paid in our column; "gated" names what must be
-// locked on the free plan for a Paid in our column (a test checks both).
+// "needs" names what must exist in the product for a Yes in our column (a test checks it). Everything of ours is free,
+// so our column never says Paid; the other tools' cells can.
 // Order of cells: us, Mentimeter, Slido, Kahoot, Poll Everywhere.
 export const GROUPS = [
   { title: 'Ask your audience', rows: [
     { name: 'Live polls', cells: ['yes', 'yes', 'yes', 'yes', 'yes'] },
     { name: 'Scored quizzes', cells: ['yes', 'yes', 'yes', 'yes', 'yes'] },
-    { name: 'Timed quizzes with names, teams and a leaderboard', cells: ['paid', 'yes', 'yes', 'yes', 'yes'], needs: ['leaderboard'], gated: ['leaderboard'] },
-    { name: 'Word cloud', cells: ['paid', 'yes', 'yes', 'paid', 'yes'], needs: ['wordcloud'], gated: ['kind:cloud'] },
-    { name: 'Open-text answers', cells: ['paid', 'yes', 'yes', 'paid', 'yes'], needs: ['open-answers'], gated: ['kind:open'] },
-    { name: 'Rating scales and ranking', cells: ['part', 'yes', 'yes', 'check', 'yes'], needs: ['rating', 'ranking'], gated: ['kind:ranking'] },
-    { name: 'Audience Q&A with upvotes', cells: ['paid', 'yes', 'yes', 'paid', 'yes'], needs: ['qna'], gated: ['kind:qna'] },
-    { name: 'Pin on an image', cells: ['paid', 'yes', 'check', 'check', 'yes'], needs: ['pin'], gated: ['kind:pin'] },
-    { name: 'Swear filter and approve-first moderation', cells: ['paid', 'yes', 'paid', 'check', 'yes'], needs: ['moderation'], gated: ['kind:open'] },
+    { name: 'Timed quizzes with names, teams and a leaderboard', cells: ['yes', 'yes', 'yes', 'yes', 'yes'], needs: ['leaderboard'] },
+    { name: 'Word cloud', cells: ['yes', 'yes', 'yes', 'paid', 'yes'], needs: ['wordcloud'] },
+    { name: 'Open-text answers', cells: ['yes', 'yes', 'yes', 'paid', 'yes'], needs: ['open-answers'] },
+    { name: 'Rating scales and ranking', cells: ['part', 'yes', 'yes', 'check', 'yes'], needs: ['rating', 'ranking'] },
+    { name: 'Audience Q&A with upvotes', cells: ['yes', 'yes', 'yes', 'paid', 'yes'], needs: ['qna'] },
+    { name: 'Pin on an image', cells: ['yes', 'yes', 'check', 'check', 'yes'], needs: ['pin'] },
+    { name: 'Swear filter and approve-first moderation', cells: ['yes', 'yes', 'paid', 'check', 'yes'], needs: ['moderation'] },
     { name: 'Quiz answer key never leaves the presenter\'s browser', cells: ['yes', 'check', 'check', 'check', 'check'], needs: ['answer-key'] },
-    { name: 'Download results as a spreadsheet', cells: ['paid', 'paid', 'paid', 'check', 'paid'], needs: ['csv'], gated: ['csv'] },
-    { name: 'Session reports to keep', cells: ['paid', 'yes', 'paid', 'yes', 'yes'], needs: ['reports'], gated: ['reports'] },
+    { name: 'Download results as a spreadsheet', cells: ['yes', 'paid', 'paid', 'check', 'paid'], needs: ['csv'] },
+    { name: 'Session reports to keep', cells: ['yes', 'yes', 'paid', 'yes', 'yes'], needs: ['reports'] },
   ] },
   { title: 'Build and present', rows: [
     { name: 'Design full slides in the same tool', cells: ['yes', 'part', 'no', 'part', 'no'], needs: ['free-form'] },
     { name: 'Import a PowerPoint or Google Slides file', cells: ['part', 'part', 'no', 'part', 'check'], needs: ['import'] },
-    { name: 'Self-paced mode with completion list and certificate', cells: ['paid', 'part', 'no', 'yes', 'check'], needs: ['self-paced'], gated: ['self-paced'] },
+    { name: 'Self-paced mode with completion list and certificate', cells: ['yes', 'part', 'no', 'yes', 'check'], needs: ['self-paced'] },
     { name: 'Works inside PowerPoint or Google Slides', cells: ['soon', 'yes', 'yes', 'paid', 'yes'] },
     { name: 'Phone remote with speaker notes', cells: ['yes', 'check', 'check', 'check', 'check'], needs: ['remote'] },
     { name: 'Text versions of every block for screen readers', cells: ['yes', 'check', 'check', 'check', 'check'], needs: ['a11y'] },
@@ -49,12 +48,12 @@ export const GROUPS = [
   { title: 'Privacy, teams and cost', rows: [
     { name: 'Audience answers stay off the vendor\'s servers', cells: ['yes', 'no', 'no', 'no', 'no'], needs: ['no-storage'] },
     { name: 'Private session that keeps nothing', cells: ['yes', 'check', 'check', 'check', 'check'], needs: ['private'] },
-    { name: 'Team workspace with shared decks, comments and brand kit', cells: ['paid', 'paid', 'paid', 'paid', 'paid'], needs: ['teams'], gated: ['teams'] },
+    { name: 'Team workspace with shared decks, comments and brand kit', cells: ['yes', 'paid', 'paid', 'paid', 'paid'], needs: ['teams'] },
     { name: 'Edit the same deck together in real time', cells: ['soon', 'yes', 'check', 'yes', 'check'] },
     { name: 'Single sign-on (SSO)', cells: ['soon', 'paid', 'paid', 'paid', 'paid'] },
     { name: 'No monthly cap on participants (free plan)', cells: ['yes', 'no', 'check', 'check', 'check'], needs: ['no-cap'] },
-    { name: 'Free plan limits', cells: ['text:3 decks online, rooms up to 25 phones', 'text:50 participants a month', 'text:100 participants, 3 polls per event', 'text:10 players (3 on a work account)', 'text:25 audience members'] },
-    { name: 'Cheapest paid plan, per presenter', cells: ['text:$10 a month, 7-day trial', 'text:About $11 a month', 'text:About $17.50 a month', 'text:About $25 a month', 'text:See vendor'] },
+    { name: 'Free plan limits', cells: ['text:No limits by plan, rooms up to 1,000 phones', 'text:50 participants a month', 'text:100 participants, 3 polls per event', 'text:10 players (3 on a work account)', 'text:25 audience members'] },
+    { name: 'Cheapest paid plan, per presenter', cells: ['text:None, it is all free', 'text:About $11 a month', 'text:About $17.50 a month', 'text:About $25 a month', 'text:See vendor'] },
   ] },
 ];
 
@@ -72,17 +71,6 @@ const SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidden=
 const ICON = Object.fromEntries(Object.keys(ICON_PATHS).map((k) => [k, `<svg class="cm" aria-hidden="true"><use href="#cmp-${k}"/></svg>`]));
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
-
-// The lowest plan that includes a feature we call "paid", worked out from the plan table so the tag cannot drift.
-const GATES = {
-  leaderboard: (p) => p.leaderboard, csv: (p) => p.csv, reports: (p) => p.reports, 'self-paced': (p) => p.selfPaced, teams: (p) => p.teamSeats > 0,
-};
-function minPlan(gate) {
-  const test = gate.startsWith('kind:') ? (p) => p.kinds.includes(gate.slice(5)) : GATES[gate];
-  const id = test && PLAN_ORDER.find((x) => test(PLANS[x]));
-  return id && id !== 'free' ? PLANS[id].name : 'Paid';
-}
-const tagOf = (row) => (row.cells[0] === 'paid' ? minPlan(row.gated?.[0] ?? '') : '');
 
 const SR = { yes: 'Included', paid: 'Included on a paid plan', part: 'Partly', no: 'Not offered', soon: 'Not yet', check: 'Could not confirm' };
 // Ticks stand alone; only the exceptions carry a word. A feature on a paid plan still gets the green tick, with the plan beside it.
@@ -108,18 +96,18 @@ export function renderCompare({ fold = false } = {}) {
   const wins = [
     ['Works offline', 'The only one that lets you build and present with no connection.'],
     ['Answers stay with you', 'Audience answers are held in your browser, not stored by us.'],
-    ['Lowest paid price', `From $${PRICES.starter.month} a month, below the other three that publish a price.`],
+    ['Nothing to pay', 'Every feature is free. There is no plan to choose and no trial to cancel.'],
     ['Slides and questions in one', 'Design the slide and add the question in the same editor.'],
   ].map(([t, d]) => `<li><b>${t}</b><span>${d}</span></li>`).join('');
   const head = VENDORS.map((v) => `<th scope="col"${v.us ? ' class="cmp__us"' : ''}>${v.us ? '<span class="cmp__best">Best choice</span>' : ''}<span class="cmp__vname">${v.url ? `<a href="${v.url}" rel="noopener nofollow">${esc(v.name)}</a>` : esc(v.name)}</span></th>`).join('');
   const body = GROUPS.map((g) => `<tbody><tr class="cmp__group"><th scope="colgroup" colspan="${VENDORS.length + 1}">${esc(g.title)}</th></tr>
-${g.rows.map((r) => `<tr><th scope="row">${esc(r.name)}</th>${r.cells.map((c, i) => renderCell(c, i === 0 ? tagOf(r) : '')).join('')}</tr>`).join('\n')}</tbody>`).join('\n');
+${g.rows.map((r) => `<tr><th scope="row">${esc(r.name)}</th>${r.cells.map((c) => renderCell(c, '')).join('')}</tr>`).join('\n')}</tbody>`).join('\n');
   return `${SPRITE}<ul class="cmp__wins" aria-label="Where we lead">${wins}</ul>
-<div class="cmp__board"><h3 class="cmp__bh">Features confirmed, out of ${sc[0].of}</h3><ol class="cmp__scores">${board}</ol><p class="cmp__bnote">Included on any plan counts as 1 and partly counts as a half. &ldquo;Not yet&rdquo;, &ldquo;No&rdquo; and &ldquo;Check&rdquo; (could not confirm) count as 0.</p></div>
+<div class="cmp__board"><h3 class="cmp__bh">Features confirmed, out of ${sc[0].of}</h3><ol class="cmp__scores">${board}</ol><p class="cmp__bnote">Included counts as 1 (on a paid plan too) and partly counts as a half. &ldquo;Not yet&rdquo;, &ldquo;No&rdquo; and &ldquo;Check&rdquo; (could not confirm) count as 0.</p></div>
 ${fold ? `<details class="cmp__fold"><summary>See all ${sc[0].of} features side by side</summary>` : ''}<div class="cmp__scroll" tabindex="0" role="region" aria-label="Comparison table, scrolls sideways on small screens"><table class="cmp"><caption class="sr">How Densight Slides compares with four other tools, checked ${CHECKED}</caption>
 <thead><tr><th scope="col"><span class="sr">Feature</span></th>${head}</tr></thead>
 ${body}
 </table></div>${fold ? `${renderKey()}</details>` : ''}`;
 }
 
-export const renderKey = () => `<ul class="cmp__key" aria-label="Key">${[['yes', 'Included', ''], ['yes', 'Included on a paid plan (the plan is shown)', 'Starter'], ['part', 'Partly', 'Partly'], ['no', 'Not offered, as far as we could find', ''], ['soon', 'Not yet (ours)', 'Soon'], ['check', 'Could not confirm', '']].map(([k, t, tag]) => `<li class="cmp__${k}">${ICON[k]}${tag ? `<span class="cmp__tag">${tag}</span>` : ''}${t}</li>`).join('')}</ul>`;
+export const renderKey = () => `<ul class="cmp__key" aria-label="Key">${[['yes', 'Included', ''], ['yes', 'Included, but only on a paid plan', 'Paid'], ['part', 'Partly', 'Partly'], ['no', 'Not offered, as far as we could find', ''], ['soon', 'Not yet (ours)', 'Soon'], ['check', 'Could not confirm', '']].map(([k, t, tag]) => `<li class="cmp__${k}">${ICON[k]}${tag ? `<span class="cmp__tag">${tag}</span>` : ''}${t}</li>`).join('')}</ul>`;

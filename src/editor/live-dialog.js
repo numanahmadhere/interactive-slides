@@ -9,7 +9,6 @@ import { loadProject } from '../cloud/config.js';
 import { BUILD } from '../build-info.js';
 import { BUILT_IN_CONFIG } from '../cloud/defaults.js';
 import { button, field, openDialog, select, textInput, toast, toggle } from './ui.js';
-import { PLANS, canLeaderboard } from '../billing/plans.js';
 
 const STATUS_TEXT = {
   connecting: 'Connecting...',
@@ -72,7 +71,6 @@ export function openLiveDialog(editor) {
       }
       saveSettings({ config, base });
       const teams = teamText.split(',').map((t) => t.trim()).filter(Boolean).slice(0, 8);
-      if (!privacy && (names || teams.length) && !editor.requirePlan((p) => p.leaderboard, 'Names, teams and the leaderboard are not part of your plan.')) return;
       editor.startLive({ config, base, names: !privacy && (names || teams.length > 0), teams: privacy ? [] : teams, privacy });
       render();
     } });
@@ -80,7 +78,7 @@ export function openLiveDialog(editor) {
     return h('div', null,
       h('p', { class: 'ed-hint', text: 'Start a session, then show the code or QR code. The audience answers polls and quizzes on their phones and you move the slides from yours. Nothing is saved on the server.' }),
       field('Run', kindSelect), remoteBox,
-      toggle({ label: canLeaderboard(editor.plan) ? 'Ask for names and keep a leaderboard' : 'Ask for names and keep a leaderboard (Starter)', value: false, onChange: (v) => { names = v; } }),
+      toggle({ label: 'Ask for names and keep a leaderboard', value: false, onChange: (v) => { names = v; } }),
       field('Teams (optional)', textInput({ placeholder: 'Red, Blue', spellcheck: false, onInput: (v) => { teamText = v; } }), 'Names of up to eight teams, separated by commas. Phones choose one; teams are ranked by their average score.'),
       toggle({ label: 'Private session: keep nothing', value: false, onChange: (v) => { privacy = v; } }),
       h('p', { class: 'ed-hint', text: 'No names or teams, no report, no spreadsheet. Phones do not remember anything, and answers disappear from this page when you end the session.' }),
@@ -88,9 +86,8 @@ export function openLiveDialog(editor) {
       h('div', { class: 'ed-live__actions' }, start));
   }
 
-  // Reports stay on this device. Saving one needs a plan that includes them.
+  // Reports stay on this device.
   async function saveReport() {
-    if (!editor.requirePlan((p) => p.reports, 'Saving session reports is not part of your plan.')) return false;
     try {
       await editor.persist.saveReport(editor.live.host.report());
       toast('Report saved on this device.');
@@ -163,12 +160,11 @@ export function openLiveDialog(editor) {
           qrElement(remoteUrl, { size: 168, label: 'QR code for the presenter remote' }),
           linkRow('Remote link', remoteUrl))),
       h('div', { class: 'ed-live__bar' }, count, status),
-      h('p', { class: 'ed-hint', text: `${PLANS[editor.plan].name} plan: rooms up to ${host.maxPhones} phones.${editor.plan === 'free' ? ' Word clouds, open answers, ranking and Q&A need Starter.' : ''}` }),
+      h('p', { class: 'ed-hint', text: `Rooms of up to ${host.maxPhones} phones.` }),
       privacy ? h('p', { class: 'ed-hint', text: 'Private session: nothing from it can be downloaded or saved. It all disappears when you end the session.' }) : null,
       h('div', { class: 'ed-hint', text: `Build ${BUILD}  ·  ${config.kind === 'local' ? 'this browser only' : new URL(config.url).hostname}` }),
       h('div', { class: 'ed-live__actions' },
-        privacy ? null : button({ label: editor.plan === 'free' ? 'Download results (CSV, Starter)' : 'Download results (CSV)', onClick: () => {
-          if (!editor.requirePlan((p) => p.csv, 'Downloading results is not part of your plan.')) return;
+        privacy ? null : button({ label: 'Download results (CSV)', onClick: () => {
           const blob = new Blob([host.exportResults()], { type: 'text/csv;charset=utf-8' });
           const a = h('a', { href: URL.createObjectURL(blob), download: `${slugify(editor.deck.meta.title) || 'results'}-results.csv` });
           document.body.append(a);

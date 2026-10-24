@@ -89,8 +89,8 @@ test('a live session can report on itself, and knows when it has something worth
   assert.deepEqual([r.title, r.participants, r.questions[0].options[1].count], ['Workshop', 2, 1]);
 });
 
-test('the reports page has an address, and saving reports belongs to the paid plans', () => {
+test('the reports page has an address, and everyone can save reports', () => {
   assert.deepEqual(parseAppPath('/app/reports'), { page: 'reports' });
   assert.deepEqual(parseAppPath('/app/reports/'), { page: 'reports' });
-  assert.ok(!canReports('free') && canReports('starter'));
+  assert.ok(canReports('free'));
 });

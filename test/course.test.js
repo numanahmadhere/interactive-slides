@@ -37,11 +37,11 @@ test('the completions file defuses spreadsheet formulas', () => {
   assert.match(csv, /"Ana, B"/);
 });
 
-test('the course switch lives on the deck, survives the gate, and is a paid feature', () => {
+test('the course switch lives on the deck, and survives the gate', () => {
   const { deck } = normalizeDeck({ slides: [], course: { on: true, certificate: false } });
   assert.deepEqual(deck.course, { on: true, certificate: false });
   assert.deepEqual(normalizeDeck({ slides: [], course: 'junk' }).deck.course, { on: false, certificate: true });
   assert.equal(setCourse(deck, { on: false }).course.on, false);
   assert.equal(setCourse(deck, { on: true }), deck);
-  assert.ok(!canSelfPace('free') && canSelfPace('starter'));
+  assert.ok(canSelfPace('free'));
 });

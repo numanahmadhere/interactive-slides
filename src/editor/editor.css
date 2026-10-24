@@ -648,9 +648,6 @@ a.ed-logo .logo { width: 28px; height: 28px; }
 .ed-keys kbd { padding: 2px 7px; border: 1px solid var(--ed-border-strong); border-radius: 6px; background: var(--ed-field); font: 500 12px var(--ed-font); white-space: nowrap; }
 
 .ed-theme { position: relative; }
-.ed-theme__lock { position: absolute; top: 10px; right: 10px; padding: 2px 8px; border-radius: 999px; background: var(--ed-accent); color: #fff; font: 700 10px var(--ed-font); letter-spacing: 0.03em; text-transform: uppercase; }
-.ed-upgrade { display: grid; gap: 14px; }
-.ed-card__tag { position: absolute; top: 10px; right: 10px; padding: 2px 8px; border-radius: 999px; background: var(--ed-accent); color: #fff; font: 700 10px var(--ed-font); letter-spacing: 0.03em; text-transform: uppercase; }
 .ed-card { position: relative; }
 
 /* Comments */

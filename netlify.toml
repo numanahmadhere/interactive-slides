@@ -8,9 +8,9 @@
   NODE_VERSION = "22"
   # The anon key is public and is compiled into the page on purpose; do not let
   # the secrets scanner fail the build over it.
-  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,SUPABASE_ANON_KEY,PADDLE_CLIENT_TOKEN"
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,SUPABASE_ANON_KEY"
 
-# Local testing with `netlify dev`: serves the built site in dist/ together with the billing functions on one port.
+# Local testing with `netlify dev`: serves the built site in dist/ on one port.
 # Build first (`npm run build`), then `netlify dev`, then open http://localhost:8888.
 [dev]
   framework = "#static"
@@ -18,10 +18,21 @@
   port = 8888
   autoLaunch = false
 
-# Billing: the Paddle webhook (netlify/functions/paddle-webhook.mjs).
-[functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild"
+# Pages from when there were paid plans now lead to the home page.
+[[redirects]]
+  from = "/pricing/*"
+  to = "/"
+  status = 301
+
+[[redirects]]
+  from = "/refund/*"
+  to = "/terms/"
+  status = 301
+
+[[redirects]]
+  from = "/welcome/*"
+  to = "/app/"
+  status = 301
 
 [[redirects]]
   from = "/app/*"

@@ -5,7 +5,6 @@ import { LiveHost } from '../src/live/host.js';
 import { newRoom, parseHello, cleanAudienceState } from '../src/live/protocol.js';
 import { normalizeDeck } from '../src/core/schema.js';
 import { collectKeys, collectPrompts } from '../src/live/prompts.js';
-import { canLeaderboard, PLANS } from '../src/billing/plans.js';
 
 test('single and multiple choice answers are marked the same way the quiz block marks them', () => {
   const single = { mode: 'single', correct: [false, true, false] };
@@ -144,7 +143,7 @@ test('a timed game: faster right answers score more, wrong scores nothing, late 
   assert.ok(g.host.remaining('q1') === null || g.host.remaining('q1') > 0, 'resetting a question restarts its clock');
 });
 
-test('without names there is no leaderboard, and a free plan gets neither names nor a clock', async () => {
+test('without names there is no leaderboard', async () => {
   const noNames = game({ names: false });
   after(() => noNames.host.stop());
   await wait(10);
@@ -152,15 +151,4 @@ test('without names there is no leaderboard, and a free plan gets neither names 
   await wait();
   assert.deepEqual(noNames.host.leaderboard(), []);
   assert.equal(noNames.host.names, false);
-  const free = game({ plan: 'free' });
-  after(() => free.host.stop());
-  await wait(10);
-  assert.equal(free.host.names, false);
-  assert.deepEqual(free.host.teams, []);
-  assert.equal(free.host.remaining('q1'), null, 'a free room has no quiz clock');
-  free.advance(100);
-  free.ch.send({ t: 'vote', cid: 'a', id: 'q1', picks: [0] });
-  await wait();
-  assert.equal(free.host.counts('q1', 2)[0], 1, 'and so no answer is ever "too late"');
-  assert.ok(!canLeaderboard('free') && canLeaderboard('starter') && PLANS.pro.leaderboard);
 });

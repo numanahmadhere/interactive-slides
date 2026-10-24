@@ -8,9 +8,6 @@ import { signInPanel } from '../cloud/sign-in-panel.js';
 import { appFooter, appHeader } from './chrome.js';
 import { COMPANY_NAME, COMPANY_URL, SUPPORT_EMAIL, supportHref } from './contact.js';
 import { takeFlash } from './flash.js';
-import { getBilling } from '../billing/instance.js';
-import { planPicker } from '../billing/picker.js';
-import { PLANS } from '../billing/plans.js';
 import { teamSection } from './teams.js';
 
 export async function mountAccount(root) {
@@ -30,45 +27,6 @@ export async function mountAccount(root) {
   const section = (title, ...children) => h('section', { class: 'sh-section' }, h('h2', { text: title }), ...children);
   const danger = (title, ...children) => h('section', { class: 'sh-section sh-section--danger' }, h('h2', { text: title }), ...children);
 
-  const billing = getBilling();
-  const day = (iso) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString([], { dateStyle: 'medium' }); };
-
-  // Ask our server for a Paddle-hosted page where this person updates their card, cancels and sees invoices.
-  async function openPortal() {
-    const res = await fetch('/api/paddle-portal', { method: 'POST', headers: { authorization: `Bearer ${await cloud.accessToken()}` } });
-    const body = await res.json().catch(() => ({}));
-    if (res.ok && body.url) { location.assign(body.url); return; }
-    const reasons = { not_configured: 'The billing page is not switched on yet. Write to support and we will sort it out.', no_subscription: 'We could not find a subscription on this account.', sign_in_required: 'Please sign in again.' };
-    throw new Error(reasons[body.error] ?? 'Could not open your billing page. Try again in a minute.');
-  }
-
-  // Your plan, how to manage it, and the plans you could move to.
-  function planSection() {
-    const row = billing.row;
-    const plan = PLANS[billing.plan];
-    const lines = [];
-    if (billing.plan !== 'free' && row) {
-      if (row.status === 'trialing' && row.trial_ends_at) lines.push(`Free trial until ${day(row.trial_ends_at)}. You will be charged after that unless you cancel.`);
-      if (row.status === 'past_due') lines.push('Your last payment did not go through. Update your payment method to keep your plan.');
-      if (row.ends_at && row.status !== 'canceled') lines.push(`Your plan ends on ${day(row.ends_at)} and will not renew.`);
-      if (row.status === 'canceled') lines.push('Your subscription has ended.');
-    }
-    const manage = [];
-    if (row?.paddle_subscription_id && billing.plan !== 'free') manage.push(button({ label: 'Manage billing', variant: 'primary', onClick: run('Opening your billing page...', openPortal) }));
-    if (row?.update_payment_url && billing.plan !== 'free') manage.push(h('a', { class: 'ed-btn', href: row.update_payment_url, target: '_blank', rel: 'noopener', text: 'Update payment method' }));
-    if (row?.cancel_url && billing.plan !== 'free' && !row.ends_at) manage.push(h('a', { class: 'ed-btn', href: row.cancel_url, target: '_blank', rel: 'noopener', text: 'Cancel subscription' }));
-    const wanted = new URLSearchParams(location.search).get('plan');
-    return section('Plan and billing',
-      h('p', { class: 'sh-lead' }, 'You are on the ', h('strong', { text: plan.name }), ' plan.'),
-      ...lines.map((t) => h('p', { text: t })),
-      manage.length ? h('div', { class: 'ed-live__actions' }, ...manage) : null,
-      planPicker({
-        billing, cloud, highlight: PLANS[wanted] ? wanted : null, interval: new URLSearchParams(location.search).get('interval'),
-        onSignIn: () => document.querySelector('.sh-main')?.scrollIntoView(),
-        onActivated: () => render(),
-      }));
-  }
-
   async function render() {
     const local = await persist.listDecks();
     const body = [h('h1', { class: 'sh-title', text: 'Account' })];
@@ -86,7 +44,6 @@ export async function mountAccount(root) {
         status));
     }
 
-    if (cloud?.user) body.push(planSection());
 
     // Joining a team from an invite link, then showing the teams this person is in.
     if (cloud?.user) {
@@ -102,7 +59,7 @@ export async function mountAccount(root) {
       }
       let teams = [];
       try { teams = await cloud.teams(); } catch (err) { console.error(err); }
-      body.push(teamSection({ cloud, plan: billing.plan, teams, run, say, rerender: render }));
+      body.push(teamSection({ cloud, teams, run, say, rerender: render }));
     } else if (cloud && new URLSearchParams(location.search).get('invite')) {
       body.unshift(h('p', { class: 'ed-hint ed-hint--warn', role: 'status', text: 'You have been invited to a team. Sign in below to join it. If you are sent back here without the invite, open the link again.' }));
     }
@@ -159,13 +116,7 @@ export async function mountAccount(root) {
         } }))) });
   }
 
-  await billing.refresh();
   await render();
-  // Coming back from Paddle's checkout: the webhook may still be on its way, so wait for the plan to change.
-  if (new URLSearchParams(location.search).get('welcome') && cloud?.user && billing.plan === 'free') {
-    toast('Thank you. Switching your plan on...', { timeout: 6000 });
-    if ((await billing.waitForChange()) !== 'free') { toast(`You are on the ${PLANS[billing.plan].name} plan.`); await render(); }
-  }
   const flash = takeFlash();
   if (flash) toast(flash.text, { kind: flash.kind });
 }

@@ -64,8 +64,6 @@ async function startDb(attempts = 4, waitMs = 6000) {
 before(async () => {
   await startDb();
   await db.exec(SCHEMA);
-  // Person A is on a big plan so the older tests below can create many decks; person B stays on the free plan.
-  await db.query(`insert into subscriptions (user_id, plan, status) values ($1, 'advanced', 'active')`, [A]);
 });
 after(async () => { await db.close(); });
 
@@ -176,127 +174,43 @@ test('the thumbnail column accepts a small image and refuses an oversized one', 
 });
 
 
-// ---- plans and billing ------------------------------------------------------------
+// ---- limits ------------------------------------------------------------------------
 
-import { PLANS } from '../src/billing/plans.js';
+import { LIMITS } from '../src/billing/plans.js';
 
-const asService = (sql, params = []) => db.query(sql, params).then((r) => r.rows); // the webhook's role bypasses the rules
+const asService = (sql, params = []) => db.query(sql, params).then((r) => r.rows);
 
-test('a free account may keep three decks online, and the fourth is refused with a clear reason', async () => {
+test('everything is free: a long run of decks is allowed, and there are no subscription or payment tables', async () => {
   await asService('delete from decks where owner = $1', [B]);
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 12; i++) {
     const r = await as(B, `insert into decks (title, data) values ('d${i}', '{}') returning id`);
     assert.ok(Array.isArray(r), `deck ${i}: ${JSON.stringify(r)}`);
   }
-  const fourth = await as(B, `insert into decks (title, data) values ('d4', '{}')`);
-  assert.match(fourth.error ?? '', /deck_limit/);
+  assert.equal((await as(B, 'select my_plan() as p'))[0].p, 'free');
+  const tables = (await asService(`select table_name from information_schema.tables where table_schema = 'public' and (table_name like 'paddle%' or table_name = 'subscriptions')`)).map((r) => r.table_name);
+  assert.deepEqual(tables, [], 'a fresh install has no billing tables');
 });
 
-test('editing and deleting still work at the limit, and deleting frees a place', async () => {
+test('editing and deleting decks work, and a new deck is refused only past the cap, with a clear reason', async () => {
   const rows = await as(B, 'select id from decks');
-  assert.equal(rows.length, 3);
   const upd = await as(B, `update decks set title = 'renamed' where id = $1 returning title`, [rows[0].id]);
   assert.equal(upd[0].title, 'renamed');
   await as(B, 'delete from decks where id = $1', [rows[1].id]);
-  const again = await as(B, `insert into decks (title, data) values ('new', '{}') returning id`);
-  assert.ok(Array.isArray(again));
+  // lower the cap for this test only: the trigger reads deck_limit() each time
+  await asService(`create or replace function public.deck_limit(p text) returns int language sql immutable as $$ select 11 $$`);
+  const refused = await as(B, `insert into decks (title, data) values ('over', '{}')`);
+  assert.match(refused.error ?? '', /deck_limit/);
+  await as(B, 'delete from decks where id = $1', [rows[2].id]);
+  assert.ok(Array.isArray(await as(B, `insert into decks (title, data) values ('fits', '{}') returning id`)), 'deleting frees a place');
+  await asService(`create or replace function public.deck_limit(p text) returns int language sql immutable as $$ select 1000 $$`);
 });
 
-test('a paid plan raises the limit, a lapsed one lowers it again, nothing existing is deleted', async () => {
-  await asService(`insert into subscriptions (user_id, plan, status) values ($1, 'starter', 'active') on conflict (user_id) do update set plan = 'starter', status = 'active', ends_at = null`, [B]);
-  assert.equal((await as(B, 'select my_plan() as p'))[0].p, 'starter');
-  for (let i = 0; i < 5; i++) assert.ok(Array.isArray(await as(B, `insert into decks (title, data) values ('s${i}', '{}') returning id`)));
-  const count = (await as(B, 'select count(*)::int as n from decks'))[0].n;
-  assert.ok(count > 3);
-  await asService(`update subscriptions set status = 'canceled' where user_id = $1`, [B]);
-  assert.equal((await as(B, 'select my_plan() as p'))[0].p, 'free');
-  assert.equal((await as(B, 'select count(*)::int as n from decks'))[0].n, count, 'decks are kept');
-  assert.match((await as(B, `insert into decks (title, data) values ('x', '{}')`)).error ?? '', /deck_limit/);
-  await asService(`update subscriptions set status = 'active', ends_at = now() - interval '1 day' where user_id = $1`, [B]);
-  assert.equal((await as(B, 'select my_plan() as p'))[0].p, 'free', 'a plan past its end date no longer counts');
-  await asService(`update subscriptions set status = 'trialing', ends_at = now() + interval '3 days' where user_id = $1`, [B]);
-  assert.equal((await as(B, 'select my_plan() as p'))[0].p, 'starter', 'a trial counts');
-});
-
-test('people can read only their own subscription and can never write one', async () => {
-  await asService(`update subscriptions set plan = 'pro' where user_id = $1`, [A]);
-  assert.equal((await as(B, 'select * from subscriptions')).length, 1, 'B sees only their own row');
-  assert.equal((await as(B, 'select * from subscriptions'))[0].user_id, B);
-  assert.ok((await as(B, `update subscriptions set plan = 'advanced' where user_id = $1`, [B])).error, 'no update');
-  assert.ok((await as(B, `insert into subscriptions (user_id, plan, status) values ($1, 'advanced', 'active')`, [B])).error, 'no insert');
-  assert.ok((await as(B, 'delete from subscriptions')).error, 'no delete');
-  assert.ok((await as(null, 'select * from subscriptions')).error, 'anonymous visitors see nothing');
-  assert.ok((await as(B, 'select * from paddle_events')).error, 'the webhook log is private');
+test('the limits in the database match the ones in the app', async () => {
+  const [{ n }] = await asService(`select deck_limit('free') as n`);
+  assert.equal(n, LIMITS.cloudDecks);
+  const [{ seats }] = await asService(`select team_seats('free') as seats`);
+  assert.equal(seats, LIMITS.teamSeats);
   assert.ok((await as(B, 'select plan_of($1)', [A])).error, 'nobody can look up another person\'s plan');
-});
-
-test('the deck limits in the database match the plan table in the app', async () => {
-  for (const [id, plan] of Object.entries(PLANS)) {
-    const [{ n }] = await asService('select deck_limit($1) as n', [id]);
-    assert.equal(n, plan.cloudDecks, id);
-    const [{ seats }] = await asService('select team_seats($1) as seats', [id]);
-    assert.equal(seats, plan.teamSeats, `${id} team seats`);
-  }
-});
-
-// ---- the webhook's database function ----------------------------------------------------
-
-const rec = (over = {}) => ({ user_id: B, plan: 'pro', status: 'active', billing_interval: 'month', paddle_customer_id: 'ctm_B', paddle_subscription_id: 'sub_B', trial_ends_at: '', ends_at: '', update_payment_url: '', cancel_url: '', ...over });
-const apply = async (id, at, r) => (await db.query('select paddle_apply($1, $2, $3, $4::jsonb) as r', [id, 'subscription.updated', at, JSON.stringify(r)])).rows[0].r;
-
-test('paddle_apply: applies once, ignores a retry, ignores an older event, and rejects an unknown person', async () => {
-  await db.query('delete from subscriptions where user_id = $1', [B]);
-  assert.equal(await apply('e1', '2026-10-04T10:00:00Z', rec()), 'applied');
-  assert.equal(await apply('e1', '2026-10-04T10:00:00Z', rec({ plan: 'advanced' })), 'duplicate');
-  assert.equal((await db.query('select plan from subscriptions where user_id = $1', [B])).rows[0].plan, 'pro');
-  assert.equal(await apply('e0', '2026-10-04T09:00:00Z', rec({ plan: 'starter' })), 'stale');
-  assert.equal((await db.query('select plan from subscriptions where user_id = $1', [B])).rows[0].plan, 'pro', 'an older event cannot undo a newer one');
-  assert.equal(await apply('e2', '2026-10-04T11:00:00Z', rec({ plan: 'advanced', status: 'active' })), 'applied');
-  assert.equal((await db.query('select plan from subscriptions where user_id = $1', [B])).rows[0].plan, 'advanced');
-  assert.equal(await apply('e3', '2026-10-04T12:00:00Z', rec({ user_id: '99999999-9999-9999-9999-999999999999' })), 'unknown_user');
-});
-
-test('paddle_apply: a stranger\'s payment cannot replace someone else\'s paying subscription', async () => {
-  // B pays for sub_B. Someone else completes checkout with B's id in the custom data.
-  const before = (await db.query('select plan, paddle_subscription_id from subscriptions where user_id = $1', [B])).rows[0];
-  assert.equal(await apply('e4', '2026-10-05T00:00:00Z', rec({ plan: 'starter', paddle_subscription_id: 'sub_ATTACKER' })), 'conflict');
-  const after = (await db.query('select plan, paddle_subscription_id from subscriptions where user_id = $1', [B])).rows[0];
-  assert.deepEqual(after, before);
-  // once B's own subscription has ended, a new one may take its place
-  await db.query(`update subscriptions set status = 'canceled' where user_id = $1`, [B]);
-  assert.equal(await apply('e5', '2026-10-06T00:00:00Z', rec({ paddle_subscription_id: 'sub_NEW', plan: 'starter' })), 'applied');
-  // the same Paddle subscription cannot be claimed by a second account
-  assert.equal(await apply('e6', '2026-10-07T00:00:00Z', rec({ user_id: A, paddle_subscription_id: 'sub_NEW' })), 'conflict');
-});
-
-test('nobody but the webhook can run paddle_apply', async () => {
-  assert.ok((await as(B, `select paddle_apply('x', 't', now(), '{}'::jsonb)`)).error);
-  assert.ok((await as(null, `select paddle_apply('x', 't', now(), '{}'::jsonb)`)).error);
-});
-
-test('customer and payment events are stored once, in order, and only by the webhook', async () => {
-  const cust = async (id, at, rec) => (await db.query('select paddle_apply_customer($1, $2, $3, $4::jsonb) as r', [id, 'customer.updated', at, JSON.stringify(rec)])).rows[0].r;
-  assert.equal(await cust('c1', '2026-10-04T10:00:00Z', { customer_id: 'ctm_X', email: 'old@example.test', paddle_env: 'live' }), 'applied');
-  assert.equal(await cust('c1', '2026-10-04T10:00:00Z', { customer_id: 'ctm_X', email: 'dup@example.test', paddle_env: 'live' }), 'duplicate');
-  assert.equal(await cust('c2', '2026-10-04T11:00:00Z', { customer_id: 'ctm_X', email: 'new@example.test', paddle_env: 'live' }), 'applied');
-  assert.equal(await cust('c0', '2026-10-04T09:00:00Z', { customer_id: 'ctm_X', email: 'older@example.test', paddle_env: 'live' }), 'stale');
-  assert.equal((await db.query(`select email from paddle_customers where customer_id = 'ctm_X'`)).rows[0].email, 'new@example.test');
-  assert.ok((await as(B, 'select * from paddle_customers')).error, 'customers are not readable from the browser');
-  const tx = async (id, at, sub) => (await db.query('select paddle_apply_transaction($1, $2, $3, $4::jsonb) as r', [id, 'transaction.completed', at, JSON.stringify({ paddle_subscription_id: sub })])).rows[0].r;
-  assert.equal(await tx('t0', '2026-10-05T00:00:00Z', 'sub_not_seen_yet'), 'no_subscription_yet');
-  await db.query(`update subscriptions set paddle_subscription_id = 'sub_PAID' where user_id = $1`, [B]);
-  assert.equal(await tx('t1', '2026-10-06T00:00:00Z', 'sub_PAID'), 'applied');
-  assert.equal(await tx('t1', '2026-10-06T00:00:00Z', 'sub_PAID'), 'duplicate');
-  assert.equal(await tx('t2', '2026-10-05T00:00:00Z', 'sub_PAID'), 'applied');
-  assert.equal(new Date((await db.query('select last_paid_at from subscriptions where user_id = $1', [B])).rows[0].last_paid_at).toISOString(), '2026-10-06T00:00:00.000Z', 'an older payment never moves the date back');
-  assert.ok((await as(B, `select paddle_apply_customer('x','t',now(),'{}'::jsonb)`)).error);
-  assert.ok((await as(B, `select paddle_apply_transaction('x','t',now(),'{}'::jsonb)`)).error);
-});
-
-test('the environment a subscription came from is kept, so the portal talks to the right account', async () => {
-  await db.query('delete from subscriptions where user_id = $1', [B]);
-  assert.equal(await apply('env1', '2026-10-07T00:00:00Z', rec({ paddle_env: 'sandbox', paddle_subscription_id: 'sub_SB' })), 'applied');
-  assert.equal((await db.query('select paddle_env from subscriptions where user_id = $1', [B])).rows[0].paddle_env, 'sandbox');
 });
 
 test('course completions: visitors can add one for a shared deck only, and only the owner can read the list', async () => {
@@ -329,13 +243,8 @@ test('course completions: visitors can add one for a shared deck only, and only 
 // ---- team workspaces ------------------------------------------------------------------
 const C = '33333333-3333-3333-3333-333333333333';
 
-test('only a Pro or Advanced plan can create a team; free and Starter are refused', async () => {
+test('anyone signed in can create a team', async () => {
   await db.query(`insert into auth.users (id, email) values ($1, 'c@example.test') on conflict do nothing`, [C]);
-  await db.query('delete from subscriptions where user_id = $1', [A]); // earlier tests left a plan on this account
-  assert.match((await as(A, `select create_team('Nope') as id`)).error ?? '', /team_needs_plan/);
-  await db.query(`insert into subscriptions (user_id, plan, status) values ($1, 'starter', 'active') on conflict (user_id) do update set plan = 'starter', status = 'active'`, [A]);
-  assert.match((await as(A, `select create_team('Nope') as id`)).error ?? '', /team_needs_plan/);
-  await db.query(`update subscriptions set plan = 'pro' where user_id = $1`, [A]);
   assert.match((await as(A, `select create_team('   ') as id`)).error ?? '', /team_needs_name/);
   const [t] = await as(A, `select create_team('Design team') as id`);
   assert.ok(t.id);
@@ -345,7 +254,7 @@ test('only a Pro or Advanced plan can create a team; free and Starter are refuse
   assert.deepEqual(await as(B, 'select * from teams'), [], 'outsiders see nothing');
 });
 
-test('invites: owner makes a link, one person uses it, seats are limited by the owner\'s plan', async () => {
+test('invites: owner makes a link, one person uses it, a team has a seat limit', async () => {
   const [team] = await as(A, `select id from teams where name = 'Design team'`);
   assert.match((await as(B, 'select create_team_invite($1) as t', [team.id])).error ?? '', /not_team_owner/);
   const [{ t: token }] = await as(A, 'select create_team_invite($1) as t', [team.id]);
@@ -357,8 +266,8 @@ test('invites: owner makes a link, one person uses it, seats are limited by the 
   assert.deepEqual((await as(B, 'select user_id from team_members where team_id = $1 order by role', [team.id])).length, 2, 'a member sees the roster');
   assert.equal((await as(B, 'select name from teams'))[0].name, 'Design team');
   assert.ok((await as(B, `update teams set name = 'Mine' where id = $1 returning id`, [team.id])).length === 0, 'a member cannot rename it');
-  // seats: Pro allows five
-  await db.query(`insert into auth.users (id, email) select gen_random_uuid(), 'u' || g || '@example.test' from generate_series(1, 4) g`);
+  // seats: a team holds 25, and the owner and B already fill two
+  await db.query(`insert into auth.users (id, email) select gen_random_uuid(), 'u' || g || '@example.test' from generate_series(1, 23) g`);
   for (const row of (await db.query(`select id from auth.users where email like 'u%@example.test'`)).rows) {
     await db.query(`insert into team_members (team_id, user_id) values ($1, $2)`, [team.id, row.id]);
   }

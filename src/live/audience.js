@@ -369,7 +369,7 @@ export function mountAudience(root, { code, config }) {
       body.append(h('p', { class: 'lv-warn', role: 'alert', text: 'Lost contact with the presenter. Answers may not be counted until they are back. This page will update by itself.' }));
     }
     if (full) {
-      body.append(h('p', { class: 'lv-warn', role: 'alert', text: 'This session is full. The presenter\'s plan has no room for more phones. Ask them to upgrade, or watch the screen.' }));
+      body.append(h('p', { class: 'lv-warn', role: 'alert', text: 'This session is full. There is no room for more phones. Watch the screen instead.' }));
     } else if (state.ended) {
       body.append(h('p', { class: 'lv-note', text: 'This session has ended. Thanks for taking part.' }));
     } else if (!state.prompts.length) {

@@ -34,7 +34,7 @@ const sw = existsSync('dist/sw.js') ? readFileSync('dist/sw.js', 'utf8') : '';
 // 3. the app files are all there and wired together
 check('the app page loads /app.js and /app.css', appHtml.includes('src="/app.js"') && appHtml.includes('href="/app.css"'));
 check('the home page is small (under 96 KB, no app bundle)', html.length < 96 * 1024 && !html.includes('app.js'), `${(html.length / 1024).toFixed(1)} KB`);
-check('public pages, sitemap and robots exist', ['privacy', 'terms', 'learn', 'templates', 'education', 'training', 'pricing', 'security', 'refund', 'use-cases', 'events', 'consulting'].every((d) => existsSync(`dist/${d}/index.html`)) && existsSync('dist/sitemap.xml') && existsSync('dist/robots.txt'));
+check('public pages, sitemap and robots exist', ['privacy', 'terms', 'learn', 'templates', 'education', 'training', 'security', 'use-cases', 'events', 'consulting'].every((d) => existsSync(`dist/${d}/index.html`)) && existsSync('dist/sitemap.xml') && existsSync('dist/robots.txt'));
 check('service worker was generated with a versioned cache', /const CACHE = "interactive-slides-[0-9a-f]{12}"/.test(sw));
 check('/app/* is rewritten to the app page', /from\s*=\s*"\/app\/\*"[\s\S]*?to\s*=\s*"\/app\/index\.html"[\s\S]*?status\s*=\s*200/.test(existsSync('netlify.toml') ? readFileSync('netlify.toml', 'utf8') : ''));
 
@@ -65,7 +65,7 @@ const hosts = new Set((js.match(/https?:\/\/[a-zA-Z0-9.-]+/g) ?? []).map((u) => 
 // providers (only used when someone adds an embed), our own company site (a plain link), and documentation links that
 // libraries print inside error messages (never fetched).
 const allowed = new RegExp('(^|\\.)(' + [
-  'supabase\\.co', 'supabase\\.com', 'paddle\\.com', 'w3\\.org', 'localhost', '127\\.0\\.0\\.1', 'example\\.com', 'yoursite\\.com', '192\\.168\\.1\\.5',
+  'supabase\\.co', 'supabase\\.com', 'w3\\.org', 'localhost', '127\\.0\\.0\\.1', 'example\\.com', 'yoursite\\.com', '192\\.168\\.1\\.5',
   'densightlabs\\.com', 'youtube\\.com', 'youtube-nocookie\\.com', 'vimeo\\.com', 'loom\\.com',
   'github\\.com', 'github\\.io', 'openxmlformats\\.org', 'microsoft\\.com', 'purl\\.org', 'stuartk\\.com', 'mozilla\\.org', 'wikipedia\\.org', 'ecma-international\\.org',
 ].join('|') + ')$');

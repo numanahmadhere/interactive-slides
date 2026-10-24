@@ -247,10 +247,6 @@ details.dd summary:hover, details.dd[open] summary { color: var(--ink); }
 .easy ul { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
 .easy li { color: var(--muted); font-size: 15px; line-height: 1.5; }
 .easy li b { display: block; color: var(--ink); }
-.bp__card { position: relative; }
-.bp__tag { position: absolute; top: -11px; left: 18px; padding: 3px 10px; border-radius: 8px; background: var(--blue); color: var(--on-blue); font-size: 12px; font-weight: 650; letter-spacing: .03em; }
-.bp__toggle { margin-top: 26px; }
-.bp__tab small { margin-left: 6px; font-weight: 500; }
 
 /* ---- inner pages: education, training, pricing ---- */
 .seg { padding: clamp(48px, 7vw, 96px) 0 clamp(36px, 5vw, 64px); border-bottom: 1px solid var(--border); }
@@ -266,7 +262,6 @@ details.dd summary:hover, details.dd[open] summary { color: var(--ink); }
 .seg__checks b { color: var(--ink); }
 .seg__checks .tick { stroke: var(--blue-text); }
 .seg__fine { max-width: 70ch; color: var(--muted); }
-.bp__grid { margin-top: 12px; }
 
 /* ---- templates page ---- */
 .doc--wide { max-width: 1160px; }
@@ -662,7 +657,6 @@ details.dd[open] .dd__panel { animation: ddin .22s var(--ease) both; }
 .kind { position: relative; padding: 22px 22px 54px; border: 1px solid var(--border); border-radius: 22px; background: var(--surface); box-shadow: var(--lift); }
 .kind b { display: block; margin-bottom: 6px; font: 500 22px/1.25 var(--font-display); color: var(--ink); }
 .kind p { margin: 0; color: var(--muted); font-size: 15.5px; }
-.kind__plan { position: absolute; left: 22px; bottom: 18px; padding: 3px 10px; border-radius: 8px; background: var(--paper-2); color: var(--blue-text); font-size: 12.5px; font-weight: 700; }
 .psteps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 0; padding: 0; list-style: none; counter-reset: s; }
 .psteps li { padding: 26px; border-radius: 24px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--lift); }
 .psteps__n { display: grid; place-items: center; width: 40px; height: 40px; margin-bottom: 14px; border-radius: 12px; background: var(--blue); color: var(--on-blue); font: 650 18px var(--font); }
@@ -802,10 +796,6 @@ details.dd[open] .dd__panel { animation: ddin .22s var(--ease) both; }
 .docbody h2:first-child { margin-top: 0; }
 .docbody p, .docbody li { color: var(--text); font-size: 16.5px; line-height: 1.7; }
 .docbody ul, .docbody ol { padding-left: 22px; } .docbody li { margin: 6px 0; }
-.welcome__tick { display: inline-block; width: 64px; height: 64px; margin-bottom: 18px; }
-.welcome__tick svg { width: 100%; height: 100%; fill: none; stroke: var(--success); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-.welcome__tick circle { stroke-dasharray: 152; stroke-dashoffset: 152; animation: tickdraw .8s ease forwards; }
-.welcome__tick path { stroke-dasharray: 40; stroke-dashoffset: 40; animation: tickdraw .5s .6s ease forwards; }
 @keyframes tickdraw { to { stroke-dashoffset: 0; } }
 .notfound .seg__fine, .welcome .seg__fine { margin-top: 22px; }
 @media (prefers-reduced-motion: reduce) { .welcome__tick circle, .welcome__tick path { animation: none; stroke-dashoffset: 0; } }

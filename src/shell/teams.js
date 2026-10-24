@@ -3,20 +3,20 @@
 
 import { h } from '../core/dom.js';
 import { button, textInput, toast } from '../editor/ui.js';
-import { PLANS } from '../billing/plans.js';
+import { LIMITS } from '../billing/plans.js';
 
 export function inviteLink(token) {
   return `${location.origin}/app/account?invite=${encodeURIComponent(token)}`;
 }
 
 // teams: from cloud.teams(). Returns the section element.
-export function teamSection({ cloud, plan, teams, run, say, rerender }) {
+export function teamSection({ cloud, teams, run, say, rerender }) {
   const me = cloud.user.id;
-  const seats = PLANS[plan]?.teamSeats ?? 0;
+  const seats = LIMITS.teamSeats;
   const out = [h('h2', { text: 'Team' })];
 
   if (!teams.length) {
-    out.push(h('p', { text: 'A team shares decks, comments on slides and one brand kit between the people in it. Everyone joins with a link; only the person who makes the team needs a plan.' }));
+    out.push(h('p', { text: 'A team shares decks, comments on slides and one brand kit between the people in it. Everyone joins with a link.' }));
   }
 
   for (const team of teams) {
@@ -62,8 +62,6 @@ export function teamSection({ cloud, plan, teams, run, say, rerender }) {
       await cloud.createTeam(name);
       rerender();
     }) })));
-  } else if (seats === 0 && !teams.length) {
-    out.push(h('p', { class: 'ed-hint', text: 'Team workspaces come with the Pro and Advanced plans. Choose a plan above to create one. If someone sent you an invite link, open it while signed in: you do not need a plan to join.' }));
   }
   return h('section', { class: 'sh-section' }, ...out);
 }

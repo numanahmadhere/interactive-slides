@@ -16,7 +16,6 @@ import { DASHBOARD_PATH } from '../shell/paths.js';
 import { cleanConfig, encodeConfig } from '../live/protocol.js';
 import { button, field, openDialog, select, textInput, toast } from './ui.js';
 import { normalizeDeck } from '../core/schema.js';
-import { canUseTheme } from '../billing/plans.js';
 
 export function shareLink(project, token) {
   const url = new URL(baseAddress(loadSettings()));
@@ -103,12 +102,11 @@ export function openCloudDialog(editor) {
   // The team's brand kit is a logo, its position and size, and the theme with its colour overrides. It came from
   // the database, so it goes through the same gate as any imported deck before it touches this one.
   function useTeamBrand(team) {
-    if (!editor.requirePlan((p) => p.brand, 'Your own colours, font and logo are not part of your plan.')) return;
     const kit = team.brand ?? {};
     if (!kit.brand && !kit.theme) { say('This team has no brand kit yet. The team owner can save one from their deck.'); return; }
     const { deck } = normalizeDeck({ ...editor.deck, brand: kit.brand ?? editor.deck.brand, theme: kit.theme ?? editor.deck.theme });
     let next = ops.setBrand(editor.deck, deck.brand);
-    const theme = canUseTheme(editor.plan, deck.theme.id) ? deck.theme : { id: editor.deck.theme.id, overrides: deck.theme.overrides };
+    const theme = deck.theme;
     next = ops.setTheme(next, theme.id);
     next = ops.setThemeOverrides(next, theme.overrides);
     editor.commit(next, { source: 'ui' });
@@ -227,7 +225,6 @@ export function openCloudDialog(editor) {
           h('div', { class: 'ed-xrow__desc', text: course.on ? 'The share link tracks which slides each visitor has seen, then lets them leave their name and print a certificate.' : 'Off. Visitors simply view the deck.' })),
         h('div', { class: 'ed-xrow__actions' },
           button({ label: course.on ? 'Turn off' : 'Turn on', onClick: () => {
-            if (!course.on && !editor.requirePlan((p) => p.selfPaced, 'Self-paced courses are not part of your plan.')) return;
             editor.commit(ops.setCourse(editor.deck, { on: !course.on }), { source: 'ui' });
             say(course.on ? 'Self-paced mode is off. Save the deck to update the link.' : 'Self-paced mode is on. Save the deck to update the link.');
             render();

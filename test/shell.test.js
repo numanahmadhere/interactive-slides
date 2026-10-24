@@ -169,7 +169,7 @@ test('type: both faces are self-hosted and the headlines use the serif', () => {
 
 import { GROUPS, VENDORS } from '../tools/compare.mjs';
 import { getBlock } from '../src/core/blocks/index.js';
-import { canUseKind, canCsv, canLeaderboard, canReports, canSelfPace, canTeam, PLANS, PRICES, TRIAL_DAYS } from '../src/billing/plans.js';
+import { LIMITS } from '../src/billing/plans.js';
 import { isProfane } from '../src/live/profanity.js';
 import { parsePptx } from '../src/import/pptx.js';
 import { certificateHtml } from '../src/cloud/course.js';
@@ -205,7 +205,7 @@ test('the comparison table is complete and every claim about us is backed by the
     'answer-key': () => !/correct|answer/i.test(JSON.stringify(collectPrompts(normalizeDeck({ slides: [{ layout: 'content', blocks: [{ id: 'q1', type: 'quiz', slot: 'body', props: { question: 'Q', choices: [{ text: 'a', correct: true }, { text: 'b' }] } }] }] }).deck.slides[0]).map(({ options, ...rest }) => rest))) && collectKeys(normalizeDeck({ slides: [{ layout: 'content', blocks: [{ id: 'q1', type: 'quiz', slot: 'body', props: { question: 'Q', choices: [{ text: 'a', correct: true }, { text: 'b' }] } }] }] }).deck.slides[0]).size === 1,
     remote: () => existsSync(new URL('../src/live/remote.js', import.meta.url)) && /notes/.test(readFileSync(new URL('../src/live/protocol.js', import.meta.url), 'utf8')),
     a11y: () => /sp-sr-only/.test(readFileSync(new URL('../src/styles/slides.css', import.meta.url), 'utf8')),
-    'no-cap': () => !Object.keys(PLANS.free).some((k) => /month|participants/i.test(k)) && PLANS.free.livePhones > 0,
+    'no-cap': () => !Object.keys(LIMITS).some((k) => /month|participants/i.test(k)) && LIMITS.livePhones > 0,
     teams: () => /create table if not exists public\.teams/.test(readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8')) && /deck_comments/.test(readFileSync(new URL('../supabase/schema.sql', import.meta.url), 'utf8')),
     'free-form': () => getBlock('shape') && getLayout('free'),
     offline: () => readFileSync(new URL('../src/sw-template.js', import.meta.url), 'utf8').includes('fetch'),
@@ -214,62 +214,34 @@ test('the comparison table is complete and every claim about us is backed by the
   for (const row of rows.filter((r) => r.needs && ['yes', 'paid', 'part'].includes(r.cells[0]))) {
     for (const need of row.needs) assert.ok(proof[need]?.(), `"${row.name}" is claimed but "${need}" is not in the product`);
   }
-  // "Paid plan only" about us must really be locked on free and open on a paid plan
-  const gate = {
-    'kind:cloud': () => !canUseKind('free', 'cloud') && canUseKind('starter', 'cloud'),
-    'kind:open': () => !canUseKind('free', 'open') && canUseKind('starter', 'open'),
-    'kind:ranking': () => !canUseKind('free', 'ranking') && canUseKind('starter', 'ranking'),
-    'kind:qna': () => !canUseKind('free', 'qna') && canUseKind('starter', 'qna'),
-    csv: () => !canCsv('free') && canCsv('starter'),
-    'kind:pin': () => !canUseKind('free', 'pin') && canUseKind('starter', 'pin'),
-    leaderboard: () => !canLeaderboard('free') && canLeaderboard('starter'),
-    reports: () => !canReports('free') && canReports('starter'),
-    'self-paced': () => !canSelfPace('free') && canSelfPace('starter'),
-    teams: () => !canTeam('free') && !canTeam('starter') && canTeam('pro'),
-  };
-  for (const row of rows.filter((r) => r.cells[0] === 'paid')) {
-    assert.ok(row.gated?.length, `${row.name}: says paid but names no lock`);
-    for (const g of row.gated) assert.ok(gate[g]?.(), `${row.name}: "${g}" is not actually locked on the free plan`);
+  // there are no plans, so nothing of ours may be marked as paid or locked
+  for (const row of rows) {
+    assert.notEqual(row.cells[0], 'paid', `${row.name}: everything of ours is free`);
+    assert.equal(row.gated, undefined, `${row.name}: nothing of ours is locked`);
   }
-  // a "Yes" must not secretly be locked
-  for (const row of rows.filter((r) => r.cells[0] === 'yes' && r.gated)) assert.fail(`${row.name}: Yes but has a lock`);
-  // the price we print is the price we charge
   const price = rows.find((r) => r.name.startsWith('Cheapest paid plan')).cells[0];
-  assert.ok(price.includes(`$${PRICES.starter.month} a month`) && price.includes(`${TRIAL_DAYS}-day trial`), price);
-  const free = rows.find((r) => r.name === 'Free plan limits').cells[0];
-  assert.ok(free.includes(`${PLANS.free.cloudDecks} decks`) && free.includes(`${PLANS.free.livePhones} phones`), free);
+  assert.match(price, /all free/i);
+  const limits = rows.find((r) => r.name === 'Free plan limits').cells[0];
+  assert.ok(limits.includes(`${LIMITS.livePhones.toLocaleString('en-US')} phones`), limits);
 });
 
 test('the tutorial is the first thing on the home page and the table comes right after it', () => {
   const home = buildSite()['index.html'];
   const order = [...home.matchAll(/<section[^>]*?(?:id="([a-z]+)"|class="(hero)")/g)].map((m) => m[1] ?? m[2]);
   assert.deepEqual(order.slice(0, 6), ['tutorial', 'clients', 'loop', 'products', 'stats', 'compare']);
-  assert.ok(home.includes('Not yet') && home.includes('Paid plan'), 'it admits what we lack');
+  assert.ok(home.includes('Not yet') && home.includes('Included, but only on a paid plan'), 'it admits what we lack and what the others charge for');
   assert.ok(home.includes('<caption'), 'the table has a caption');
 });
 
-test('the pricing section prints the real plans, prices and trial, and links each paid plan to its checkout page', () => {
-  const home = buildSite()['index.html'];
-  const pricing = home.slice(home.indexOf('id="pricing"'), home.indexOf('id="features"'));
-  for (const id of ['starter', 'pro', 'advanced']) {
-    assert.ok(pricing.includes(`$${PRICES[id].month}</b>`), `${id} monthly price`);
-    assert.ok(pricing.includes(`$${PRICES[id].year.toLocaleString('en-US')} a year`), `${id} yearly price`);
-    assert.ok(pricing.includes(`href="/app/account?plan=${id}"`), `${id} link`);
-    assert.ok(pricing.includes(PLANS[id].name));
-  }
-  assert.ok(pricing.includes(`${TRIAL_DAYS}-day free trial`));
-  assert.ok(pricing.includes(`${PLANS.free.cloudDecks} decks online`) && pricing.includes(`${PLANS.free.livePhones} phones`));
-  assert.ok(!/unlimited/i.test(pricing), 'nothing here is unlimited, so the page must not say so');
-});
-
-test('the thank-you page exists, is kept out of search, and sends people to their account', () => {
+test('the home page says plainly that everything is free, and nothing on the site mentions plans or payments', () => {
   const site = buildSite();
-  const page = site['welcome/index.html'];
-  assert.ok(page, '/welcome/ exists');
-  assert.ok(page.includes('noindex'));
-  assert.ok(page.includes('/app/account?welcome=1'));
-  assert.ok(site['robots.txt'].includes('Disallow: /welcome/'));
-  assert.ok(!site['sitemap.xml'].includes('welcome'));
+  const home = site['index.html'];
+  const free = home.slice(home.indexOf('id="free"'), home.indexOf('id="features"'));
+  assert.ok(free.includes('Free. All of it.') && free.includes(LIMITS.livePhones.toLocaleString('en-US')));
+  assert.ok(!/unlimited/i.test(free), 'nothing here is unlimited, so the page must not say so');
+  for (const gone of ['pricing', 'refund', 'welcome']) assert.equal(site[`${gone}/index.html`], undefined, `${gone} page is gone`);
+  const own = Object.entries(site).filter(([k]) => k.endsWith('.html') || k.endsWith('.xml')).map(([, v]) => v).join(' ').replace(/<td class="cmp__paid[\s\S]*?<\/td>/g, '');
+  assert.ok(!/Paddle|free trial|Start \d-day|Starter plan|Pro plan|Advanced plan|\/pricing\/|\/refund\//.test(own), 'no leftover plan or payment wording');
 });
 
 test('the client logos are real files, and the SVGs carry no scripts', () => {
@@ -306,7 +278,7 @@ test('every internal link on the public pages goes somewhere that exists', () =>
 
 test('the new pages exist, are in the sitemap, and the nav leads to them', () => {
   const site = buildSite();
-  for (const dir of ['templates', 'education', 'training', 'use-cases', 'events', 'people-teams', 'consulting', 'webinars', 'retrospectives', 'community', 'pricing', 'security', 'refund', 'privacy', 'terms']) {
+  for (const dir of ['templates', 'education', 'training', 'use-cases', 'events', 'people-teams', 'consulting', 'webinars', 'retrospectives', 'community', 'security', 'privacy', 'terms']) {
     assert.ok(site[`${dir}/index.html`], dir);
     assert.ok(site['sitemap.xml'].includes(`/${dir}/`), `${dir} in the sitemap`);
     assert.ok(site['index.html'].includes(`href="/${dir}/"`), `${dir} linked from home`);
@@ -317,12 +289,11 @@ test('the new pages exist, are in the sitemap, and the nav leads to them', () =>
 
 test('the funnel sections are on the home page in order, with one repeated main action', () => {
   const home = buildSite()['index.html'];
-  const order = ['id="tutorial"', 'id="clients"', 'id="loop"', 'id="products"', 'id="stats"', 'id="compare"', 'id="pricing"', 'id="features"', 'id="usecases"', 'id="start"', 'id="faq"'];
+  const order = ['id="tutorial"', 'id="clients"', 'id="loop"', 'id="products"', 'id="stats"', 'id="compare"', 'id="free"', 'id="features"', 'id="usecases"', 'id="start"', 'id="faq"'];
   let at = -1;
   for (const marker of order) { const i = home.indexOf(marker); assert.ok(i > at, `${marker} out of order`); at = i; }
   assert.ok((home.match(/Start building free/g) ?? []).length >= 2);
   assert.ok(home.includes('Free account, no card'));
-  assert.ok(home.includes('Recommended'));
 });
 
 test('the templates page shows every ready-made slide and each button opens a real one', () => {
@@ -333,16 +304,8 @@ test('the templates page shows every ready-made slide and each button opens a re
   assert.equal((page.match(/class="tp"/g) ?? []).length, TEMPLATES.length);
 });
 
-test('pricing page numbers are the real plan numbers, and nothing is claimed that we do not have', () => {
+test('no certification or testimonial claims are invented', () => {
   const site = buildSite();
-  const page = site['pricing/index.html'];
-  for (const id of ['starter', 'pro', 'advanced']) {
-    assert.ok(page.includes(`data-m="$${PRICES[id].month}"`) && page.includes(`data-y="$${PRICES[id].year.toLocaleString('en-US')}"`), id);
-    assert.ok(page.includes(`data-plan="${id}"`));
-  }
-  assert.ok(page.includes(`${TRIAL_DAYS}-day free trial`));
-  assert.ok(page.includes(`up to ${PLANS.pro.teamSeats} people`) && page.includes(`${PLANS.advanced.teamSeats}`));
-  assert.doesNotThrow(() => JSON.parse(/<script type="application\/ld\+json">(.*?)<\/script>/s.exec(page)[1]));
   const everything = Object.values(site).join(' ');
   assert.ok(!/we are (SOC 2|ISO 27001|GDPR)[- ]compliant|certified/i.test(everything), 'no certification claims');
   assert.ok(!/testimonial|million users|trusted by [0-9]/i.test(site['index.html']), 'no invented proof');
@@ -355,12 +318,11 @@ test('the sticky call to action and dropdown are only on pages that need them', 
   assert.ok(site['index.html'].includes('class="dd"'));
 });
 
-test('the refund policy states the real window and the legal pages point to each other', () => {
+test('the legal pages point to each other and name who handles data', () => {
   const site = buildSite();
-  assert.ok(site['refund/index.html'].includes('7 days') && site['refund/index.html'].includes(`${TRIAL_DAYS}-day free trial`));
-  assert.ok(site['terms/index.html'].includes('href="/refund/"') && site['privacy/index.html'].includes('href="/refund/"'));
-  assert.ok(site['terms/index.html'].includes('Paddle') && site['privacy/index.html'].includes('Paddle') && site['privacy/index.html'].includes('Supabase') && site['privacy/index.html'].includes('Netlify'));
-  assert.ok(site['index.html'].includes('href="/refund/"'), 'the footer links the refund policy');
+  assert.ok(site['terms/index.html'].includes('href="/privacy/"') || site['privacy/index.html'].includes('href="/terms/"'));
+  assert.ok(site['privacy/index.html'].includes('Supabase') && site['privacy/index.html'].includes('Netlify'));
+  assert.ok(site['terms/index.html'].includes('The service is free'));
 });
 
 test('use cases: a hub, eight segment pages, each with real ready-made slides, and every page links to the others', () => {
@@ -432,7 +394,7 @@ test('product pages: a hub and one page per part of the product, linked from the
     assert.match(page, /href="\/learn\/[a-z-]+\/"/, `${slug} points to its guide`);
   }
   assert.ok(!site['index.html'].includes('href="/learn/#'), 'the menu no longer sends everyone to one guide page');
-  assert.ok(site['product/questions/index.html'].includes('Word cloud') && site['product/questions/index.html'].includes('Starter and above'));
+  assert.ok(site['product/questions/index.html'].includes('Word cloud') && !/Starter|paid plan/i.test(site['product/questions/index.html']));
 });
 
 test('guides: a searchable hub and a page for each guide, with steps, tips and real next links', () => {
