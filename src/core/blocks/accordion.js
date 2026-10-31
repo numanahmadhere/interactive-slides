@@ -1,6 +1,6 @@
 import { h, svgIcon } from '../dom.js';
-import { registerBlock, normalizeSections, createBlock } from './registry.js';
-import { stateOf, uniqueId } from './shared.js';
+import { registerBlock, normalizeSections, createBlock, blockSteps } from './registry.js';
+import { stateOf, uniqueId, itemStep, itemSteps, REVEAL_FIELD } from './shared.js';
 
 const container = { key: 'items', min: 1, max: 8, titled: true, item: () => ({ title: 'Item', blocks: [] }) };
 
@@ -12,11 +12,13 @@ export default registerBlock({
   group: 'Interactive',
   container,
   mountInEdit: true,
-  defaults: () => ({ items: [starter('First question'), starter('Second question')], single: false }),
-  normalize: (p, ctx) => ({ items: normalizeSections(p.items, container, ctx), single: p.single === true }),
+  defaults: () => ({ items: [starter('First question'), starter('Second question')], single: false, revealItems: false }),
+  normalize: (p, ctx) => ({ items: normalizeSections(p.items, container, ctx), single: p.single === true, revealItems: p.revealItems === true }),
+  steps: (block) => [...itemSteps(block, block.props.items.length), ...block.props.items.flatMap((it) => it.blocks.flatMap(blockSteps))],
   fields: [
     { type: 'sections', noun: 'Item', titleLabel: 'Heading' },
     { key: 'single', label: 'Only one open at a time', type: 'toggle' },
+    REVEAL_FIELD,
   ],
   render: (block, ctx) => {
     const { items } = block.props;
@@ -32,7 +34,7 @@ export default registerBlock({
         class: 'sp-acc__panel', role: 'region', id: `${id}-p${i}`, 'aria-labelledby': `${id}-h${i}`, 'data-section': i, hidden: !open,
       });
       ctx.renderBlocks(item.blocks, panel, { reveal: false });
-      root.append(h('div', { class: 'sp-acc__item' }, h('h3', { class: 'sp-acc__heading' }, head), panel));
+      root.append(h('div', { class: 'sp-acc__item', 'data-step': itemStep(block, i) }, h('h3', { class: 'sp-acc__heading' }, head), panel));
     });
     return root;
   },

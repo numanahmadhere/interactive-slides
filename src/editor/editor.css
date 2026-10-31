@@ -743,3 +743,7 @@ a.ed-logo .logo { width: 28px; height: 28px; }
 .ed-hist__meta { flex: 1; display: grid; gap: 2px; min-width: 0; }
 .ed-hist__meta span { color: var(--ed-muted); font-size: 12.5px; }
 .ed-hist__empty { padding: 14px; color: var(--ed-muted); font-size: 13.5px; }
+
+/* the editor shows every step at once, and cycle boxes keep their centring */
+.ed-stage .sp-slide .sp-diagram--cycle .sp-node[data-step],
+.ed-stage .sp-slide .sp-diagram--cycle .sp-node[data-step]:not(.is-revealed) { transform: translate(-50%, -50%); }

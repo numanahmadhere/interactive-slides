@@ -2,6 +2,7 @@ import { h } from '../dom.js';
 import { str, oneOf } from '../util.js';
 import { registerBlock } from './registry.js';
 import { SIZE_OPTIONS } from './fields.js';
+import { itemStep, itemSteps, REVEAL_FIELD } from './shared.js';
 
 const MAX_ROWS = 30;
 const MAX_COLS = 8;
@@ -18,18 +19,21 @@ export default registerBlock({
   type: 'table',
   label: 'Table',
   group: 'Content',
-  defaults: () => ({ data: 'Plan | Price | Best for\nStarter | $12 | Individuals\nPro | $24 | Teams', header: true, striped: true, size: 'md' }),
+  defaults: () => ({ data: 'Plan | Price | Best for\nStarter | $12 | Individuals\nPro | $24 | Teams', header: true, striped: true, size: 'md', revealItems: false }),
   normalize: (p) => ({
     data: str(p.data, '', 6000),
     header: p.header !== false,
     striped: p.striped !== false,
     size: oneOf(p.size, ['sm', 'md', 'lg'], 'md'),
+    revealItems: p.revealItems === true,
   }),
+  steps: (block) => itemSteps(block, parseTable(block.props.data).length - (block.props.header ? 1 : 0)),
   fields: [
     { key: 'data', label: 'Cells', type: 'textarea', rows: 8, placeholder: 'One row per line. Separate cells with " | " or paste from a spreadsheet.' },
     { key: 'header', label: 'First row is a header', type: 'toggle' },
     { key: 'striped', label: 'Alternate row shading', type: 'toggle' },
     { key: 'size', label: 'Size', type: 'segmented', options: SIZE_OPTIONS },
+    REVEAL_FIELD,
   ],
   render: (block) => {
     const { data, header, striped, size } = block.props;
@@ -37,7 +41,7 @@ export default registerBlock({
     const table = h('table', { class: `sp-table sp-table--${size}${striped ? ' is-striped' : ''}` });
     if (!rows.length) return h('div', { class: 'sp-table__empty', text: 'Add cells in the panel' });
     rows.forEach((row, r) => {
-      const tr = h('tr');
+      const tr = h('tr', { 'data-step': header && r === 0 ? undefined : itemStep(block, r - (header ? 1 : 0)) });
       row.forEach((text) => tr.append(h(header && r === 0 ? 'th' : 'td', { text, scope: header && r === 0 ? 'col' : undefined })));
       if (header && r === 0) table.append(h('thead', null, tr));
       else {

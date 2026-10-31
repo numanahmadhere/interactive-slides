@@ -1138,3 +1138,14 @@ button.sp-rx__chip { cursor: pointer; }
 .sp-pin__stage img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; user-select: none; }
 .sp-pin__dots { position: absolute; inset: 0; pointer-events: none; }
 .sp-pin__dot { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; background: color-mix(in srgb, var(--sp-accent) 55%, transparent); border: 2px solid #fff; }
+
+/* ---- items revealed one at a time inside diagrams, timelines, tables, cards and the like ---- */
+.sp-diagram__link { display: flex; flex: none; align-self: center; }
+.sp-diagram--column .sp-diagram__link { justify-content: center; }
+/* Cycle boxes centre themselves with a transform, so the reveal offset has to keep it. */
+.sp-slide .sp-diagram--cycle .sp-node[data-step]:not(.is-revealed) { transform: translate(-50%, calc(-50% + 24px)); }
+.sp-print .sp-slide .sp-diagram--cycle .sp-node[data-step],
+.sp-print .sp-slide .sp-diagram--cycle .sp-node[data-step]:not(.is-revealed),
+.sp-export .sp-slide .sp-diagram--cycle .sp-node[data-step],
+.sp-export .sp-slide .sp-diagram--cycle .sp-node[data-step]:not(.is-revealed) { transform: translate(-50%, -50%); }
+.sp-slide .sp-table tr[data-step]:not(.is-revealed) { transform: none; }

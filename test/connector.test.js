@@ -4,7 +4,7 @@ import { buildDeck, buildSlide, addSlides, replaceSlide, deleteSlide, outline } 
 import { handleBody, handleMessage, TOOLS } from '../src/connector/mcp.js';
 import { supabaseStore, sha256Hex, validToken } from '../src/connector/supabase-store.js';
 import { newConnectorToken, connectorUrl } from '../src/shell/connector.js';
-import { normalizeDeck } from '../src/core/schema.js';
+import { normalizeDeck, slideStepValues } from '../src/core/schema.js';
 import { collectPrompts, collectKeys } from '../src/live/prompts.js';
 
 const OWNER = '11111111-1111-1111-1111-111111111111';
@@ -169,4 +169,34 @@ test('the store always names the owner, and sends the service key only in header
   }
   const limit = supabaseStore({ url: 'https://p', key: 'k', fetchImpl: async () => ({ ok: false, status: 400, text: async () => JSON.stringify({ message: 'deck_limit' }) }) });
   await assert.rejects(limit.create(OWNER, { title: 't', data: { slides: [] } }), (e) => e.code === 'deck_limit');
+});
+
+test('diagrams, timelines and tables can be built, and can reveal one part per click', () => {
+  const deck = buildDeck({ title: 'Process', slides: [
+    { kind: 'diagram', title: 'Flow', steps: ['Plan', { label: 'Build', note: 'Make it' }, 'Ship'], reveal: true },
+    { title: 'Loop', steps: ['A', 'B', 'C', 'D'], layout: 'cycle' },
+    { stages: [{ title: '2024', text: 'Start' }, '2025', { title: '2026', text: 'Scale' }], reveal: true },
+    { kind: 'table', title: 'Plan', rows: [['Phase', 'Owner'], ['One', 'Ana'], ['Two', 'Bo | x']], reveal: true },
+    { title: 'Points', bullets: ['a', 'b', 'c'], reveal: true },
+    { title: 'Plain', bullets: ['a'] },
+  ] });
+  assert.deepEqual(normalizeDeck(deck).warnings, []);
+  const [flow, loop, tl, table, points, plain] = deck.slides;
+  const find = (s, type) => s.blocks.find((b) => b.type === type);
+  assert.equal(find(flow, 'diagram').props.nodes.length, 3);
+  assert.equal(find(flow, 'diagram').props.revealItems, true);
+  assert.equal(find(loop, 'diagram').props.layout, 'cycle');
+  assert.equal(find(loop, 'diagram').props.revealItems, false, 'steps are only used when asked for');
+  assert.deepEqual(find(tl, 'timeline').props.items.map((i) => i.title), ['2024', '2025', '2026']);
+  assert.equal(find(table, 'table').props.data.split('\n').length, 3);
+  assert.ok(!find(table, 'table').props.data.includes('x |') , 'a stray bar inside a cell cannot add a column');
+  assert.equal(find(points, 'list').props.revealItems, true);
+  assert.equal(find(plain, 'list').props.revealItems, false);
+  assert.equal(slideStepValues(flow).length, 3);
+  assert.equal(slideStepValues(tl).length, 3);
+  assert.equal(slideStepValues(table).length, 2);
+  assert.equal(slideStepValues(points).length, 3);
+  assert.equal(slideStepValues(plain).length, 0);
+  assert.equal(outline(deck)[0].stepped, true);
+  assert.equal(outline(deck)[5].stepped, undefined);
 });

@@ -30,6 +30,12 @@ export function pad(list, min, make) {
   return list;
 }
 
+// "Reveal one at a time": item i of a block appears at step (reveal || 1) + i, like the items of a list.
+export const firstStep = (block) => block.reveal || 1;
+export const itemStep = (block, i) => (block.props.revealItems ? firstStep(block) + i : undefined);
+export const itemSteps = (block, count) => (block.props.revealItems ? Array.from({ length: count }, (_, i) => firstStep(block) + i) : block.reveal ? [block.reveal] : []);
+export const REVEAL_FIELD = { key: 'revealItems', label: 'Reveal one at a time', type: 'toggle' };
+
 export const round1 = (n) => Math.round(n * 10) / 10;
 
 // A random permutation of 0..n-1 that is never the identity (when n > 1), so a

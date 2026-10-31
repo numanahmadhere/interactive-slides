@@ -7,12 +7,13 @@ import { uid } from '../core/util.js';
 
 export const MAX_SLIDES_PER_CALL = 60;
 export const THEMES = ['densight-dark', 'densight-light', 'paper', 'midnight'];
-export const SLIDE_KINDS = ['title', 'content', 'two-column', 'section', 'question'];
+export const SLIDE_KINDS = ['title', 'content', 'two-column', 'section', 'question', 'diagram', 'timeline', 'table'];
 export const QUESTION_KINDS = ['poll', 'quiz', 'wordcloud', 'open', 'rating', 'ranking', 'qna'];
 
 const B = (type, props, frame) => ({ ...createBlock(type, { props }), slot: 'free', frame });
 const slide = (blocks, notes = '') => ({ id: uid('s_'), layout: 'free', blocks, notes });
 const text = (v, max = 600) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+const pairs = (v, a, b, max = 8) => (Array.isArray(v) ? v.map((x) => (typeof x === 'string' ? { [a]: text(x, 120), [b]: '' } : { [a]: text(x?.[a] ?? x?.label ?? x?.title, 120), [b]: text(x?.[b] ?? x?.note ?? x?.text ?? x?.detail, 300) })).filter((x) => x[a]).slice(0, max) : []);
 const list = (v, max = 12, len = 300) => (Array.isArray(v) ? v.map((x) => text(String(x ?? ''), len)).filter(Boolean).slice(0, max) : []);
 
 function questionBlock(q = {}) {
@@ -38,7 +39,8 @@ function questionBlock(q = {}) {
 
 // One described slide -> one slide. Unknown or missing fields fall back to something sensible instead of failing.
 export function buildSlide(spec = {}) {
-  const kind = SLIDE_KINDS.includes(spec.kind) ? spec.kind : spec.question ? 'question' : spec.left || spec.right ? 'two-column' : spec.bullets ? 'content' : 'content';
+  const kind = SLIDE_KINDS.includes(spec.kind) ? spec.kind : spec.question ? 'question' : spec.left || spec.right ? 'two-column' : spec.steps ? 'diagram' : spec.stages ? 'timeline' : spec.rows ? 'table' : 'content';
+  const reveal = spec.reveal === true; // show the parts one at a time, one per click
   const title = text(spec.title, 200);
   const notes = text(spec.notes, 4000);
   const bullets = list(spec.bullets);
@@ -58,6 +60,21 @@ export function buildSlide(spec = {}) {
       ...(text(spec.subtitle, 300) ? [B('text', { text: text(spec.subtitle, 300), size: 'lg', muted: true }, { x: 160, y: 680, w: 1300 })] : []),
     ], notes);
   }
+  if (kind === 'diagram' || kind === 'timeline') {
+    const head = B('heading', { text: title || (kind === 'diagram' ? 'How it works' : 'Timeline'), level: 2 }, { x: 128, y: 96, w: 1664 });
+    if (kind === 'timeline') {
+      const items = pairs(spec.stages ?? spec.steps, 'title', 'text');
+      return slide([head, B('timeline', { items: items.length >= 2 ? items : [{ title: 'Start', text: '' }, { title: 'Finish', text: '' }], revealItems: reveal }, { x: 128, y: 300, w: 1664 })], notes);
+    }
+    const nodes = pairs(spec.steps ?? spec.stages, 'label', 'note');
+    const layout = ['row', 'column', 'cycle'].includes(spec.layout) ? spec.layout : nodes.length > 5 ? 'cycle' : 'row';
+    return slide([head, B('diagram', { layout, style: 'filled', nodes: nodes.length >= 2 ? nodes : [{ label: 'Start', note: '' }, { label: 'Finish', note: '' }], revealItems: reveal }, { x: 128, y: layout === 'column' ? 240 : 320, w: 1664 })], notes);
+  }
+  if (kind === 'table') {
+    const rows = (Array.isArray(spec.rows) ? spec.rows : []).slice(0, 30).map((r) => (Array.isArray(r) ? r : [r]).slice(0, 8).map((c) => text(String(c ?? ''), 120).replace(/\|/g, '/')));
+    const data = rows.length ? rows.map((r) => r.join(' | ')).join('\n') : 'Item | Detail\nOne | Two';
+    return slide([B('heading', { text: title || 'Table', level: 2 }, { x: 128, y: 96, w: 1664 }), B('table', { data, header: true, striped: true, size: 'md', revealItems: reveal }, { x: 128, y: 290, w: 1664 })], notes);
+  }
   if (kind === 'question') {
     const [type, props] = questionBlock(spec.question);
     return slide([
@@ -75,7 +92,7 @@ export function buildSlide(spec = {}) {
   }
   return slide([
     B('heading', { text: title || 'Slide', level: 2 }, { x: 128, y: 96, w: 1664 }),
-    ...(bullets.length ? [B('list', { items: bullets, size: 'lg' }, { x: 128, y: body ? 440 : 300, w: 1500 })] : []),
+    ...(bullets.length ? [B('list', { items: bullets, size: 'lg', revealItems: reveal }, { x: 128, y: body ? 440 : 300, w: 1500 })] : []),
     ...(body ? [B('text', { text: body, size: 'lg' }, { x: 128, y: 280, w: 1500 })] : []),
   ], notes);
 }
@@ -97,7 +114,8 @@ export function outline(deck) {
   return deck.slides.map((s, i) => {
     const head = s.blocks.find((b) => b.type === 'heading');
     const q = s.blocks.find((b) => ['poll', 'quiz', 'wordcloud', 'open-answers', 'rating', 'ranking', 'qna'].includes(b.type));
-    return { index: i, title: head?.props?.text ?? q?.props?.question ?? '(no title)', question: q ? q.type : undefined };
+    const stepped = s.blocks.some((b) => b.props?.revealItems === true);
+    return { index: i, title: head?.props?.text ?? q?.props?.question ?? '(no title)', question: q ? q.type : undefined, ...(stepped ? { stepped: true } : {}) };
   });
 }
 

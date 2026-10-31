@@ -1,7 +1,7 @@
 import { h } from '../dom.js';
 import { str, oneOf } from '../util.js';
 import { registerBlock } from './registry.js';
-import { cleanList, pad, stateOf } from './shared.js';
+import { cleanList, pad, stateOf, itemStep, itemSteps, REVEAL_FIELD } from './shared.js';
 
 const MAX_CARDS = 8;
 
@@ -12,12 +12,14 @@ export default registerBlock({
   mountInEdit: true,
   defaults: () => ({
     cards: [{ front: 'Term one', back: 'What it means.' }, { front: 'Term two', back: 'What it means.' }, { front: 'Term three', back: 'What it means.' }],
-    size: 'md',
+    size: 'md', revealItems: false,
   }),
   normalize: (p) => ({
     cards: pad(cleanList(p.cards, MAX_CARDS, (c) => ({ front: str(c.front, '', 300), back: str(c.back, '', 600) })), 1, () => ({ front: '', back: '' })),
     size: oneOf(p.size, ['md', 'lg'], 'md'),
+    revealItems: p.revealItems === true,
   }),
+  steps: (block) => itemSteps(block, block.props.cards.length),
   fields: [
     {
       key: 'cards', label: 'Cards', type: 'list', itemLabel: 'Card', add: 'Add card', min: 1, max: MAX_CARDS,
@@ -25,6 +27,7 @@ export default registerBlock({
       fields: [{ key: 'front', label: 'Front', type: 'textarea' }, { key: 'back', label: 'Back', type: 'textarea' }],
     },
     { key: 'size', label: 'Card height', type: 'segmented', options: [{ value: 'md', label: 'Medium' }, { value: 'lg', label: 'Tall' }] },
+    REVEAL_FIELD,
   ],
   render: (block, ctx) => {
     const { cards, size } = block.props;
@@ -33,7 +36,7 @@ export default registerBlock({
     const root = h('div', { class: `sp-flip sp-flip--${size}`, style: `--sp-flip-cols:${cols}` });
     cards.forEach((card, i) => {
       const flipped = state.flipped.includes(i);
-      root.append(h('button', { type: 'button', class: `sp-flip__card${flipped ? ' is-flipped' : ''}`, 'aria-pressed': String(flipped) },
+      root.append(h('button', { type: 'button', class: `sp-flip__card${flipped ? ' is-flipped' : ''}`, 'aria-pressed': String(flipped), 'data-step': itemStep(block, i) },
         h('span', { class: 'sp-flip__inner' },
           h('span', { class: 'sp-flip__face sp-flip__face--front', 'aria-hidden': String(flipped), text: card.front }),
           h('span', { class: 'sp-flip__face sp-flip__face--back', 'aria-hidden': String(!flipped), text: card.back }))));

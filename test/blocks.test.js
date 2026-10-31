@@ -196,3 +196,21 @@ test('a poll shows its results as bars, columns or a donut, and bad values fall 
     assert.equal(normalizeDeck(deck).deck.slides[0].blocks[0].props.chart, want);
   }
 });
+
+test('diagrams, timelines, tables, flip cards, accordions and matrices can reveal their parts one step at a time', async () => {
+  const { slideStepValues } = await import('../src/core/schema.js');
+  const cases = [['diagram', 3], ['timeline', 3], ['table', 2], ['flip-cards', 3], ['accordion', 2], ['matrix', 4]];
+  for (const [type, parts] of cases) {
+    const off = createBlock(type);
+    assert.equal(off.props.revealItems, false, `${type}: off by default`);
+    assert.deepEqual(slideStepValues({ blocks: [off] }), [], `${type}: no steps when off`);
+    const on = { ...createBlock(type), props: { ...createBlock(type).props, revealItems: true } };
+    assert.deepEqual(slideStepValues({ blocks: [on] }), Array.from({ length: parts }, (_, i) => i + 1), `${type}: one step per part`);
+    assert.deepEqual(slideStepValues({ blocks: [{ ...on, reveal: 4 }] }), Array.from({ length: parts }, (_, i) => i + 4), `${type}: starts at its own step`);
+    const slide = { ...createSlide('free'), blocks: [{ ...on, slot: 'free', frame: { x: 0, y: 0, w: 800 } }] };
+    const back = normalizeDeck({ slides: [slide] }).deck.slides[0].blocks[0];
+    assert.equal(back.props.revealItems, true, `${type}: the setting survives a save and load`);
+    const junk = normalizeDeck({ slides: [{ ...slide, blocks: [{ ...slide.blocks[0], props: { ...on.props, revealItems: 'yes' } }] }] }).deck.slides[0].blocks[0];
+    assert.equal(junk.props.revealItems, false, `${type}: only a real true turns it on`);
+  }
+});

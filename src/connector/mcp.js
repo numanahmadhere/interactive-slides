@@ -17,13 +17,18 @@ const SLIDE_SCHEMA = {
   type: 'object',
   description: 'One slide. Pick a kind, then fill in the fields that kind uses.',
   properties: {
-    kind: { type: 'string', enum: SLIDE_KINDS, description: 'title (opening slide), section (divider), content (title with bullets or a paragraph), two-column (left and right), or question (a live question the audience answers on their phones). Defaults to content, or question when "question" is given.' },
+    kind: { type: 'string', enum: SLIDE_KINDS, description: 'title (opening slide), section (divider), content (title with bullets or a paragraph), two-column (left and right), question (a live question the audience answers on their phones), diagram (boxes joined by arrows, from "steps"), timeline (stages, from "stages") or table (from "rows"). Defaults to content, or to what the fields given imply.' },
     title: { type: 'string', description: 'The slide heading. Keep it short.' },
     subtitle: { type: 'string', description: 'A line under the heading (title and section slides).' },
     bullets: { type: 'array', items: { type: 'string' }, description: 'Up to 12 short bullet points (content slides).' },
     text: { type: 'string', description: 'A short paragraph (content slides).' },
     left: { description: 'Left column: a string, or an array of bullet strings (two-column slides).', oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] },
     right: { description: 'Right column: a string, or an array of bullet strings (two-column slides).', oneOf: [{ type: 'string' }, { type: 'array', items: { type: 'string' } }] },
+    steps: { type: 'array', description: 'Diagram slides: 2 to 8 boxes, in order. Each is a string or { label, note }.', items: { oneOf: [{ type: 'string' }, { type: 'object', properties: { label: { type: 'string' }, note: { type: 'string' } } }] } },
+    layout: { type: 'string', enum: ['row', 'column', 'cycle'], description: 'Diagram slides: how the boxes are arranged. Use cycle for loops.' },
+    stages: { type: 'array', description: 'Timeline slides: 2 to 8 stages, in order. Each is a string or { title, text }.', items: { oneOf: [{ type: 'string' }, { type: 'object', properties: { title: { type: 'string' }, text: { type: 'string' } } }] } },
+    rows: { type: 'array', description: 'Table slides: rows of cells; the first row is the header.', items: { type: 'array', items: { type: 'string' } } },
+    reveal: { type: 'boolean', description: 'Show the parts one at a time on each click instead of all at once. Works for bullets, diagram steps, timeline stages and table rows. Good for explaining a process step by step.' },
     notes: { type: 'string', description: 'Speaker notes, only the presenter sees them.' },
     question: {
       type: 'object',
@@ -122,7 +127,7 @@ async function callTool(name, args = {}, { owner, store, appUrl }) {
     const { deck } = normalizeDeck(row.data);
     if (name === 'get_deck') {
       const o = outline(deck);
-      return ok(`"${deck.meta.title}", ${o.length} slides:\n${o.map((s) => `${s.index}. ${s.title}${s.question ? ` (${s.question})` : ''}`).join('\n')}`, { structuredContent: { deck_id: row.id, title: deck.meta.title, slides: o } });
+      return ok(`"${deck.meta.title}", ${o.length} slides:\n${o.map((s) => `${s.index}. ${s.title}${s.question ? ` (${s.question})` : ''}${s.stepped ? ' [revealed step by step]' : ''}`).join('\n')}`, { structuredContent: { deck_id: row.id, title: deck.meta.title, slides: o } });
     }
     let next;
     let message;
